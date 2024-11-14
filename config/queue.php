@@ -90,4 +90,9 @@ return [
         'table' => 'failed_jobs',
     ],
 
+    'worker' => [
+        'tries' => 3,
+        'pcntl' => false,
+    ],
+
 ];

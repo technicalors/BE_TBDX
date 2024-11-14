@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "axios": "^1.7.7",
+    "laravel-echo": "^1.16.1",
+    "laravel-echo-server": "^1.6.3"
+  }
+}

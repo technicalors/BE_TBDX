@@ -495,6 +495,15 @@ class ApiController extends AdminController
             'status' => $info->status > 1 ? $info->status : 2,
             'nhan_vien_sx' => $request->user()->id ?? null,
         ]);
+        $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
+        if($tracking){
+            $tracking->update([
+                'lo_sx' => null,
+                'so_ra' => 0,
+                'thu_tu_uu_tien' => null,
+                'sl_kh' => 0
+            ]);
+        }
         return $this->success('', 'Đã cập nhật');
     }
 
@@ -693,16 +702,14 @@ class ApiController extends AdminController
                         $this->reorderInfoCongDoan();
                         $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
                         $info_ids = InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray();
-                        $next_info = InfoCongDoan::with('order')->whereIn('id', $info_ids)->whereDate('ngay_sx', now())->whereHas('order', function ($order_query) use ($request) {
-                            $order_query->where('so_dao', $request['Set_Counter']);
-                        })->first();
+                        $next_info = InfoCongDoan::with('order')->whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
                         if ($next_info) {
                             $order = $next_info->order ?? null;
                             $so_ra = $order->so_ra ?? $next_info->so_ra;
                             $next_info->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s'), 'status' => 1, 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $so_ra, 'so_ra' => $so_ra]);
-                            $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
+                            // $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
                             $tracking->update([
-                                'sl_kh' => ceil(($next_info->dinh_muc * ($formula->he_so ?? 1)) / $so_ra) ?? 0,
+                                'sl_kh' => $next_info->so_dao,
                                 'lo_sx' => $next_info->lo_sx,
                                 'so_ra' => $so_ra,
                                 'thu_tu_uu_tien' => $next_info->thu_tu_uu_tien,
@@ -750,16 +757,14 @@ class ApiController extends AdminController
                 }
             } else {
                 $info_ids = InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray();
-                $next_info = InfoCongDoan::with('order')->whereIn('id', $info_ids)->whereDate('ngay_sx', now())->whereHas('order', function ($order_query) use ($request) {
-                    $order_query->where('so_dao', $request['Set_Counter']);
-                })->first();
+                $next_info = InfoCongDoan::with('order')->whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
                 if ($next_info) {
                     $order = $next_info->order ?? null;
                     $so_ra = $order->so_ra ?? $next_info->so_ra;
                     $next_info->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s'), 'status' => 1, 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $so_ra, 'so_ra' => $so_ra]);
-                    $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
+                    // $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
                     $tracking->update([
-                        'sl_kh' => ceil(($next_info->dinh_muc * ($formula->he_so ?? 1)) / $so_ra) ?? 0,
+                        'sl_kh' => $next_info->so_dao,
                         'lo_sx' => $next_info->lo_sx,
                         'so_ra' => $so_ra,
                         'thu_tu_uu_tien' => $next_info->thu_tu_uu_tien,
@@ -1610,9 +1615,9 @@ class ApiController extends AdminController
             $info->dot = $order->dot ?? '';
             $info->note = $order->note_3 ?? '';
             $info->slg_sx = $order->sl ?? '';
-            if ($tracking && $info->lo_sx === $tracking->lo_sx) {
-                $info->status = 1;
-            }
+            // if ($tracking && $info->lo_sx === $tracking->lo_sx) {
+            //     $info->status = 1;
+            // }
             $data[] = $info;
         }
         $order = [1, 0, 2, 3, 4];
@@ -6993,7 +6998,8 @@ class ApiController extends AdminController
                         }
                         DB::table('group_plan_order')->insert($group_orders);
                     }
-                    // //Tạo info cùng với plan
+                    $order = Order::find($plan_input['order_id'] ?? "");
+                    $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
                     $info_cong_doan = InfoCongDoan::create([
                         'lo_sx' => $plan->lo_sx,
                         'machine_id' => $plan->machine_id,
@@ -7003,14 +7009,12 @@ class ApiController extends AdminController
                         'so_ra' => $plan->order->so_ra ?? 1,
                         'order_id' => $plan->order_id,
                         'plan_id' => $plan->id,
-                        'status' => 0
+                        'status' => 0,
+                        'so_dao' => isset($order->so_ra) ? ceil($plan->sl_kh * ($formula->he_so ?? 1) / $order->so_ra) : $order->so_dao,
                     ]);
                     if ($machine->line_id == '31') {
-                        if (isset($plan_input['order_id'])) {
-                            $order = Order::find($plan_input['order_id']);
-                            if ($order) {
-                                $this->mappingIn($order->layout_id, $plan_input['lo_sx'], $plan_input['machine_id']);
-                            }
+                        if ($order) {
+                            $this->mappingIn($order->layout_id, $plan_input['lo_sx'], $plan_input['machine_id']);
                         }
                     }
                 }
@@ -9129,10 +9133,10 @@ class ApiController extends AdminController
         $data = [];
         foreach ($records as $record) {
             $record->so_luong_xuat = $record->so_luong;
-            $record->sl_ton = $record->lsxpallets()->sum('lsx_pallet.so_luong');
-            if ($record->sl_ton <= 0) {
-                continue;
-            }
+            $record->sl_ton = (int)$record->lsxpallets()->sum('lsx_pallet.so_luong');
+            // if ($record->sl_ton <= 0) {
+            //     continue;
+            // }
             if ($record->order) {
                 $data[] = array_merge($record->order->toArray(), $record->toArray());
             } else {

@@ -14,7 +14,7 @@ class InfoCongDoan extends Model
     protected $table = "info_cong_doan";
 
 
-    protected $fillable = ['id', 'lot_id', 'machine_id', 'thoi_gian_bat_dau', 'thoi_gian_bam_may', 'thoi_gian_ket_thuc', 'sl_dau_vao_chay_thu', 'sl_dau_ra_chay_thu', 'sl_dau_vao_hang_loat', 'sl_dau_ra_hang_loat', 'sl_ng_sx', 'sl_ng_qc', 'sl_loi', 'phan_dinh', 'loi_tinh_nang', 'loi_ngoai_quan', 'dinh_muc', 'parent_id', 'lo_sx', 'nhan_vien_sx', 'status', 'step', 'thu_tu_uu_tien', 'ngay_sx', 'plan_id', 'order_id', 'so_ra'];
+    protected $fillable = ['id', 'lot_id', 'machine_id', 'thoi_gian_bat_dau', 'thoi_gian_bam_may', 'thoi_gian_ket_thuc', 'sl_dau_vao_chay_thu', 'sl_dau_ra_chay_thu', 'sl_dau_vao_hang_loat', 'sl_dau_ra_hang_loat', 'sl_ng_sx', 'sl_ng_qc', 'sl_loi', 'phan_dinh', 'loi_tinh_nang', 'loi_ngoai_quan', 'dinh_muc', 'parent_id', 'lo_sx', 'nhan_vien_sx', 'status', 'step', 'thu_tu_uu_tien', 'ngay_sx', 'plan_id', 'order_id', 'so_ra', 'so_dao'];
 
     static function validateStore($input)
     {

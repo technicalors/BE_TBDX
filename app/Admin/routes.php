@@ -6,6 +6,7 @@ use App\Admin\Controllers\ApiController;
 use App\Admin\Controllers\DeliveryNoteController;
 use App\Admin\Controllers\InfoCongDoanController;
 use App\Admin\Controllers\LSXPalletController;
+use App\Admin\Controllers\MESUsageRateController;
 use App\Admin\Controllers\OrderController;
 use App\Admin\Controllers\RoleController;
 use App\Admin\Controllers\ShiftAssignmentController;
@@ -326,7 +327,7 @@ Route::group([
     $router->get('manufacture/overall', [ApiController::class, 'getManufactureOverall']);
     $router->get('manufacture/list-lot', [ApiController::class, 'listLotOI']);
     $router->get('manufacture/intem', [ApiController::class, 'inTem']);
-    $router->post('manufacture/scan', [ApiController::class, 'scan']);
+    $router->post('manufacture/scan', [ApiController::class, 'scan'])->middleware('prevent-duplicate-requests');
     $router->post('manufacture/start-tracking', [ApiController::class, 'startTracking']);
     $router->post('manufacture/stop-tracking', [ApiController::class, 'stopTracking']);
     $router->post('manufacture/reorder-priority', [ApiController::class, 'reorderPriority']);
@@ -686,6 +687,15 @@ Route::group([
     $router->post('voc', [VOCRegisterController::class, 'createRecord']);
     $router->put('voc/{id}', [VOCRegisterController::class, 'updateRecord']);
     $router->delete('voc/{id}', [VOCRegisterController::class, 'deleteRecord']);
+    $router->post('voc/upload-file', [VOCRegisterController::class, 'uploadFile']);
+    $router->post('voc/clear-unused-files', [VOCRegisterController::class, 'clearUnusedFiles']);
+
+    $router->get('kpi-ty-le-ke-hoach', [ApiUIController::class, 'kpiTyLeKeHoach']);
+    $router->get('kpi-ton-kho-nvl', [ApiUIController::class, 'kpiTonKhoNVL']);
+    $router->get('kpi-ty-le-ng-pqc', [ApiUIController::class, 'kpiTyLeNGPQC']);
+    $router->get('kpi-ty-le-vanh-hanh-thiet-bi', [ApiUIController::class, 'kpiTyLeVanHanh']);
+    $router->get('kpi-ty-le-ke-hoach-in', [ApiUIController::class, 'kpiTyLeKeHoachIn']);
+    $router->get('kpi-ty-le-loi-may', [ApiUIController::class, 'kpiTyLeLoiMay']);
 });
 
 Route::group([
@@ -713,4 +723,10 @@ Route::group([
     $router->get('reset-info-cong-doan', [ApiUIController::class, 'resetInfoCongDoan']);
     $router->get('end-old-info-cong-doan', [ApiUIController::class, 'endOldInfoCongDoan']);
     $router->get('wtf', [ApiUIController::class, 'wtf']);
+    $router->get('calculateUsageTime', [MESUsageRateController::class, 'calculateUsageTime']);
+    $router->get('calculateMaintenanceMachine', [MESUsageRateController::class, 'calculateMaintenanceMachine']);
+    $router->get('calculatePQCProcessing', [MESUsageRateController::class, 'calculatePQCProcessing']);
+    $router->get('calculateKhuonBe', [MESUsageRateController::class, 'calculateKhuonBe']);
+    $router->get('getTableSystemUsageRate', [MESUsageRateController::class, 'getTableSystemUsageRate']);
+    $router->get('cronjob', [MESUsageRateController::class, 'cronjob']);
 });

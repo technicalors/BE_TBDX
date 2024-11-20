@@ -21,7 +21,10 @@ class CustomUser extends Model
         'username',
         'id',
         'password',
-        'phone_number'
+        'phone_number',
+        'login_times_in_day',
+        'last_use_at',
+        'usage_time_in_day'
     ];
     protected $casts = [
         'id' => 'string'

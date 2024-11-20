@@ -2,10 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\CustomUser;
 use Closure;
 use Exception;
 use Illuminate\Http\Request;
 use App\Models\RequestLog;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class LogRequest
@@ -49,6 +51,13 @@ class LogRequest
         ];
         try {
             RequestLog::query()->create($logData);
+            $user = CustomUser::find(auth()->user()->id ?? "");
+            if($user && $user->last_use_at){
+                $now = Carbon::now();
+                $diff = $now->diffInSeconds($user->last_use_at);
+                $user->update(['usage_time_in_day'=>$user->usage_time_in_day + $diff, 'last_use_at' => $now]);
+            }
+            
         } catch (Exception $e) {
             Log::error('Failed to log request at ' . now()->toDateTimeString() . ' with error: ' . $e->getMessage());
         }

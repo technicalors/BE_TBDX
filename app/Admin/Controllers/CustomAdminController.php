@@ -140,6 +140,9 @@ class CustomAdminController extends AdminController
             $query->where('username', 'like', "%$request->username%");
         }
         $users = $query->get();
+        foreach ($users as $key => $user) {
+            $user->usage_time = round($user->usage_time_in_day / 60);
+        }
         return $this->success($users);
     }
     public function getUserRoles(Request $request){

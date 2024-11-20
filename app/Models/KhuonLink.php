@@ -15,7 +15,7 @@ class KhuonLink extends Model
         'id', 'customer_id', 'dai', 'rong', 'cao','kich_thuoc','phan_loai_1',
         'buyer_id', 'kho_khuon', 'dai_khuon', 'so_con', 'so_manh_ghep', 'khuon_id',
         'sl_khuon', 'machine_id', 'buyer_note', 'note', 'layout', 'supplier',
-        'ngay_dat_khuon', 'pad_xe_ranh'
+        'ngay_dat_khuon', 'pad_xe_ranh', 'designer_id'
     ];
     static function validateUpdate($input, $is_update = true)
     {
@@ -38,5 +38,8 @@ class KhuonLink extends Model
     }
     public function khuon(){
         return $this->belongsTo(Khuon::class, 'khuon_id');
+    }
+    public function designer(){
+        return $this->belongsTo(CustomUser::class, 'designer_id');
     }
 }

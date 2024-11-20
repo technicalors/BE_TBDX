@@ -68,9 +68,11 @@ use App\Models\WarehouseFGLog;
 use App\Models\WareHouseMLTExport;
 use App\Models\WareHouseMLTImport;
 use App\Models\WarehouseMLTLog;
+use Carbon\CarbonPeriod;
 use DateTime;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use stdClass;
 use Throwable;
 
@@ -4625,6 +4627,199 @@ class ApiUIController extends AdminController
         }
     }
 
+    public function kpiTyLeKeHoach(Request $request)
+    {
+        $start = date('Y-m-d', strtotime($request->start_date ?? 'now'));
+        $end = date('Y-m-d', strtotime($request->end_date ?? 'now'));
+        $period = CarbonPeriod::create($start, $end);
+        $data = [
+            'categories' => [], // Trục hoành (ngày)
+            'plannedQuantity' => [],  // Số lượng tất cả công đoạn
+            'actualQuantity' => [] // Số lượng công đoạn "Dợn sóng"
+        ];
+        foreach ($period as $date) {
+            $label = $date->format('d/m');
+            $plannedQuantity = ProductionPlan::whereDate('thoi_gian_bat_dau', $date->format("Y-m-d"))
+                ->where('machine_id', 'So01')
+                ->sum('sl_kh');
+            $actualQuantity = InfoCongDoan::whereDate('thoi_gian_bat_dau', $date->format("Y-m-d"))
+                ->where('machine_id', 'So01')
+                ->sum('sl_dau_ra_hang_loat');
+            $data['categories'][] = $label; // Ngày trên trục hoành
+            $data['plannedQuantity'][] = (int)$plannedQuantity; // Tổng số lượng tất cả công đoạn
+            $data['actualQuantity'][] = (int)$actualQuantity; // Số lượng công đoạn "Dợn sóng"
+        }
+        return $this->success($data);
+    }
+
+    public function kpiTonKhoNVL(Request $request)
+    {
+        $start = date('Y-m-d', strtotime($request->start_date ?? 'now'));
+        $end = date('Y-m-d', strtotime($request->end_date ?? 'now'));
+        $period = CarbonPeriod::create($start, $end);
+        $data = [
+            'categories' => [], // Trục hoành (ngày)
+            'inventory' => [],  // Số lượng tất cả công đoạn
+        ];
+        foreach ($period as $date) {
+            $label = $date->format('d/m');
+            $inventory = WarehouseMLTLog::whereNull('tg_xuat')
+                ->whereDate('tg_nhap', $date->format('Y-m-d'))
+                ->sum('so_kg_nhap');
+            $data['categories'][] = $label; // Ngày trên trục hoành
+            $data['inventory'][] = (int)$inventory;
+        }
+        return $this->success($data);
+    }
+
+    public function kpiTyLeNGPQC(Request $request)
+    {
+        $start = date('Y-m-d', strtotime($request->start_date ?? 'now'));
+        $end = date('Y-m-d', strtotime($request->end_date ?? 'now'));
+        $period = CarbonPeriod::create($start, $end);
+        $data = [
+            'categories' => [], // Trục hoành (ngày)
+            'ty_le_ng' => [],  // Số lượng tất cả công đoạn
+        ];
+        foreach ($period as $date) {
+            $label = $date->format('d/m');
+            $info = InfoCongDoan::whereDate('thoi_gian_bat_dau', $date->format('Y-m-d'))
+                ->select(
+                    DB::raw("SUM(sl_dau_ra_hang_loat) as tong_sl"),
+                    DB::raw("SUM(sl_ng_sx + sl_ng_qc) as tong_sl_ng")
+                )->first();
+            $data['categories'][] = $label; // Ngày trên trục hoành
+            $data['ty_le_ng'][] = ((int)$info->tong_sl > 0) ? (float)number_format(($info->tong_sl_ng / $info->tong_sl) * 100, 2) : 0;
+        }
+        return $this->success($data);
+    }
+
+    public function kpiTyLeVanHanh(Request $request)
+    {
+        $start = date('Y-m-d', strtotime($request->start_date ?? 'now'));
+        $end = date('Y-m-d', strtotime($request->end_date ?? 'now'));
+        $period = CarbonPeriod::create($start, $end);
+        $data = [
+            'categories' => [], // Trục hoành (ngày)
+            'ti_le_van_hanh' => [],  // Số lượng tất cả công đoạn
+        ];
+        foreach ($period as $date) {
+            $label = $date->format('d/m');
+            $info = InfoCongDoan::whereDate('thoi_gian_bat_dau', $date->format('Y-m-d'))
+                ->select(
+                    DB::raw("SUM(TIMESTAMPDIFF(SECOND, thoi_gian_bam_may, thoi_gian_ket_thuc)) / SUM(TIMESTAMPDIFF(SECOND, thoi_gian_bat_dau, thoi_gian_ket_thuc)) as total_ratio")
+                )
+                ->whereNotNull('thoi_gian_bam_may')
+                ->whereNotNull('thoi_gian_ket_thuc')
+                ->whereNotNull('thoi_gian_bat_dau')
+                ->first();
+            if ($info->total_ratio > 0) {
+                $ti_le_van_hanh_tb = ceil($info->total_ratio * 100);
+            } else {
+                $ti_le_van_hanh_tb = 0;
+            }
+            $data['categories'][] = $label; // Ngày trên trục hoành
+            $data['ti_le_van_hanh'][] = $ti_le_van_hanh_tb;
+        }
+        return $this->success($data);
+    }
+
+    public function kpiTyLeKeHoachIn(Request $request)
+    {
+        $start = date('Y-m-d', strtotime($request->start_date ?? 'now'));
+        $end = date('Y-m-d', strtotime($request->end_date ?? 'now'));
+        $period = CarbonPeriod::create($start, $end);
+        $data = [
+            'categories' => [], // Trục hoành (ngày)
+            'plannedQuantity' => [],  // Số lượng tất cả công đoạn
+            'actualQuantity' => [] // Số lượng công đoạn "Dợn sóng"
+        ];
+        $machine = Machine::where('line_id', 30)->pluck('id')->toArray();
+        foreach ($period as $date) {
+            $label = $date->format('d/m');
+            $plannedQuantity = InfoCongDoan::whereDate('thoi_gian_bat_dau', $date->format("Y-m-d"))->sum('dinh_muc');
+            $actualQuantity = InfoCongDoan::whereDate('thoi_gian_bat_dau', $date->format("Y-m-d"))->whereIn('machine_id', $machine)->sum('sl_dau_ra_hang_loat');
+            $data['categories'][] = $label; // Ngày trên trục hoành
+            $data['plannedQuantity'][] = (int)$plannedQuantity; // Tổng số lượng tất cả công đoạn
+            $data['actualQuantity'][] = (int)$actualQuantity; // Số lượng công đoạn "Dợn sóng"
+        }
+        return $this->success($data);
+    }
+
+    public function kpiTonKhoTP(Request $request)
+    {
+        $start = date('Y-m-d', strtotime($request->start_date ?? 'now'));
+        $end = date('Y-m-d', strtotime($request->end_date ?? 'now'));
+        $period = CarbonPeriod::create($start, $end);
+        $data = [
+            'categories' => [], // Trục hoành (ngày)
+            'inventory' => [],  // Số lượng tất cả công đoạn
+        ];
+        foreach ($period as $date) {
+            $label = $date->format('d/m');
+            $inventory = WarehouseFGLog::whereNull('tg_xuat')
+                ->whereDate('tg_nhap', $date->format('Y-m-d'))
+                ->sum('so_kg_nhap');
+            $data['categories'][] = $label; // Ngày trên trục hoành
+            $data['inventory'][] = (int)$inventory;
+        }
+        return $this->success($data);
+    }
+
+    public function kpiTyLeLoiMay(Request $request)
+    {
+        $start = date('Y-m-d', strtotime($request->start_date ?? 'now'));
+        $end = date('Y-m-d', strtotime($request->end_date ?? 'now'));
+        $period = CarbonPeriod::create($start, $end);
+        $categories = [];
+        foreach ($period as $key => $date) {
+            $categories[]  = $date->format('d/m');
+        }
+        $data = [
+            'categories' => $categories, // Trục hoành (ngày)
+            'series' => [],
+        ];
+        $machines = Machine::where('is_iot', 1)->get()->groupBy('line_id');
+        $logs = MachineLog::whereBetween('start_time', [$start, $end])
+            ->whereNotNull('error_machine_id')
+            ->get()
+            ->groupBy('machine_id');
+        foreach ($machines as $line_id => $machineGroup) {
+            $line = Line::find($line_id); // Lấy thông tin line
+            $machineIds = $machineGroup->pluck('id')->toArray();
+
+            // Dữ liệu lỗi máy của line này trong khoảng thời gian
+            $lineLogs = $logs->filter(fn($log, $machineId) => in_array($machineId, $machineIds));
+
+            // Tạo dữ liệu series cho line
+            $dataPoints = [];
+            foreach ($period as $date) {
+                $dateKey = $date->format('Y-m-d');
+
+                // Tổng lỗi máy trong ngày
+                $totalLogs = $lineLogs->flatMap(fn($log) => $log)
+                    ->filter(fn($entry) => date("Y-m-d", strtotime($entry->start_time)) === $dateKey)
+                    ->count();
+
+                // Tổng lỗi máy trong tất cả line cùng ngày
+                $totalAllLogs = $logs->flatMap(fn($log) => $log)
+                    ->filter(fn($entry) => date("Y-m-d", strtotime($entry->start_time)) === $dateKey)
+                    ->count();
+
+                // Tính tỷ lệ lỗi
+                $dataPoints[] = $totalAllLogs > 0
+                    ? round(($totalLogs / $totalAllLogs) * 100, 2)
+                    : 0;
+            }
+
+            $data['series'][] = [
+                'name' => $line->name ?? "Line {$line_id}",
+                'data' => $dataPoints,
+            ];
+        }
+        return $this->success($data);
+    }
+
     public function suaChuaLoiLam()
     {
         $imports = WareHouseMLTImport::whereIn('material_id', explode(',', '24-06905,24-07376,24-07504,24-08119,24-08124,24-08132,23-08783,23-09111,23-10124,23-10128,23-10130,23-17126,23-17135,23-17138,23-17775,23-17778,23-19029,23-19146,23-19255,23-23639,23-23640,23-23763,24-01780,24-02763,24-03956,24-03959,24-06810'))->get();
@@ -4850,18 +5045,16 @@ class ApiUIController extends AdminController
     }
     public function wtf()
     {
-        $logs = MachineLog::where('order_id', 'like', '1370/10/24%')->where('type', 2)->get();
-        foreach ($logs as $log) {
-            LSXPallet::updateOrCreate([
-                'lo_sx' => $log->lo_sx,
-                'pallet_id' => $log->pallet_id,
-                'so_luong' => $log->so_luong,
-                'mdh' => explode('-', $log->order_id)[0],
-                'mql' => explode('-', $log->order_id)[1],
-                'order_id' => $log->order_id
-            ]);
-            Pallet::updateOrCreate(['id'=>$log->pallet_id], ['so_luong'=>$log->so_luong]);
-            LocatorFGMap::updateOrCreate(['pallet_id'=>$log->pallet_id], ['locator_id'=>'F01.01']);
+        $columns = Schema::getColumnListing('orders');
+        $query = "";
+
+        // Tạo truy vấn UPDATE cho từng cột
+        foreach ($columns as $column) {
+            $query .= "UPDATE `orders` SET `$column` = NULL WHERE `$column` = 'NULL'; ";
         }
+
+        // Chạy truy vấn
+        DB::unprepared($query);
+        return "done";
     }
 }

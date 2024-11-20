@@ -28,6 +28,8 @@ class VOCRegister extends Model
         'replied_by',
         'replied_at',
         'status',
+        'expected_date',
+        'files'
     ];
 
     public function type(): HasOne

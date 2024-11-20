@@ -496,7 +496,7 @@ class ApiController extends AdminController
             'nhan_vien_sx' => $request->user()->id ?? null,
         ]);
         $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
-        if($tracking){
+        if ($tracking) {
             $tracking->update([
                 'lo_sx' => null,
                 'so_ra' => 0,
@@ -4755,9 +4755,9 @@ class ApiController extends AdminController
                     if ($lsx_pallet->locator_fg_map) {
                         $arr[] = $lsx_pallet;
                         if ($sum_sl < $fg_export->so_luong - $so_luong_da_xuat) {
-                            if(in_array($lsx_pallet->lo_sx, $lsx_array)){
+                            if (in_array($lsx_pallet->lo_sx, $lsx_array)) {
                                 continue;
-                            }else{
+                            } else {
                                 $lsx_array[] = $lsx_pallet->lo_sx;
                             }
                             $khach_hang = $lsx_pallet->customer_id ?? "";
@@ -7502,283 +7502,288 @@ class ApiController extends AdminController
     }
     function exportPreviewPlanXaLot(Request $request)
     {
-        $centerStyle = [
-            'alignment' => [
-                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-            ],
-            'borders' => array(
-                'allBorders' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
+        try {
+
+            $centerStyle = [
+                'alignment' => [
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                ],
+                'borders' => array(
+                    'allBorders' => array(
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => array('argb' => '000000'),
+                    ),
                 ),
-            ),
-        ];
-        $headerStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true, 'color' => array('rgb' => '632523')],
-        ]);
-        $titleStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true, 'color' => array('rgb' => '632523'), 'size' => 18],
-        ]);
-        $bold = [
-            'font' => ['bold' => true],
-        ];
-        $red = [
-            'font' => ['color' => array('rgb' => 'FF0000')],
-        ];
-        //Xả lót
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Xả Lót');
-        $plans = $request->plans;
-        $headerXL = [
-            'STT',
-            'MĐH',
-            'KH',
-            'Số lớp',
-            'Kết cấu giấy',
-            'Đơn hàng' => [
-                'Dài (lấy từ cột L)',
-                'Rộng (lấy từ cột W)',
-                'Cao (lấy từ cột H)',
-                'Kích thước ĐH'
-            ],
-            'Kế hoạch' => [
-                'Dài (Lấy từ KT chuẩn)',
-                'Rộng (Lấy từ KT chuẩn)',
-                'Cao (Lấy từ KT chuẩn)',
-            ],
-            'Số lượng',
-            'Dài tấm',
-            'Ghi chú',
-            'Đợt'
-        ];
-        $table_keyXL = [
-            'A' => 'stt',
-            'B' => 'mdh',
-            'C' => 'short_name',
-            'D' => 'so_lop',
-            'E' => 'ket_cau_giay',
-            'F' => 'length',
-            'G' => 'width',
-            'H' => 'height',
-            'I' => 'kich_thuoc',
-            'J' => 'dai',
-            'K' => 'rong',
-            'L' => 'cao',
-            'M' => 'sl_kh',
-            'N' => 'dai_tam',
-            'O' => 'note_3',
-            'P' => 'dot',
-        ];
-        $tableStyleXL = [
-            'A' => $centerStyle,
-            'B' => array_merge_recursive($centerStyle, $bold),
-            'C' => array_merge_recursive($centerStyle, $bold),
-            'D' => $centerStyle,
-            'E' => array_merge_recursive($centerStyle, $bold),
-            'F' => $centerStyle,
-            'G' => $centerStyle,
-            'H' => $centerStyle,
-            'I' => $centerStyle,
-            'J' => array_merge_recursive($centerStyle, $bold),
-            'K' => array_merge_recursive($centerStyle, $bold),
-            'L' => array_merge_recursive($centerStyle, $bold),
-            'M' => array_merge_recursive($centerStyle, $bold, $red),
-            'N' => $centerStyle,
-            'O' => array_merge_recursive($centerStyle, $red),
-            'P' => $centerStyle,
-        ];
-        $headerXT = [
-            'STT',
-            'MĐH',
-            'KH',
-            'Số lớp',
-            'Kết cấu giấy',
-            'Dài',
-            'Rộng',
-            'Cao',
-            'Số lượng',
-            'Dài tấm',
-            'Ghi chú',
-        ];
-        $table_keyXT = [
-            'A' => 'stt',
-            'B' => 'mdh',
-            'C' => 'short_name',
-            'D' => 'so_lop',
-            'E' => 'ket_cau_giay',
-            'F' => 'dai',
-            'G' => 'rong',
-            'H' => 'cao',
-            'I' => 'sl_kh',
-            'J' => 'dai_tam',
-            'K' => 'note_3',
-        ];
-        $tableStyleXT = [
-            'A' => $centerStyle,
-            'B' => array_merge_recursive($centerStyle, $bold),
-            'C' => array_merge_recursive($centerStyle, $bold),
-            'D' => $centerStyle,
-            'E' => array_merge_recursive($centerStyle, $bold),
-            'F' => $centerStyle,
-            'G' => $centerStyle,
-            'H' => $centerStyle,
-            'I' => array_merge_recursive($centerStyle, $bold, $red),
-            'J' => $centerStyle,
-            'K' => array_merge_recursive($centerStyle, $red),
-        ];
-        $dataXL = [];
-        $dataXT = [];
-        $index = 1;
-        foreach ($plans as $key => $plan) {
-            $plan = new ProductionPlan($plan);
-            $order = $plan->order;
-            $buyer = $order->buyer;
-            $obj = $plan ?? new stdClass;
-            $obj->stt = $index++;
-            $obj->so_lop = $buyer->so_lop ?? "";
-            $obj->short_name = $order->short_name ?? "";
-            $obj->length = $order->length ?? "";
-            $obj->width = $order->width ?? "";
-            $obj->height = $order->height ?? "";
-            $obj->kich_thuoc = $order->kich_thuoc ?? "";
-            $obj->dai = $order->dai ?? "";
-            $obj->rong = $order->rong ?? "";
-            $obj->cao = $order->cao ?? "";
-            $obj->mql = $order->mql ?? "";
-            $obj->mdh = $order->mdh ?? "";
-            $obj->note_3 = $order->note_3 ?? "";
-            $obj->dot = $order->dot ?? "";
-            $obj->dai_tam = $order->dai_tam ?? "";
-            $obj->ket_cau_giay = $order->buyer->ket_cau_giay ?? "";
-            $parse_data = [];
-            $obj = $obj->toArray();
-            if (!$obj['cao']) {
-                foreach ($table_keyXL as $key_col => $col) {
-                    if (isset($obj[$col])) {
-                        $parse_data[$key_col] = $obj[$col];
+            ];
+            $headerStyle = array_merge($centerStyle, [
+                'font' => ['bold' => true, 'color' => array('rgb' => '632523')],
+            ]);
+            $titleStyle = array_merge($centerStyle, [
+                'font' => ['bold' => true, 'color' => array('rgb' => '632523'), 'size' => 18],
+            ]);
+            $bold = [
+                'font' => ['bold' => true],
+            ];
+            $red = [
+                'font' => ['color' => array('rgb' => 'FF0000')],
+            ];
+            //Xả lót
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Xả Lót');
+            $plans = $request->plans;
+            $headerXL = [
+                'STT',
+                'MĐH',
+                'KH',
+                'Số lớp',
+                'Kết cấu giấy',
+                'Đơn hàng' => [
+                    'Dài (lấy từ cột L)',
+                    'Rộng (lấy từ cột W)',
+                    'Cao (lấy từ cột H)',
+                    'Kích thước ĐH'
+                ],
+                'Kế hoạch' => [
+                    'Dài (Lấy từ KT chuẩn)',
+                    'Rộng (Lấy từ KT chuẩn)',
+                    'Cao (Lấy từ KT chuẩn)',
+                ],
+                'Số lượng',
+                'Dài tấm',
+                'Ghi chú',
+                'Đợt'
+            ];
+            $table_keyXL = [
+                'A' => 'stt',
+                'B' => 'mdh',
+                'C' => 'short_name',
+                'D' => 'so_lop',
+                'E' => 'ket_cau_giay',
+                'F' => 'length',
+                'G' => 'width',
+                'H' => 'height',
+                'I' => 'kich_thuoc',
+                'J' => 'dai',
+                'K' => 'rong',
+                'L' => 'cao',
+                'M' => 'sl_kh',
+                'N' => 'dai_tam',
+                'O' => 'note_3',
+                'P' => 'dot',
+            ];
+            $tableStyleXL = [
+                'A' => $centerStyle,
+                'B' => array_merge_recursive($centerStyle, $bold),
+                'C' => array_merge_recursive($centerStyle, $bold),
+                'D' => $centerStyle,
+                'E' => array_merge_recursive($centerStyle, $bold),
+                'F' => $centerStyle,
+                'G' => $centerStyle,
+                'H' => $centerStyle,
+                'I' => $centerStyle,
+                'J' => array_merge_recursive($centerStyle, $bold),
+                'K' => array_merge_recursive($centerStyle, $bold),
+                'L' => array_merge_recursive($centerStyle, $bold),
+                'M' => array_merge_recursive($centerStyle, $bold, $red),
+                'N' => $centerStyle,
+                'O' => array_merge_recursive($centerStyle, $red),
+                'P' => $centerStyle,
+            ];
+            $headerXT = [
+                'STT',
+                'MĐH',
+                'KH',
+                'Số lớp',
+                'Kết cấu giấy',
+                'Dài',
+                'Rộng',
+                'Cao',
+                'Số lượng',
+                'Dài tấm',
+                'Ghi chú',
+            ];
+            $table_keyXT = [
+                'A' => 'stt',
+                'B' => 'mdh',
+                'C' => 'short_name',
+                'D' => 'so_lop',
+                'E' => 'ket_cau_giay',
+                'F' => 'dai',
+                'G' => 'rong',
+                'H' => 'cao',
+                'I' => 'sl_kh',
+                'J' => 'dai_tam',
+                'K' => 'note_3',
+            ];
+            $tableStyleXT = [
+                'A' => $centerStyle,
+                'B' => array_merge_recursive($centerStyle, $bold),
+                'C' => array_merge_recursive($centerStyle, $bold),
+                'D' => $centerStyle,
+                'E' => array_merge_recursive($centerStyle, $bold),
+                'F' => $centerStyle,
+                'G' => $centerStyle,
+                'H' => $centerStyle,
+                'I' => array_merge_recursive($centerStyle, $bold, $red),
+                'J' => $centerStyle,
+                'K' => array_merge_recursive($centerStyle, $red),
+            ];
+            $dataXL = [];
+            $dataXT = [];
+            $index = 1;
+            foreach ($plans as $key => $plan) {
+                $plan = new ProductionPlan($plan);
+                $order = $plan->order;
+                $buyer = $order->buyer;
+                $obj = $plan ?? new stdClass;
+                $obj->stt = $index++;
+                $obj->so_lop = $buyer->so_lop ?? "";
+                $obj->short_name = $order->short_name ?? "";
+                $obj->length = $order->length ?? "";
+                $obj->width = $order->width ?? "";
+                $obj->height = $order->height ?? "";
+                $obj->kich_thuoc = $order->kich_thuoc ?? "";
+                $obj->dai = $order->dai ?? "";
+                $obj->rong = $order->rong ?? "";
+                $obj->cao = $order->cao ?? "";
+                $obj->mql = $order->mql ?? "";
+                $obj->mdh = $order->mdh ?? "";
+                $obj->note_3 = $order->note_3 ?? "";
+                $obj->dot = $order->dot ?? "";
+                $obj->dai_tam = $order->dai_tam ?? "";
+                $obj->ket_cau_giay = $order->buyer->ket_cau_giay ?? "";
+                $parse_data = [];
+                $obj = $obj->toArray();
+                if (!$obj['cao']) {
+                    foreach ($table_keyXL as $key_col => $col) {
+                        if (isset($obj[$col])) {
+                            $parse_data[$key_col] = $obj[$col];
+                        }
                     }
+                    $dataXL[] = $parse_data;
+                } else {
+                    foreach ($table_keyXT as $key_col => $col) {
+                        if (isset($obj[$col])) {
+                            $parse_data[$key_col] = $obj[$col];
+                        }
+                    }
+                    $dataXT[] = $parse_data;
                 }
-                $dataXL[] = $parse_data;
-            } else {
+            }
+            $start_col = 1;
+            $start_row = 1;
+            $sheet->setCellValue([1, $start_row], 'KẾ HOẠCH XẢ LÓT ' . date('d.m.Y', strtotime($request->start_time)))->mergeCells([1, $start_row, count($table_keyXL), $start_row])->getStyle([1, $start_row, count($table_keyXL), $start_row])->applyFromArray($titleStyle);
+            $start_row += 1;
+            foreach ($headerXL as $key => $cell) {
+                if (!is_array($cell)) {
+                    $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
+                } else {
+                    $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
+                    foreach ($cell as $val) {
+                        $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($headerStyle);
+                        $start_col += 1;
+                    }
+                    continue;
+                }
+                $start_col += 1;
+            }
+            // return $request->start_date
+
+            $table_col = 1;
+            $table_row = $start_row + 2;
+            foreach ($dataXL as $key => $row) {
+                $table_col = 1;
+                foreach ($row as $k => $value) {
+                    $sheet->setCellValue($k . $table_row, $value)->getStyle($k . $table_row)->applyFromArray($tableStyleXL[$k]);
+                    $table_col += 1;
+                }
+                $table_row += 1;
+            }
+            $start_row = $table_row + 1;
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+                // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
+            }
+            //Xả thùng
+            $spreadsheet->createSheet();
+            $sheet = $spreadsheet->setActiveSheetIndex(1);
+            $sheet->setTitle('Xả Thùng');
+            $start_row = 1;
+            $data = [];
+            $index = 1;
+            foreach ($plans as $key => $plan) {
+                $plan = new ProductionPlan($plan);
+                $order = $plan->order;
+                $buyer = $order->buyer;
+                $obj = $plan;
+                $obj->stt = $index++;
+                $obj->so_lop = $buyer->so_lop ?? "";
+                $obj->short_name = $order->short_name ?? "";
+                $obj->dai = $order->dai ?? "";
+                $obj->rong = $order->rong ?? "";
+                $obj->cao = $order->cao ?? "";
+                $obj->mql = $order->mql ?? "";
+                $obj->mdh = $order->mdh ?? "";
+                $obj->dai_tam = $order->dai_tam ?? "";
+                $obj->note_3 = $order->note_3 ?? "";
+                $obj->ket_cau_giay = $order->buyer->ket_cau_giay ?? "";
+                $parse_data = [];
+                $obj = $obj->toArray();
                 foreach ($table_keyXT as $key_col => $col) {
                     if (isset($obj[$col])) {
                         $parse_data[$key_col] = $obj[$col];
                     }
                 }
-                $dataXT[] = $parse_data;
+                $data[] = $parse_data;
             }
-        }
-        $start_col = 1;
-        $start_row = 1;
-        $sheet->setCellValue([1, $start_row], 'KẾ HOẠCH XẢ LÓT ' . date('d.m.Y', strtotime($request->start_time)))->mergeCells([1, $start_row, count($table_keyXL), $start_row])->getStyle([1, $start_row, count($table_keyXL), $start_row])->applyFromArray($titleStyle);
-        $start_row += 1;
-        foreach ($headerXL as $key => $cell) {
-            if (!is_array($cell)) {
-                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
-            } else {
-                $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
-                foreach ($cell as $val) {
-                    $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($headerStyle);
-                    $start_col += 1;
+            $start_col = 1;
+            $start_row = 1;
+            $sheet->setCellValue([1, $start_row], 'KẾ HOẠCH XẢ THÙNG ' . date('d.m.Y', strtotime($request->start_time)))->mergeCells([1, $start_row, count($headerXT), $start_row])->getStyle([1, $start_row, count($headerXL), $start_row])->applyFromArray($titleStyle);
+            $start_row += 1;
+            foreach ($headerXT as $key => $cell) {
+                if (!is_array($cell)) {
+                    $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
+                } else {
+                    $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
+                    foreach ($cell as $val) {
+                        $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($headerStyle);
+                        $start_col += 1;
+                    }
+                    continue;
                 }
-                continue;
+                $start_col += 1;
             }
-            $start_col += 1;
-        }
-        // return $request->start_date
 
-        $table_col = 1;
-        $table_row = $start_row + 2;
-        foreach ($dataXL as $key => $row) {
             $table_col = 1;
-            foreach ($row as $k => $value) {
-                $sheet->setCellValue($k . $table_row, $value)->getStyle($k . $table_row)->applyFromArray($tableStyleXL[$k]);
-                $table_col += 1;
-            }
-            $table_row += 1;
-        }
-        $start_row = $table_row + 1;
-        foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-            // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
-        }
-        //Xả thùng
-        $spreadsheet->createSheet();
-        $sheet = $spreadsheet->setActiveSheetIndex(1);
-        $sheet->setTitle('Xả Thùng');
-        $start_row = 1;
-        $data = [];
-        $index = 1;
-        foreach ($plans as $key => $plan) {
-            $plan = new ProductionPlan($plan);
-            $order = $plan->order;
-            $buyer = $order->buyer;
-            $obj = $plan;
-            $obj->stt = $index++;
-            $obj->so_lop = $buyer->so_lop ?? "";
-            $obj->short_name = $order->short_name ?? "";
-            $obj->dai = $order->dai ?? "";
-            $obj->rong = $order->rong ?? "";
-            $obj->cao = $order->cao ?? "";
-            $obj->mql = $order->mql ?? "";
-            $obj->mdh = $order->mdh ?? "";
-            $obj->dai_tam = $order->dai_tam ?? "";
-            $obj->note_3 = $order->note_3 ?? "";
-            $obj->ket_cau_giay = $order->buyer->ket_cau_giay ?? "";
-            $parse_data = [];
-            $obj = $obj->toArray();
-            foreach ($table_keyXT as $key_col => $col) {
-                if (isset($obj[$col])) {
-                    $parse_data[$key_col] = $obj[$col];
+            $table_row = $start_row + 1;
+            foreach ($dataXT as $key => $row) {
+                $table_col = 1;
+                foreach ($row as $k => $value) {
+                    $sheet->setCellValue($k . $table_row, $value)->getStyle($k . $table_row)->applyFromArray($tableStyleXT[$k]);
+                    $table_col += 1;
                 }
+                $table_row += 1;
             }
-            $data[] = $parse_data;
-        }
-        $start_col = 1;
-        $start_row = 1;
-        $sheet->setCellValue([1, $start_row], 'KẾ HOẠCH XẢ THÙNG ' . date('d.m.Y', strtotime($request->start_time)))->mergeCells([1, $start_row, count($headerXT), $start_row])->getStyle([1, $start_row, count($headerXL), $start_row])->applyFromArray($titleStyle);
-        $start_row += 1;
-        foreach ($headerXT as $key => $cell) {
-            if (!is_array($cell)) {
-                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
-            } else {
-                $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
-                foreach ($cell as $val) {
-                    $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($headerStyle);
-                    $start_col += 1;
-                }
-                continue;
+            $start_row = $table_row + 1;
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+                // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
             }
-            $start_col += 1;
+            header("Content-Description: File Transfer");
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="Kế hoạch sản xuất xả lót - thùng.xlsx"');
+            header('Cache-Control: max-age=0');
+            header("Content-Transfer-Encoding: binary");
+            header('Expires: 0');
+            $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save('exported_files/Kế hoạch xả lót - thùng.xlsx');
+            $href = '/exported_files/Kế hoạch xả lót - thùng.xlsx';
+            return $this->success($href);
+        } catch (\Throwable $th) {
+            throw $th;
         }
-
-        $table_col = 1;
-        $table_row = $start_row + 1;
-        foreach ($dataXT as $key => $row) {
-            $table_col = 1;
-            foreach ($row as $k => $value) {
-                $sheet->setCellValue($k . $table_row, $value)->getStyle($k . $table_row)->applyFromArray($tableStyleXT[$k]);
-                $table_col += 1;
-            }
-            $table_row += 1;
-        }
-        $start_row = $table_row + 1;
-        foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-            // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
-        }
-        header("Content-Description: File Transfer");
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="Kế hoạch sản xuất xả lót - thùng.xlsx"');
-        header('Cache-Control: max-age=0');
-        header("Content-Transfer-Encoding: binary");
-        header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        $writer->save('exported_files/Kế hoạch xả lót - thùng.xlsx');
-        $href = '/exported_files/Kế hoạch xả lót - thùng.xlsx';
-        return $this->success($href);
     }
 
     public function importKHSX(Request $request)

@@ -39,6 +39,7 @@ use App\Models\DeliveryNote;
 use App\Models\DRC;
 use App\Models\ErrorLog;
 use App\Models\Film;
+use App\Models\GroupPlanOrder;
 use App\Models\InfoCongDoanPriority;
 use App\Models\Ink;
 use App\Models\Khuon;
@@ -5045,16 +5046,14 @@ class ApiUIController extends AdminController
     }
     public function wtf()
     {
-        $columns = Schema::getColumnListing('orders');
-        $query = "";
-
-        // Tạo truy vấn UPDATE cho từng cột
-        foreach ($columns as $column) {
-            $query .= "UPDATE `orders` SET `$column` = NULL WHERE `$column` = 'NULL'; ";
+        $production_plans = ProductionPlan::with('machine')->whereDate('thoi_gian_bat_dau', '>=', "2024-11-01")->doesntHave('group_plan_order')->get();
+        $index = 0;
+        foreach ($production_plans as $key => $plan) {
+            if(isset($plan->machine->line_id) && ($plan->machine->line_id == '33' || $plan->machine->line_id == '30')){
+                GroupPlanOrder::create(['plan_id'=>$plan->id, 'order_id'=>$plan->order_id, 'line_id'=>$plan->machine->line_id]);
+                $index++;
+            }
         }
-
-        // Chạy truy vấn
-        DB::unprepared($query);
-        return "done";
+        return "done! ".$index;
     }
 }

@@ -1615,9 +1615,9 @@ class ApiController extends AdminController
             $info->dot = $order->dot ?? '';
             $info->note = $order->note_3 ?? '';
             $info->slg_sx = $order->sl ?? '';
-            // if ($tracking && $info->lo_sx === $tracking->lo_sx) {
-            //     $info->status = 1;
-            // }
+            if ($info->quy_cach === "x") {
+                $info->quy_cach = $order->kich_thuoc ?? "";
+            }
             $data[] = $info;
         }
         $order = [1, 0, 2, 3, 4];

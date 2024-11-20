@@ -7503,7 +7503,8 @@ class ApiController extends AdminController
     function exportPreviewPlanXaLot(Request $request)
     {
         try {
-
+            ini_set('memory_limit', '1024M');
+            ini_set('max_execution_time', 0);
             $centerStyle = [
                 'alignment' => [
                     'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,

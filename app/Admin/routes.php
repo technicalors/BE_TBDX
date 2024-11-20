@@ -729,4 +729,5 @@ Route::group([
     $router->get('calculateKhuonBe', [MESUsageRateController::class, 'calculateKhuonBe']);
     $router->get('getTableSystemUsageRate', [MESUsageRateController::class, 'getTableSystemUsageRate']);
     $router->get('cronjob', [MESUsageRateController::class, 'cronjob']);
+    $router->get('retriveData', [MESUsageRateController::class, 'retriveData']);
 });

@@ -135,4 +135,18 @@ class MESUsageRateController extends AdminController
         Log::info('Logged at: ' . now());
         return 'done';
     }
+
+    public function retriveData()
+    {
+        $start = Carbon::now()->subMonths(1);
+        $end = Carbon::now();
+        $period = CarbonPeriod::create($start, $end);
+        foreach ($period as $key => $date) {
+            $this->calculateUsageTime($date);
+            $this->calculateMaintenanceMachine($date);
+            $this->calculatePQCProcessing($date);
+            $this->calculateKhuonBe($date);
+        }
+        return 'done';
+    }
 }

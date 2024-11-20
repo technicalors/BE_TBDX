@@ -5046,7 +5046,7 @@ class ApiUIController extends AdminController
     }
     public function wtf()
     {
-        $production_plans = ProductionPlan::with('machine')->whereDate('thoi_gian_bat_dau', '>=', "2024-11-01")->doesntHave('group_plan_order')->get();
+        $production_plans = ProductionPlan::with('machine')->whereDate('thoi_gian_bat_dau', '>=', "2024-11-11")->doesntHave('group_plan_order')->get();
         $index = 0;
         foreach ($production_plans as $key => $plan) {
             if(isset($plan->machine->line_id) && ($plan->machine->line_id == '33' || $plan->machine->line_id == '30')){

@@ -133,6 +133,7 @@ class MESUsageRateController extends AdminController
         $this->calculatePQCProcessing($date);
         $this->calculateKhuonBe($date);
         Log::info('Logged at: ' . now());
+        CustomUser::query()->update(['login_times_in_day'=>0, 'last_use_at'=>null, 'usage_time_in_day'=>0]);
         return 'done';
     }
 

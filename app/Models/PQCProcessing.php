@@ -10,6 +10,6 @@ class PQCProcessing extends Model
 {
     use HasFactory;
     protected $table = "pqc_processing";
-    public $timestamps = false;
+    // public $timestamps = false;
     protected $fillable = ['number_of_pqc', 'date', 'number_of_ok_pqc'];
 }

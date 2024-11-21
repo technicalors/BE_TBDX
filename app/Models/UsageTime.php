@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class UsageTime extends Model
 {
     use HasFactory;
-    public $timestamps = false;
+    // public $timestamps = false;
     protected $fillable = ['number_of_user', 'date', 'usage_time'];
     public function user(){
         return $this->hasMany(CustomUser::class, 'user_id');

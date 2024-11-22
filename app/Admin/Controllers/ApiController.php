@@ -9343,8 +9343,8 @@ class ApiController extends AdminController
                 $q->whereNotNull('material_id');
             }])->having('warehouse_mlt_import_count', '<=', 0)->first();
             if ($note) {
-                $note->delete();
                 $note->warehouse_mlt_import()->delete();
+                $note->delete();
                 DB::commit();
                 return $this->success('', 'Xoá thành công');
             } else {

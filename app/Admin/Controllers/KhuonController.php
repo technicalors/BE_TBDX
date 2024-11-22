@@ -41,7 +41,7 @@ class KhuonController extends AdminController
             $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
             $khuon = $query->get();
             foreach ($khuon as $value) {
-                $value->designer_name = $value->designer->name ?? "";
+                $value->designer_name = $value->designer->name ?? null;
             }
             return $this->success(['data' => $khuon, 'totalPage' => $count]);
         } else {
@@ -59,7 +59,9 @@ class KhuonController extends AdminController
                 return $this->failure('', $validated->errors()->first());
             }
             $input['phan_loai_1'] = Str::slug($input['phan_loai_1']);
-            $input['designer_id'] = CustomUser::where('name', 'like', "%" . trim($input['designer_name']) . "%")->first()->id ?? null;
+            if(!empty($input['designer_name'])){
+                $input['designer_id'] = CustomUser::where('name', 'like', "%" . trim($input['designer_name']) . "%")->first()->id ?? null;
+            }
             $update = $khuon->update($input);
             return $this->success($khuon, 'Cập nhật thành công');
         } else {

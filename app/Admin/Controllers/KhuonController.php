@@ -77,7 +77,9 @@ class KhuonController extends AdminController
                 return $this->failure('', $validated->errors()->first());
             }
             $input['phan_loai_1'] = Str::slug($input['phan_loai_1']);
-            $input['designer_id'] = CustomUser::where('name', 'like', "%" . trim($input['designer_name']) . "%")->first()->id ?? null;
+            if(!empty($input['designer_name'])){
+                $input['designer_id'] = CustomUser::where('name', 'like', "%" . trim($input['designer_name']) . "%")->first()->id ?? null;
+            }
             $khuon = KhuonLink::create($input);
             DB::commit();
             return $this->success($khuon, 'Tạo thành công');

@@ -52,9 +52,9 @@ class LogRequest
         try {
             RequestLog::query()->create($logData);
             $user = CustomUser::find(auth()->user()->id ?? "");
-            if($user && $user->last_use_at){
+            if($user){
                 $now = Carbon::now();
-                $diff = $now->diffInSeconds($user->last_use_at);
+                $diff = $user->last_use_at ? $now->diffInSeconds($user->last_use_at) : 0;
                 $user->update(['usage_time_in_day'=>$user->usage_time_in_day + $diff, 'last_use_at' => $now]);
             }
             

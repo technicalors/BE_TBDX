@@ -55,7 +55,14 @@ class LogRequest
             if($user){
                 $now = Carbon::now();
                 $diff = $user->last_use_at ? $now->diffInSeconds($user->last_use_at) : 0;
-                $user->update(['usage_time_in_day'=>$user->usage_time_in_day + $diff, 'last_use_at' => $now]);
+                if(!$user->login_times_in_day){
+                    $user->login_times_in_day = 1;
+                }
+                $user->update([
+                    'usage_time_in_day'=>$user->usage_time_in_day + $diff, 
+                    'last_use_at' => $now, 
+                    'login_times_in_day'=>!$user->login_times_in_day ? 1 : $user->login_times_in_day
+                ]);
             }
             
         } catch (Exception $e) {

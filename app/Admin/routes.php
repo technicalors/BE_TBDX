@@ -694,7 +694,7 @@ Route::group([
     $router->get('kpi-ty-le-ke-hoach', [KPIController::class, 'kpiTyLeKeHoach']);
     $router->get('kpi-ton-kho-nvl', [KPIController::class, 'kpiTonKhoNVL']);
     $router->get('kpi-ty-le-ng-pqc', [KPIController::class, 'kpiTyLeNGPQC']);
-    $router->get('kpi-ty-le-vanh-hanh-thiet-bi', [KPIController::class, 'kpiTyLeVanHanh']);
+    $router->get('kpi-ty-le-van-hanh-thiet-bi', [KPIController::class, 'kpiTyLeVanHanh']);
     $router->get('kpi-ty-le-ke-hoach-in', [KPIController::class, 'kpiTyLeKeHoachIn']);
     $router->get('kpi-ty-le-loi-may', [KPIController::class, 'kpiTyLeLoiMay']);
     $router->get('kpi-ty-le-ng-oqc', [KPIController::class, 'kpiTyLeNGOQC']);

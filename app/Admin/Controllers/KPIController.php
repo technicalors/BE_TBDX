@@ -128,29 +128,20 @@ class KPIController extends AdminController
             $info = InfoCongDoan::whereDate('thoi_gian_bat_dau', $date->format('Y-m-d'))
                 ->whereNotNull('thoi_gian_ket_thuc')
                 ->whereNotNull('thoi_gian_bat_dau')
-                ->orderBy('start_time', 'asc') // Đảm bảo dữ liệu được sắp xếp theo thời gian bắt đầu
-                ->get();
-            if ($info->isNotEmpty()) {
-                // Lấy thời gian bắt đầu của bản ghi đầu tiên
-                $firstStartTime = $info->first()->thoi_gian_bat_dau;
-                $lastEndTime = $info->last()->thoi_gian_ket_thuc;
-                $totalProductionTimeInSeconds = strtotime($lastEndTime) - strtotime($firstStartTime);
-                $hours = floor($totalProductionTimeInSeconds / 3600);
-                $totalProductionTime = $hours;
-            } else {
-                // Trường hợp không có bản ghi
-                $totalProductionTime = 0;
-            }
+                ->selectRaw('SUM(TIMESTAMPDIFF(SECOND, thoi_gian_bat_dau, thoi_gian_ket_thuc)) AS production_time')
+                ->first();
             $logs = MachineLog::whereDate('start_time', $date->format('Y-m-d'))
                 ->whereNotNull('lo_sx')
                 ->whereNotNull('start_time')
                 ->whereNotNull('end_time')
                 ->selectRaw('SUM(TIMESTAMPDIFF(SECOND, start_time, end_time)) AS stop_time')
                 ->first();
+            $machine_array = array_unique($info->pluck('machine_id')->toArray());
+            $total_time = count($machine_array) * 8 * 3600;
             $thoi_gian_van_hanh = (($info->production_time ?? 0) - ($logs->stop_time ?? 0)) ?? 0;
-            $hours = round($thoi_gian_van_hanh / 3600, 2);
+            $ti_le_van_hanh = $total_time > 0 ? round($thoi_gian_van_hanh / $total_time, 2) : 0;
             $data['categories'][] = $label;
-            $data['ti_le_van_hanh'][] = $hours;
+            $data['ti_le_van_hanh'][] = $ti_le_van_hanh * 100;
         }
         return $this->success($data);
     }

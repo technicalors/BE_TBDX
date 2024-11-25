@@ -66,7 +66,7 @@ class KPIController extends AdminController
                     WHEN DATEDIFF(NOW(), tg_nhap) BETWEEN 91 AND 180 THEN '2 Quý'
                     WHEN DATEDIFF(NOW(), tg_nhap) BETWEEN 181 AND 270 THEN '3 Quý'
                     WHEN DATEDIFF(NOW(), tg_nhap) BETWEEN 271 AND 365 THEN '4 Quý'
-                    WHEN DATEDIFF(NOW(), tg_nhap) > 365 THEN '> 1 năm'
+                    ELSE '> 1 năm'
                 END AS period,
                 COUNT(*) AS so_luong_ton
             ")
@@ -182,7 +182,7 @@ class KPIController extends AdminController
                     WHEN DATEDIFF(NOW(), created_at) BETWEEN 31 AND 60 THEN '2 tháng'
                     WHEN DATEDIFF(NOW(), created_at) BETWEEN 61 AND 90 THEN '3 tháng'
                     WHEN DATEDIFF(NOW(), created_at) BETWEEN 91 AND 120 THEN '4 tháng'
-                    WHEN DATEDIFF(NOW(), created_at) > 120 THEN '> 5 tháng'
+                    ELSE '> 5 tháng'
                 END AS thoi_gian_ton
             ")
             ->groupBy('pallet_id', 'lo_sx', 'thoi_gian_ton')

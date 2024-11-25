@@ -139,7 +139,7 @@ class KPIController extends AdminController
             $machine_array = array_unique($info->pluck('machine_id')->toArray());
             $total_time = count($machine_array) * 8 * 3600;
             $thoi_gian_van_hanh = (($info->production_time ?? 0) - ($logs->stop_time ?? 0)) ?? 0;
-            $ti_le_van_hanh = $total_time > 0 ? round($thoi_gian_van_hanh / $total_time, 2) : 0;
+            $ti_le_van_hanh = $total_time > 0 ? round(($thoi_gian_van_hanh || 0) / $total_time, 2) : 0;
             $data['categories'][] = $label;
             $data['ti_le_van_hanh'][] = $ti_le_van_hanh * 100;
         }

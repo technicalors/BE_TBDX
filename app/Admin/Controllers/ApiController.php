@@ -5836,8 +5836,8 @@ class ApiController extends AdminController
             $obj->time_need = isset($record->warehouse_mtl_export->time_need) ? date('Y-m-d H:i:s', strtotime($record->warehouse_mtl_export->time_need)) : '';
             $obj->so_kg_nhap = $record->so_kg_nhap ?? 0;
             $obj->so_kg_ban_dau = $record->material->so_kg_dau ?? 0;
-            $obj->so_kg_con_lai = $record->material->so_kg ?? 0;
-            $obj->so_kg_xuat = $obj->so_kg_nhap - $obj->so_kg_con_lai;
+            $obj->so_kg_xuat = $record->so_kg_xuat;
+            $obj->so_kg_con_lai = $obj->so_kg_nhap - ($obj->so_kg_xuat ?? 0);
             $obj->loai_giay = $record->material->loai_giay ?? "";
             $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
             $obj->dinh_luong = $record->material->dinh_luong ?? 0;
@@ -5887,8 +5887,8 @@ class ApiController extends AdminController
             $obj->dinh_luong = $record->material->dinh_luong ?? "0";
             $obj->so_kg_ban_dau = $record->material->so_kg_dau ?? "0";
             $obj->so_kg_nhap = $record->so_kg_nhap ?? "0";
-            $obj->so_kg_xuat = $obj->so_kg_nhap - ($record->material->so_kg ?? "0");
-            $obj->so_kg_con_lai = $record->material->so_kg ?? "0";
+            $obj->so_kg_xuat = $record->so_kg_xuat;
+            $obj->so_kg_con_lai = $obj->so_kg_nhap - ($obj->so_kg_xuat ?? 0);
             $obj->so_m_toi = $record->material->so_m_toi ?? "0";
             $obj->thoi_gian_xuat = $record->tg_xuat ? date('d/m/Y H:i:s', strtotime($record->tg_xuat)) : "";
             $obj->nhan_vien_xuat = $record->exporter->name ?? "";

@@ -76,7 +76,7 @@ class MESUsageRateController extends AdminController
         foreach ($khuonLinks as $khuon) {
             foreach ($cells as $cell) {
                 $all++;
-                if (empty($khuon->$cell)) {
+                if (!empty($khuon->$cell)) {
                     $hasData++;
                 }
             }
@@ -105,7 +105,8 @@ class MESUsageRateController extends AdminController
             $usage_time_data['rate'] = $usage_time ? ($usage_time->number_of_user > 0 ? number_format($usage_time->usage_time / $usage_time->number_of_user, 2) : 0) : 0;
             $usage_time_data['score'] = $usage_time_data['rate'] * 25;
 
-            $maintain_statistic_data['rate'] = $maintain_statistic ? ($maintain_statistic->registered_machine > 0 ? number_format($maintain_statistic->maintained_machine / $maintain_statistic->registered_machine, 2) : 0) : 0;
+            // $maintain_statistic_data['rate'] = $maintain_statistic ? ($maintain_statistic->registered_machine > 0 ? number_format($maintain_statistic->maintained_machine / $maintain_statistic->registered_machine, 2) : 0) : 0;
+            $maintain_statistic_data['rate'] = 1;
             $maintain_statistic_data['score'] = $maintain_statistic_data['rate'] * 25;
 
             $pqc_processing_data['rate'] = $pqc_processing ? ($pqc_processing->number_of_pqc > 0 ? number_format($pqc_processing->number_of_ok_pqc / $pqc_processing->number_of_pqc, 2) : 0) : 0;

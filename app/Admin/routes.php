@@ -5,6 +5,7 @@ use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\ApiController;
 use App\Admin\Controllers\DeliveryNoteController;
 use App\Admin\Controllers\InfoCongDoanController;
+use App\Admin\Controllers\KPIController;
 use App\Admin\Controllers\LSXPalletController;
 use App\Admin\Controllers\MESUsageRateController;
 use App\Admin\Controllers\OrderController;
@@ -690,12 +691,14 @@ Route::group([
     $router->post('voc/upload-file', [VOCRegisterController::class, 'uploadFile']);
     $router->post('voc/clear-unused-files', [VOCRegisterController::class, 'clearUnusedFiles']);
 
-    $router->get('kpi-ty-le-ke-hoach', [ApiUIController::class, 'kpiTyLeKeHoach']);
-    $router->get('kpi-ton-kho-nvl', [ApiUIController::class, 'kpiTonKhoNVL']);
-    $router->get('kpi-ty-le-ng-pqc', [ApiUIController::class, 'kpiTyLeNGPQC']);
-    $router->get('kpi-ty-le-vanh-hanh-thiet-bi', [ApiUIController::class, 'kpiTyLeVanHanh']);
-    $router->get('kpi-ty-le-ke-hoach-in', [ApiUIController::class, 'kpiTyLeKeHoachIn']);
-    $router->get('kpi-ty-le-loi-may', [ApiUIController::class, 'kpiTyLeLoiMay']);
+    $router->get('kpi-ty-le-ke-hoach', [KPIController::class, 'kpiTyLeKeHoach']);
+    $router->get('kpi-ton-kho-nvl', [KPIController::class, 'kpiTonKhoNVL']);
+    $router->get('kpi-ty-le-ng-pqc', [KPIController::class, 'kpiTyLeNGPQC']);
+    $router->get('kpi-ty-le-vanh-hanh-thiet-bi', [KPIController::class, 'kpiTyLeVanHanh']);
+    $router->get('kpi-ty-le-ke-hoach-in', [KPIController::class, 'kpiTyLeKeHoachIn']);
+    $router->get('kpi-ty-le-loi-may', [KPIController::class, 'kpiTyLeLoiMay']);
+    $router->get('kpi-ty-le-ng-oqc', [KPIController::class, 'kpiTyLeNGOQC']);
+    $router->get('kpi-ton-kho-tp', [KPIController::class, 'kpiTonKhoTP']);
 });
 
 Route::group([

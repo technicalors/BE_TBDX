@@ -44,7 +44,7 @@ class KPIController extends AdminController
             'plannedQuantity' => [],  // Số lượng tất cả công đoạn
             'actualQuantity' => [] // Số lượng công đoạn "Dợn sóng"
         ];
-        $machines = Machine::where('line_id', 30)->pluck('id')->toArray();
+        $machines = Machine::where('is_iot', 1)->where('line_id', 30)->pluck('id')->toArray();
         foreach ($period as $date) {
             $label = $date->format('d/m');
             $plannedQuantity = InfoCongDoan::whereIn('machine_id', $machines)->whereDate('ngay_sx', $date->format("Y-m-d"))->sum('dinh_muc');
@@ -158,7 +158,7 @@ class KPIController extends AdminController
             'plannedQuantity' => [],  // Số lượng tất cả công đoạn
             'actualQuantity' => [] // Số lượng công đoạn "Dợn sóng"
         ];
-        $machines = Machine::where('line_id', 31)->pluck('id')->toArray();
+        $machines = Machine::where('is_iot', 1)->where('line_id', 31)->pluck('id')->toArray();
         foreach ($period as $date) {
             $label = $date->format('d/m');
             $plannedQuantity = InfoCongDoan::whereIn('machine_id', $machines)->whereDate('ngay_sx', $date->format("Y-m-d"))->sum('dinh_muc');

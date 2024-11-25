@@ -137,8 +137,10 @@ class KPIController extends AdminController
                 ->selectRaw('SUM(TIMESTAMPDIFF(SECOND, start_time, end_time)) AS stop_time')
                 ->first();
             $machine_array = array_unique($info->pluck('machine_id')->toArray());
-            $total_time = count($machine_array) * 8 * 3600;
-            $thoi_gian_van_hanh = (($info->production_time ?? 0) - ($logs->stop_time ?? 0)) || 0;
+            $total_time = count($machine_array) * 8 * 3600;//Tổng thời gian chạy của các máy
+            $production_time = $info->production_time ?? 0;//Tổng thời gian chạy thực tế của máy
+            $stop_time = $logs->stop_time ?? 0;//Tổng thời gian lỗi dừng máy
+            $thoi_gian_van_hanh = $production_time > $stop_time ? ($production_time - $stop_time) : 0;
             $ti_le_van_hanh = $total_time > 0 ? round($thoi_gian_van_hanh / $total_time, 2) : 0;
             $data['categories'][] = $label;
             $data['ti_le_van_hanh'][] = $ti_le_van_hanh * 100;

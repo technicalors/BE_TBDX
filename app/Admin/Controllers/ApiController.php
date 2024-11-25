@@ -5803,11 +5803,11 @@ class ApiController extends AdminController
         $input = $request->all();
         $query = WarehouseMLTLog::with('material', 'warehouse_mtl_export')->orderBy('tg_xuat', 'DESC')->whereNotNull('tg_xuat');
         if (isset($input['start_date']) && $input['end_date']) {
-            $query->whereDate('updated_at', '>=', date('Y-m-d', strtotime($input['start_date'])))
-                ->whereDate('updated_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
+            $query->whereDate('tg_xuat', '>=', date('Y-m-d', strtotime($input['start_date'])))
+                ->whereDate('tg_xuat', '<=', date('Y-m-d', strtotime($input['end_date'])));
         } else {
-            $query->whereDate('updated_at', '>=', date('Y-m-d'))
-                ->whereDate('updated_at', '<=', date('Y-m-d'));
+            $query->whereDate('tg_xuat', '>=', date('Y-m-d'))
+                ->whereDate('tg_xuat', '<=', date('Y-m-d'));
         }
         if (isset($input['material_id'])) {
             $query = $query->where('material_id', 'like', '%' . $input['material_id'] . '%');
@@ -5855,11 +5855,11 @@ class ApiController extends AdminController
         $input = $request->all();
         $query = WarehouseMLTLog::with('material', 'warehouse_mtl_export')->whereNotNull('tg_xuat');
         if (isset($input['start_date']) && $input['end_date']) {
-            $query->whereDate('updated_at', '>=', date('Y-m-d', strtotime($input['start_date'])))
-                ->whereDate('updated_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
+            $query->whereDate('tg_xuat', '>=', date('Y-m-d', strtotime($input['start_date'])))
+                ->whereDate('tg_xuat', '<=', date('Y-m-d', strtotime($input['end_date'])));
         } else {
-            $query->whereDate('updated_at', '>=', date('Y-m-d'))
-                ->whereDate('updated_at', '<=', date('Y-m-d'));
+            $query->whereDate('tg_xuat', '>=', date('Y-m-d'))
+                ->whereDate('tg_xuat', '<=', date('Y-m-d'));
         }
         if (isset($input['material_id'])) {
             $query = $query->where('material_id', 'like', '%' . $input['material_id'] . '%');

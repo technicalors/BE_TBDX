@@ -381,7 +381,7 @@ Route::group([
 
     $router->get('warehouse/mlt/export/log-list', [ApiController::class, 'getExportMLTLogs']);
     $router->get('warehouse/mlt/export/scan', [ApiController::class, 'exportMLTScan']);
-    $router->get('warehouse/mlt/export/result', [ApiController::class, 'updateExportMLTLogs']);
+    $router->get('warehouse/mlt/export/result', [ApiController::class, 'updateExportMLTLogs'])->middleware('prevent-duplicate-requests');
     $router->get('warehouse/mlt/export/list', [ApiController::class, 'exportMLTList']);
     $router->post('warehouse/mlt/export/save', [ApiController::class, 'exportMLTSave'])->middleware('prevent-duplicate-requests');
 

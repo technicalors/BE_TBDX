@@ -693,7 +693,7 @@ class ApiUIController extends AdminController
                     break;
                 case '31':
                 case '32':
-                    $ke_hoach_ca = InfoCongDoan::whereIn('machine_id', $machine_ids)->whereDate('ngay_sx', date('Y-m-d'))->sum('dinh_muc');
+                    $ke_hoach_ca = $infos->sum('dinh_muc');
                     $sl_muc_tieu = $ke_hoach_ca;
                 default:
                     # code...

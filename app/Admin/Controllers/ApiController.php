@@ -3002,7 +3002,7 @@ class ApiController extends AdminController
             return $this->failure('', 'Mã cuộn không tồn tại');
         }
         $material->material_id = $material->id;
-        $warehouse_log = WarehouseMLTLog::where('material_id', $material->id)->orderBy('created_at', 'DESC')->first();
+        $warehouse_log = WarehouseMLTLog::where('material_id', $material->id)->orderBy('updated_at', 'DESC')->first();
         if ($warehouse_log) {
             if (!$warehouse_log->locator_id === 'C13') {
                 return $this->failure('', 'Không thể xuất cuộn ở khu 13');

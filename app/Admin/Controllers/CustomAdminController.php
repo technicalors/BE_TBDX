@@ -133,7 +133,7 @@ class CustomAdminController extends AdminController
 
     public function getUsers(Request $request)
     {
-        $query = CustomUser::with('roles');
+        $query = CustomUser::with('roles')->whereNull('deleted_at');
         if (isset($request->name)) {
             $query->where('name', 'like', "%$request->name%");
         }
@@ -189,13 +189,13 @@ class CustomAdminController extends AdminController
     public function deleteUsers(Request $request)
     {
         $input = $request->all();
-        CustomUser::whereIn('id', $input)->delete();
+        CustomUser::whereIn('id', $input)->update(['deleted_at'=>now()]);
         return $this->success('Xoá thành công');
     }
 
     public function exportUsers(Request $request)
     {
-        $query = CustomUser::with('roles');
+        $query = CustomUser::with('roles')->whereNull('deleted_at');
         if (isset($request->name)) {
             $query->where('name', 'like', "%$request->name%");
         }

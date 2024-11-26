@@ -68,7 +68,7 @@ class MESUsageRateController extends AdminController
 
     public function calculateKhuonBe($date = 'now')
     {
-        $today = Carbon::parse($date)->format('Y-m-d');
+        $today = Carbon::parse('now')->format('Y-m-d');
         $cells = ['phan_loai_1', 'buyer_id', 'kho_khuon', 'dai_khuon', 'so_con', 'so_manh_ghep', 'khuon_id', 'machine_id',  'note', 'layout', 'supplier', 'ngay_dat_khuon'];
         $khuonLinks = KhuonLink::all();
         $all = 0;

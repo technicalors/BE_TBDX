@@ -26,7 +26,7 @@ class MESUsageRateController extends AdminController
     public function calculateUsageTime($date = 'now')
     {
         $today = Carbon::parse('now')->format('Y-m-d');
-        $query = CustomUser::query();
+        $query = CustomUser::query()->whereNull('deleted_at');
         $all = (clone $query)->count();
         $users = (clone $query)->whereDate('last_use_at', $today)->count();
         $data = UsageTime::updateOrCreate(

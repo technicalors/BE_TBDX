@@ -3034,7 +3034,7 @@ class ApiController extends AdminController
         try {
             DB::beginTransaction();
             $material->update(['so_kg' => 0]);
-            $warehouse_log = WarehouseMLTLog::where('material_id', $material->id)->orderBy('created_at', 'DESC')->first();
+            $warehouse_log = WarehouseMLTLog::where('material_id', $material->id)->orderBy('updated_at', 'DESC')->first();
             if ($warehouse_log) {
                 $warehouse_log->update($inp);
             } else {

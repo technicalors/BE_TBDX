@@ -55,7 +55,7 @@ class MESUsageRateController extends AdminController
 
     public function calculatePQCProcessing($date = 'now')
     {
-        $today = Carbon::parse($date)->format('Y-m-24');
+        $today = Carbon::parse($date)->format('Y-m-d');
         $query = QCLog::whereNotNull('info->phan_dinh')->whereDate('info->thoi_gian_vao', $today);
         $all = (clone $query)->count();
         $ok = (clone $query)->where('info->phan_dinh', 1)->count();

@@ -8644,19 +8644,20 @@ class ApiController extends AdminController
         $query->offset($page * $pageSize)->limit($pageSize ?? 20);
         $records = $query->get();
         foreach ($records as $key => $record) {
+            $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $record->ten_ncc = ($record->material && $record->material->supplier) ? $record->material->supplier->name : '';
             $record->loai_giay = $record->material->loai_giay ?? '';
             $record->fsc = ($record->material && $record->material->fsc) ? 'X' : '';
             $record->kho_giay = $record->material->kho_giay ?? '';
             $record->dinh_luong = $record->material->dinh_luong ?? '';
-            $record->so_kg_nhap = $record->so_kg_nhap;
             $record->ma_cuon_ncc = $record->material->ma_cuon_ncc ?? "";
             $record->ma_vat_tu = $record->material->ma_vat_tu ?? '';
             $record->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $record->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
-            $record->so_kg_dau = $record->material->so_kg_dau ?? '';
-            $record->sl_xuat = $record->so_kg_xuat;
-            $record->so_kg_cuoi = $record->material->so_kg ?? 0;
+            $record->so_kg_ban_dau = $record->material->so_kg_dau ?? "0";
+            $record->so_kg_xuat = $record->so_kg_nhap - $so_con_lai;
+            $record->so_kg_con_lai = $so_con_lai;
             $record->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
             $record->so_cuon = ($record->material && $record->material->so_kg == $record->material->so_kg_dau) ? 1 : 0;
             $record->khu_vuc = str_contains($record->locator_id, 'C') ? ('Khu' . (int)str_replace('C', '', $record->locator_id)) : "";
@@ -8671,6 +8672,8 @@ class ApiController extends AdminController
         $records = $query->with('material', 'warehouse_mlt_import')->get();
         $data = [];
         foreach ($records as $key => $record) {
+            $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $obj = new stdClass;
             $obj->stt = $key + 1;
             $obj->material_id = $record->material_id;
@@ -8679,14 +8682,14 @@ class ApiController extends AdminController
             $obj->fsc = $record->material->fsc ? 'X' : '';
             $obj->kho_giay = $record->material->kho_giay ?? "";
             $obj->dinh_luong = $record->material->dinh_luong ?? "";
-            $obj->so_kg_nhap = $record->so_kg_nhap;
             $obj->ma_cuon_ncc = $record->warehouse_mlt_import->ma_cuon_ncc ?? "";
             $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
             $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $obj->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
-            $obj->so_kg_dau = $record->material->so_kg_dau ?? "";
-            $obj->sl_xuat = $record->so_kg_xuat;
-            $obj->so_kg_cuoi = $record->material->so_kg ?? "";
+            $obj->so_kg_ban_dau = $record->material->so_kg_dau ?? "0";
+            $obj->so_kg_nhap = $record->so_kg_nhap ?? "0";
+            $obj->so_kg_xuat = $obj->so_kg_nhap - $so_con_lai;
+            $obj->so_kg_con_lai = $so_con_lai;
             $obj->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
             $obj->so_cuon = $record->material->so_kg == $record->material->so_kg_dau ? 1 : 0;
             $obj->khu_vuc = $record->locatorMlt->warehouse_mlt->name ?? "";
@@ -8727,12 +8730,12 @@ class ApiController extends AdminController
             'FSC',
             'Khổ giấy (cm)',
             'Định lượng',
-            'Số kg nhập',
             'Mã cuộn NCC',
             'Mã vật tư',
             'Ngày nhập',
             'Số phiếu nhập kho',
             'SL đầu (kg)',
+            'Số kg nhập',
             'SL xuất (kg)',
             'SL cuối (kg)',
             'Ngày xuất',

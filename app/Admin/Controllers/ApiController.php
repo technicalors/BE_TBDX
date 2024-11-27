@@ -5827,22 +5827,24 @@ class ApiController extends AdminController
         $records = $query->offset($page * $pageSize)->limit($pageSize)->get();
         $data = [];
         foreach ($records as $key => $record) {
+            $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $obj = new stdClass();
-            $obj->id = $record->id;
-            $obj->locator_id = $record->locator_id;
-            $obj->material_id = $record->material_id;
-            $obj->dau_may = $record->position_name;
+            $obj->stt = $key + 1;
             $obj->machine = "Sóng";
-            $obj->time_need = isset($record->warehouse_mtl_export->time_need) ? date('Y-m-d H:i:s', strtotime($record->warehouse_mtl_export->time_need)) : '';
-            $obj->so_kg_nhap = $record->so_kg_nhap ?? 0;
-            $obj->so_kg_ban_dau = $record->material->so_kg_dau ?? 0;
-            $obj->so_kg_xuat = $record->so_kg_xuat;
-            $obj->so_kg_con_lai = $obj->so_kg_nhap - ($obj->so_kg_xuat ?? 0);
-            $obj->loai_giay = $record->material->loai_giay ?? "";
+            $obj->dau_may = $record->position_name;
             $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
-            $obj->dinh_luong = $record->material->dinh_luong ?? 0;
-            $obj->kho_giay = $record->material->kho_giay ?? 0;
-            $obj->so_m_toi = $record->material->so_m_toi ?? 0;
+            $obj->material_id = $record->material_id;
+            $obj->locator_id = $record->locator_id;
+            $obj->loai_giay = $record->material->loai_giay ?? "";
+            $obj->fsc = isset($record->material->fsc) ? ($record->material->fsc ? "X" : "") : "";
+            $obj->kho_giay = $record->material->kho_giay ?? "0";
+            $obj->dinh_luong = $record->material->dinh_luong ?? "0";
+            $obj->so_kg_ban_dau = $record->material->so_kg_dau ?? "0";
+            $obj->so_kg_nhap = $record->so_kg_nhap ?? "0";
+            $obj->so_kg_xuat = $obj->so_kg_nhap - $so_con_lai;
+            $obj->so_kg_con_lai = $so_con_lai;
+            $obj->so_m_toi = $record->material->so_m_toi ?? "0";
             $obj->thoi_gian_xuat = $record->tg_xuat ? date('d/m/Y H:i:s', strtotime($record->tg_xuat)) : "";
             $obj->nhan_vien_xuat = $record->exporter->name ?? "";
             $data[] = $obj;
@@ -5853,7 +5855,7 @@ class ApiController extends AdminController
     public function exportListMaterialExport(Request $request)
     {
         $input = $request->all();
-        $query = WarehouseMLTLog::with('material', 'warehouse_mtl_export')->whereNotNull('tg_xuat');
+        $query = WarehouseMLTLog::with('material', 'warehouse_mtl_export')->orderBy('tg_xuat', 'DESC')->whereNotNull('tg_xuat');
         if (isset($input['start_date']) && $input['end_date']) {
             $query->whereDate('tg_xuat', '>=', date('Y-m-d', strtotime($input['start_date'])))
                 ->whereDate('tg_xuat', '<=', date('Y-m-d', strtotime($input['end_date'])));
@@ -5874,6 +5876,8 @@ class ApiController extends AdminController
         $records = $query->get();
         $data = [];
         foreach ($records as $key => $record) {
+            $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $obj = new stdClass();
             $obj->stt = $key + 1;
             $obj->machine = "Sóng";
@@ -5887,8 +5891,8 @@ class ApiController extends AdminController
             $obj->dinh_luong = $record->material->dinh_luong ?? "0";
             $obj->so_kg_ban_dau = $record->material->so_kg_dau ?? "0";
             $obj->so_kg_nhap = $record->so_kg_nhap ?? "0";
-            $obj->so_kg_xuat = $record->so_kg_xuat;
-            $obj->so_kg_con_lai = $obj->so_kg_nhap - ($obj->so_kg_xuat ?? 0);
+            $obj->so_kg_xuat = $obj->so_kg_nhap - $so_con_lai;
+            $obj->so_kg_con_lai = $so_con_lai;
             $obj->so_m_toi = $record->material->so_m_toi ?? "0";
             $obj->thoi_gian_xuat = $record->tg_xuat ? date('d/m/Y H:i:s', strtotime($record->tg_xuat)) : "";
             $obj->nhan_vien_xuat = $record->exporter->name ?? "";

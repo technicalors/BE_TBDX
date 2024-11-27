@@ -8606,7 +8606,7 @@ class ApiController extends AdminController
     function customQueryWarehouseMLTLog($request)
     {
         $input = $request->all();
-        $query = WarehouseMLTLog::has('material')->orderBy('material_id')->orderBy('created_at', 'DESC');
+        $query = WarehouseMLTLog::has('material')->orderBy('material_id')->orderBy('tg_nhap', 'DESC');
         if (isset($input['loai_giay']) || isset($input['kho_giay']) || isset($input['dinh_luong']) || isset($input['ma_cuon_ncc']) || isset($input['ma_vat_tu']) || isset($input['so_kg']) || isset($input['so_cuon'])) {
             $query->whereHas('material', function ($q) use ($input) {
                 if (isset($input['loai_giay'])) $q->where('loai_giay', 'like', "%" . $input['loai_giay'] . "%");

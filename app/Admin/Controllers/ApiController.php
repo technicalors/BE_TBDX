@@ -8644,7 +8644,11 @@ class ApiController extends AdminController
         $query->offset($page * $pageSize)->limit($pageSize ?? 20);
         $records = $query->get();
         foreach ($records as $key => $record) {
-            $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            if($record->tg_xuat){
+                $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            }else{
+                $nextImportLog = null;
+            }
             $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $record->ten_ncc = ($record->material && $record->material->supplier) ? $record->material->supplier->name : '';
             $record->loai_giay = $record->material->loai_giay ?? '';
@@ -8672,7 +8676,11 @@ class ApiController extends AdminController
         $records = $query->with('material', 'warehouse_mlt_import')->get();
         $data = [];
         foreach ($records as $key => $record) {
-            $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            if($record->tg_xuat){
+                $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            }else{
+                $nextImportLog = null;
+            }
             $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $obj = new stdClass;
             $obj->stt = $key + 1;

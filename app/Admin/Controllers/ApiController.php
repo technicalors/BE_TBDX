@@ -8766,7 +8766,7 @@ class ApiController extends AdminController
         }
         $sheet->setCellValue([1, 1], 'Quản lý kho NVL')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
         $sheet->getRowDimension(1)->setRowHeight(40);
-        $sheet->fromArray($data, NULL, 'A3');
+        $sheet->fromArray($data, NULL, 'A3', true);
         foreach ($sheet->getColumnIterator() as $column) {
             $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
             // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);

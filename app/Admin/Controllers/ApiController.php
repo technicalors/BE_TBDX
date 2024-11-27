@@ -8685,7 +8685,7 @@ class ApiController extends AdminController
             $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $obj->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
             $obj->so_kg_dau = $record->material->so_kg_dau ?? "";
-            $obj->sl_xuat = "";
+            $obj->sl_xuat = $record->so_kg_xuat;
             $obj->so_kg_cuoi = $record->material->so_kg ?? "";
             $obj->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
             $obj->so_cuon = $record->material->so_kg == $record->material->so_kg_dau ? 1 : 0;

@@ -8684,8 +8684,8 @@ class ApiController extends AdminController
             $obj->dinh_luong = $record->material->dinh_luong ?? "";
             $obj->ma_cuon_ncc = $record->warehouse_mlt_import->ma_cuon_ncc ?? "";
             $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
-            $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $obj->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
+            $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $obj->so_kg_ban_dau = $record->material->so_kg_dau ?? "0";
             $obj->so_kg_nhap = $record->so_kg_nhap ?? "0";
             $obj->so_kg_xuat = $obj->so_kg_nhap - $so_con_lai;
@@ -8732,8 +8732,8 @@ class ApiController extends AdminController
             'Định lượng',
             'Mã cuộn NCC',
             'Mã vật tư',
-            'Ngày nhập',
             'Số phiếu nhập kho',
+            'Ngày nhập',
             'SL đầu (kg)',
             'Số kg nhập',
             'SL xuất (kg)',

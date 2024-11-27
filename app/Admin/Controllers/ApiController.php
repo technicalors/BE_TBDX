@@ -8659,9 +8659,9 @@ class ApiController extends AdminController
             $record->ma_vat_tu = $record->material->ma_vat_tu ?? '';
             $record->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $record->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
-            $record->so_kg_ban_dau = $record->material->so_kg_dau ?? "0";
+            $record->so_kg_dau = $record->material->so_kg_dau ?? "0";
             $record->so_kg_xuat = $record->so_kg_nhap - $so_con_lai;
-            $record->so_kg_con_lai = $so_con_lai;
+            $record->so_kg_cuoi = $so_con_lai;
             $record->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
             $record->so_cuon = ($record->material && $record->material->so_kg == $record->material->so_kg_dau) ? 1 : 0;
             $record->khu_vuc = str_contains($record->locator_id, 'C') ? ('Khu' . (int)str_replace('C', '', $record->locator_id)) : "";
@@ -8694,10 +8694,10 @@ class ApiController extends AdminController
             $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
             $obj->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
             $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
-            $obj->so_kg_ban_dau = $record->material->so_kg_dau ?? "0";
+            $obj->so_kg_dau = $record->material->so_kg_dau ?? "0";
             $obj->so_kg_nhap = $record->so_kg_nhap ?? "0";
             $obj->so_kg_xuat = $obj->so_kg_nhap - $so_con_lai;
-            $obj->so_kg_con_lai = $so_con_lai;
+            $obj->so_kg_cuoi = $so_con_lai;
             $obj->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
             $obj->so_cuon = $record->material->so_kg == $record->material->so_kg_dau ? 1 : 0;
             $obj->khu_vuc = $record->locatorMlt->warehouse_mlt->name ?? "";

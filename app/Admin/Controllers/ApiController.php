@@ -8661,7 +8661,7 @@ class ApiController extends AdminController
             $record->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
             $record->so_kg_dau = $record->material->so_kg_dau ?? "0";
             $record->so_kg_xuat = $record->so_kg_nhap - $so_con_lai;
-            $record->so_kg_cuoi = $so_con_lai;
+            $record->so_kg_cuoi = $record->material->so_kg ?? 0;
             $record->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
             $record->so_cuon = ($record->material && $record->material->so_kg == $record->material->so_kg_dau) ? 1 : 0;
             $record->khu_vuc = str_contains($record->locator_id, 'C') ? ('Khu' . (int)str_replace('C', '', $record->locator_id)) : "";
@@ -8697,7 +8697,7 @@ class ApiController extends AdminController
             $obj->so_kg_dau = $record->material->so_kg_dau ?? "0";
             $obj->so_kg_nhap = $record->so_kg_nhap ?? "0";
             $obj->so_kg_xuat = $obj->so_kg_nhap - $so_con_lai;
-            $obj->so_kg_cuoi = $so_con_lai;
+            $record->so_kg_cuoi = $record->material->so_kg ?? 0;
             $obj->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
             $obj->so_cuon = $record->material->so_kg == $record->material->so_kg_dau ? 1 : 0;
             $obj->khu_vuc = $record->locatorMlt->warehouse_mlt->name ?? "";
@@ -8800,7 +8800,7 @@ class ApiController extends AdminController
     {
         $input = $request->all();
         $query = WarehouseFGLog::where('type', 1)->with('user', 'lo_sx_pallet')->orderBy('created_at')->withAggregate('order', 'mdh')->withAggregate('order', 'mql')->orderBy('order_mdh', 'ASC')->orderBy('order_mql', 'ASC');
-        if (isset($input['start_date']) && isset($input['start_date'])) {
+        if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }
         if (isset($input['locator_id'])) {

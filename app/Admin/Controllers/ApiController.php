@@ -4011,7 +4011,7 @@ class ApiController extends AdminController
         foreach ($machines as $machine) {
             // Lấy thời gian dừng từ MachineLog
             $machine_logs = MachineLog::selectRaw('TIMESTAMPDIFF(SECOND, start_time, end_time) as total_time')
-                ->where('machine_id', $request->machine_id)
+                ->where('machine_id', $machine->id)
                 ->whereBetween('start_time', [date('Y-m-d 07:30:00'), date('Y-m-d 23:59:59')])
                 ->get();
 

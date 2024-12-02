@@ -123,10 +123,10 @@ class KPIController extends AdminController
             'categories' => [], // Trục hoành (ngày)
             'ti_le_van_hanh' => [],  // Số lượng tất cả công đoạn
         ];
+        $machines = Machine::where('is_iot', 1)->get();
         foreach ($period as $date) {
             $label = $date->format('d/m');
             $machine_logs = MachineLog::selectRaw('TIMESTAMPDIFF(SECOND, start_time, end_time) as total_time')
-                ->where('machine_id', $request->machine_id)
                 ->whereBetween('start_time', [date('Y-m-d 07:30:00'), date('Y-m-d 23:59:59')])
                 ->get();
 
@@ -135,7 +135,7 @@ class KPIController extends AdminController
             $so_lan_dung = count($machine_logs);
 
             // Tính thời gian làm việc từ 7:30 sáng đến hiện tại
-            $thoi_gian_lam_viec = 8; // Đổi giây sang giờ
+            $thoi_gian_lam_viec = 8 * count($machines); // Đổi giây sang giờ
 
             // Tính thời gian chạy bằng thời gian làm việc - thời gian dừng
             $thoi_gian_chay = max(0, $thoi_gian_lam_viec - $thoi_gian_dung); // Đảm bảo không âm

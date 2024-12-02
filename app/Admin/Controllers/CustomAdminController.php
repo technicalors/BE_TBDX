@@ -133,7 +133,10 @@ class CustomAdminController extends AdminController
 
     public function getUsers(Request $request)
     {
-        $query = CustomUser::with('roles')->whereNull('deleted_at');
+        $query = CustomUser::with('roles');
+        if(!isset($request->all_user)){
+            $query->whereNull('deleted_at');
+        }
         if (isset($request->name)) {
             $query->where('name', 'like', "%$request->name%");
         }

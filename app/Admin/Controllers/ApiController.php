@@ -2761,12 +2761,6 @@ class ApiController extends AdminController
         $start_of_day = date('Y-m-d 07:30:00');
         $now = date('Y-m-d H:i:s');
 
-        // Lấy kế hoạch sản xuất của máy trong ngày
-        $plan = ProductionPlan::where('machine_id', $request->machine_id)
-            ->whereNotNull('ngay_sx')
-            ->whereBetween('ngay_sx', [date('Y-m-d 00:00:00'), date('Y-m-d 23:59:59')])
-            ->get();
-
         // Lấy thời gian dừng từ MachineLog
         $machine_logs = MachineLog::selectRaw('TIMESTAMPDIFF(SECOND, start_time, end_time) as total_time')
             ->where('machine_id', $request->machine_id)
@@ -2910,7 +2904,6 @@ class ApiController extends AdminController
     {
         $machine = Machine::with('line')->where('id', $request->machine_id)->first();
         if (!$machine) return $this->failure('Không tìm thấy máy');
-        $line = $machine->line;
         $errors = ErrorMachine::select('*', 'code as value', 'ten_su_co as label')->where('line_id', $machine->line_id)->get();
         // if (!$errors) return $this->failure('', 'Không tìm thấy lỗi');
         return $this->success($errors);
@@ -4016,26 +4009,27 @@ class ApiController extends AdminController
         $machines = Machine::whereNull('parent_id')->where('is_iot', 1)->get();
         $data = [];
         foreach ($machines as $machine) {
-            $info_cong_doan = InfoCongDoan::select(
-                '*',
-                DB::raw('sl_dau_ra_hang_loat - sl_ng_sx - sl_ng_qc as sl_ok'),
-                DB::raw('TIMEDIFF(thoi_gian_ket_thuc, thoi_gian_bam_may) as run_time'),
-                DB::raw('TIMEDIFF(thoi_gian_ket_thuc, thoi_gian_bat_dau) as total_time'),
-            )
-                ->where('machine_id', $machine->id)
-                ->whereBetween('created_at', [date('Y-m-d 00:00:00', strtotime($request->start_date)), date('Y-m-d 23:59:59', strtotime($request->end_date))])
-                ->get();
-            $plan = ProductionPlan::select('*', DB::raw('TIMEDIFF(ngay_giao_hang, ngay_sx) as plan_run_time'))
+            // Lấy thời gian dừng từ MachineLog
+            $machine_logs = MachineLog::selectRaw('TIMESTAMPDIFF(SECOND, start_time, end_time) as total_time')
                 ->where('machine_id', $request->machine_id)
+                ->whereBetween('start_time', [date('Y-m-d 07:30:00'), date('Y-m-d 23:59:59')])
                 ->get();
-            $machine_logs = MachineLog::select('*', DB::raw('TIMEDIFF(end_time, start_time) as tg_dung_may'))
-                ->where('machine_id', $request->machine_id)->whereBetween('created_at', [date('Y-m-d 00:00:00', strtotime($request->start_date)), date('Y-m-d 23:59:59', strtotime($request->end_date))])
-                ->get();
-            $A = $plan->sum('plan_run_time') ? ($info_cong_doan->sum('run_time') / $plan->sum('plan_run_time')) * 100 : 0;
-            $P = $info_cong_doan->sum('run_time') ? ($info_cong_doan->sum('sl_dau_ra_hang_loat') * 3600 / $info_cong_doan->sum('run_time')) * 100 : 0;
-            $Q = $info_cong_doan->sum('sl_dau_ra_hang_loat') ? ($info_cong_doan->sum('sl_ok') / $info_cong_doan->sum('sl_dau_ra_hang_loat')) * 100 : 0;
-            $OEE = ($A * $P * $Q) / 10000;
-            $data[] = ['percent' => $OEE, 'name' => $machine->name];
+
+            // Tính tổng thời gian dừng
+            $thoi_gian_dung = floor($machine_logs->sum('total_time') / 60); // Đổi giây sang giờ
+            $so_lan_dung = count($machine_logs);
+
+            // Tính thời gian làm việc từ 7:30 sáng đến hiện tại
+            $thoi_gian_lam_viec = 8; // Đổi giây sang giờ
+
+            // Tính thời gian chạy bằng thời gian làm việc - thời gian dừng
+            $thoi_gian_chay = max(0, $thoi_gian_lam_viec - $thoi_gian_dung); // Đảm bảo không âm
+
+            // Tính tỷ lệ vận hành
+            $ty_le_van_hanh = floor(($thoi_gian_chay / max(1, $thoi_gian_lam_viec)) * 100); // Tính phần trăm
+
+            $percent = $ty_le_van_hanh;
+            $data[] = ['percent' => $percent, 'name' => $machine->id];
         }
 
         return $this->success($data);
@@ -4089,15 +4083,15 @@ class ApiController extends AdminController
     public function errorMachineFrequency(Request $request)
     {
         $query = $this->queryMachineLog($request);
-        $machine_logs = $query->whereNotNull('error_machine_id')
-            ->selectRaw('count(error_machine_id) as value, error_machine_id')
-            ->groupBy('error_machine_id')
-            ->get();
+        $machine_logs = $query->get()->groupBy(function ($item) {
+            return $item->error_machine->ten_su_co ?? "";
+        });
         $data = [];
-        foreach ($machine_logs as $log) {
+        foreach ($machine_logs as $key => $log) {
+            if (!$key) continue;
             $obj = new stdClass();
-            $obj->value = $log->value;
-            $obj->name = $log->error_machine->ten_su_co;
+            $obj->value = count($log);
+            $obj->name = $key;
             $data[] = $obj;
         }
         return $this->success($data);
@@ -8644,9 +8638,9 @@ class ApiController extends AdminController
         $query->offset($page * $pageSize)->limit($pageSize ?? 20);
         $records = $query->get();
         foreach ($records as $key => $record) {
-            if($record->tg_xuat){
+            if ($record->tg_xuat) {
                 $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
-            }else{
+            } else {
                 $nextImportLog = null;
             }
             $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
@@ -8676,9 +8670,9 @@ class ApiController extends AdminController
         $records = $query->with('material', 'warehouse_mlt_import')->get();
         $data = [];
         foreach ($records as $key => $record) {
-            if($record->tg_xuat){
+            if ($record->tg_xuat) {
                 $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
-            }else{
+            } else {
                 $nextImportLog = null;
             }
             $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;

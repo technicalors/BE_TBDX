@@ -502,6 +502,7 @@ Route::group([
     // $router->post('lsx-pallet/delete', [LSXPalletController::class, 'deleteLSXPallet']);
     // $router->patch('lsx-pallet/update', [LSXPalletController::class, 'updateLSXPallet']);
     $router->get('lsx-pallet/export', [LSXPalletController::class, 'exportLSXPallet']);
+    $router->get('lsx-pallet/print-pallet', [LSXPalletController::class, 'printPallet']);
 });
 
 //Unrequired route

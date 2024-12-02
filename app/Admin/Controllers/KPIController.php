@@ -125,25 +125,26 @@ class KPIController extends AdminController
         ];
         foreach ($period as $date) {
             $label = $date->format('d/m');
-            $info = InfoCongDoan::whereDate('thoi_gian_bat_dau', $date->format('Y-m-d'))
-                ->whereNotNull('thoi_gian_ket_thuc')
-                ->whereNotNull('thoi_gian_bat_dau')
-                ->selectRaw('SUM(TIMESTAMPDIFF(SECOND, thoi_gian_bat_dau, thoi_gian_ket_thuc)) AS production_time')
-                ->first();
-            $logs = MachineLog::whereDate('start_time', $date->format('Y-m-d'))
-                ->whereNotNull('lo_sx')
-                ->whereNotNull('start_time')
-                ->whereNotNull('end_time')
-                ->selectRaw('SUM(TIMESTAMPDIFF(SECOND, start_time, end_time)) AS stop_time')
-                ->first();
-            $machine_array = array_unique($info->pluck('machine_id')->toArray());
-            $total_time = count($machine_array) * 8 * 3600;//Tổng thời gian chạy của các máy
-            $production_time = $info->production_time ?? 0;//Tổng thời gian chạy thực tế của máy
-            $stop_time = $logs->stop_time ?? 0;//Tổng thời gian lỗi dừng máy
-            $thoi_gian_van_hanh = $production_time > $stop_time ? ($production_time - $stop_time) : 0;
-            $ti_le_van_hanh = $total_time > 0 ? round($thoi_gian_van_hanh / $total_time, 2) : 0;
+            $machine_logs = MachineLog::selectRaw('TIMESTAMPDIFF(SECOND, start_time, end_time) as total_time')
+                ->where('machine_id', $request->machine_id)
+                ->whereBetween('start_time', [date('Y-m-d 07:30:00'), date('Y-m-d 23:59:59')])
+                ->get();
+
+            // Tính tổng thời gian dừng
+            $thoi_gian_dung = floor($machine_logs->sum('total_time') / 60); // Đổi giây sang giờ
+            $so_lan_dung = count($machine_logs);
+
+            // Tính thời gian làm việc từ 7:30 sáng đến hiện tại
+            $thoi_gian_lam_viec = 8; // Đổi giây sang giờ
+
+            // Tính thời gian chạy bằng thời gian làm việc - thời gian dừng
+            $thoi_gian_chay = max(0, $thoi_gian_lam_viec - $thoi_gian_dung); // Đảm bảo không âm
+
+            // Tính tỷ lệ vận hành
+            $ty_le_van_hanh = floor(($thoi_gian_chay / max(1, $thoi_gian_lam_viec)) * 100); // Tính phần trăm
+
             $data['categories'][] = $label;
-            $data['ti_le_van_hanh'][] = $ti_le_van_hanh * 100;
+            $data['ti_le_van_hanh'][] = $ty_le_van_hanh;
         }
         return $this->success($data);
     }

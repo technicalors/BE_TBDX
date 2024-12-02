@@ -4020,7 +4020,7 @@ class ApiController extends AdminController
             $so_lan_dung = count($machine_logs);
 
             // Tính thời gian làm việc từ 7:30 sáng đến hiện tại
-            $thoi_gian_lam_viec = 8; // Đổi giây sang giờ
+            $thoi_gian_lam_viec = 16; // Đổi giây sang giờ
 
             // Tính thời gian chạy bằng thời gian làm việc - thời gian dừng
             $thoi_gian_chay = max(0, $thoi_gian_lam_viec - $thoi_gian_dung); // Đảm bảo không âm

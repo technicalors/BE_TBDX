@@ -1357,18 +1357,13 @@ class ApiController extends AdminController
         if (!isset($request->device_id)) return $this->failure('', 'Không có mã máy');
         $machine = Machine::where('device_id', $request->device_id)->first();
         if (!$machine) return $this->failure('', 'Không tìm thấy máy');
-        $machine_params_log = MachineParameterLogs::latest()->first();
-        if (($machine_params_log && (strtotime('now') - strtotime($machine_params_log->created_at) >= 300)) || !$machine_params_log) {
-            $tracking = Tracking::where('machine_id', $machine->id)->first();
-            $params = MachineParameter::where('machine_id', $machine->id)->pluck('parameter_id')->toArray();
-            MachineParameterLogs::create([
-                'lo_sx' => $tracking->lo_sx,
-                'machine_id' => $machine->id,
-                "info" => $input
-            ]);
-            return $this->success($this->takeTime(), 'Lưu thông số');
-        }
-        return $this->success($this->takeTime(), 'Không cập nhật');
+        $tracking = Tracking::where('machine_id', $machine->id)->first();
+        MachineParameterLogs::create([
+            'lo_sx' => $tracking->lo_sx,
+            'machine_id' => $machine->id,
+            "info" => $input
+        ]);
+        return $this->success($this->takeTime(), 'Lưu thông số');
     }
 
     //OI
@@ -4750,9 +4745,9 @@ class ApiController extends AdminController
                     if ($lsx_pallet->locator_fg_map) {
                         $arr[] = $lsx_pallet;
                         if ($sum_sl < $fg_export->so_luong - $so_luong_da_xuat) {
-                            if(in_array($lsx_pallet->lo_sx, $lsx_array)){
+                            if (in_array($lsx_pallet->lo_sx, $lsx_array)) {
                                 continue;
-                            }else{
+                            } else {
                                 $lsx_array[] = $lsx_pallet->lo_sx;
                             }
                             $khach_hang = $lsx_pallet->customer_id ?? "";

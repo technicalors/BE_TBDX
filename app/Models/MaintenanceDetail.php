@@ -32,4 +32,9 @@ class MaintenanceDetail extends Model
         );
         return $validated;
     }
+
+    public function maintenance()
+    {
+        return $this->belongsTo(Maintenance::class, 'maintenance_id');
+    }
 }

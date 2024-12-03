@@ -288,4 +288,12 @@ class LSXPalletController extends AdminController
         }
         return $this->success([], 'Upload thành công');
     }
+
+    public function printPallet(Request $request){
+        $lsx_pallet = LSXPallet::where('pallet_id', $request->pallet_id)->get();
+        if(empty($lsx_pallet)){
+            return $this->failure('', 'Không tìm thấy pallet');
+        }
+        return $this->success($lsx_pallet);
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Models\Customer;
+use App\Models\CustomerShort;
 use App\Models\DRC;
 use App\Models\ErrorLog;
 use App\Models\Field;
@@ -630,7 +631,9 @@ class OrderController extends AdminController
                     return $this->failure([], 'Hàng số ' . $key . ': Thiếu thông mã khách hàng');
                 }
                 if(!in_array($row['D'], $customer_array)){
-                    return $this->failure([], 'Hàng số ' . $key . ': Mã khách hàng không tồn tại'); 
+                    // return $this->failure([], 'Hàng số ' . $key . ': Mã khách hàng không tồn tại'); 
+                    Customer::updateOrCreate(['id'=>$row['D']], ['name'=>$row['C'], 'namp_input'=>$row['C']]);
+                    CustomerShort::updateOrCreate(['customer_id'=>$row['D'], 'short_name'=>$row['C']]);
                 }
                 $id = $row['F'] . '-' . $row['H'];
                 $check = Order::where('id', $id)->withTrashed()->forceDelete();
@@ -700,8 +703,7 @@ class OrderController extends AdminController
                     // $input['layout_id'] = $row['AH'];
                     $check = Order::find($input['id']);
                     if ($check) {
-                        $count = Order::where('mdh', $row['F'])->where('mql', $row['H'])->count();
-                        $input['id'] = $row['F'] . '-' . $row['H'] . '-' . ($count + 1);
+                        continue;
                     }
                     if (isset($input['mdh']) && isset($input['ngay_dat_hang'])) {
                         $input['created_by'] = $request->user()->id;

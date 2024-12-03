@@ -131,70 +131,81 @@ class CustomAdminController extends AdminController
         return $form;
     }
 
-    public function getUsers(Request $request){
+    public function getUsers(Request $request)
+    {
         $query = CustomUser::with('roles');
-        if(isset($request->name)){
+        if(!isset($request->all_user)){
+            $query->whereNull('deleted_at');
+        }
+        if (isset($request->name)) {
             $query->where('name', 'like', "%$request->name%");
         }
-        if(isset($request->username)){
+        if (isset($request->username)) {
             $query->where('username', 'like', "%$request->username%");
         }
         $users = $query->get();
+        foreach ($users as $key => $user) {
+            $user->usage_time = round($user->usage_time_in_day / 60);
+        }
         return $this->success($users);
     }
-    public function getUserRoles(Request $request){
+    public function getUserRoles(Request $request)
+    {
         $roles = config('admin.database.roles_model')::select('name as label', 'id as value')->get();
         return $this->success($roles);
     }
-    public function updateUsers(Request $request){
+    public function updateUsers(Request $request)
+    {
         $input = $request->all();
         $user = CustomUser::where('id', $input['id'])->first();
-        if($user){
+        if ($user) {
             $validated = CustomUser::validateUpdate($input);
             if ($validated->fails()) {
                 return $this->failure('', $validated->errors()->first());
             }
             $update = $user->update($input);
-            if($update){
+            if ($update) {
                 $user_roles = DB::table('admin_role_users')->where('user_id', $user->id)->delete();
-                foreach($input['roles'] as $role){
-                    DB::table('admin_role_users')->insert(['role_id'=>$role,'user_id'=>$user->id]);
+                foreach ($input['roles'] as $role) {
+                    DB::table('admin_role_users')->insert(['role_id' => $role, 'user_id' => $user->id]);
                 }
                 return $this->success($user);
-            }else{
+            } else {
                 return $this->failure('', 'Không thành công');
-            }  
-        }
-        else{
+            }
+        } else {
             return $this->failure('', 'Không tìm thấy tài khoản');
         }
     }
 
-    public function createUsers(Request $request){
+    public function createUsers(Request $request)
+    {
         $input = $request->all();
         $input['password'] = Hash::make('123456');
         $user = CustomUser::create($input);
-        foreach($input['roles'] ?? [] as $role){
-            DB::table('admin_role_users')->insert(['role_id'=>$role,'user_id'=>$user->id]);
+        foreach ($input['roles'] ?? [] as $role) {
+            DB::table('admin_role_users')->insert(['role_id' => $role, 'user_id' => $user->id]);
         }
         return $this->success($user, 'Tạo thành công');
     }
 
-    public function deleteUsers(Request $request){
+    public function deleteUsers(Request $request)
+    {
         $input = $request->all();
-        CustomUser::whereIn('id', $input)->delete();
+        CustomUser::whereIn('id', $input)->update(['deleted_at'=>now()]);
         return $this->success('Xoá thành công');
     }
 
-    public function exportUsers(Request $request){
-        $query = CustomUser::with('roles');
-        if(isset($request->name)){
+    public function exportUsers(Request $request)
+    {
+        $query = CustomUser::with('roles')->whereNull('deleted_at');
+        if (isset($request->name)) {
             $query->where('name', 'like', "%$request->name%");
         }
         $users = $query->get();
-        foreach( $users as $user ){
+        foreach ($users as $user) {
             $bo_phan = [];
-            foreach($user->roles as $role){
+            foreach ($user->roles as $role) {
                 $bo_phan[] = $role->name;
             }
             $user->bo_phan = implode(", ", $bo_phan);
@@ -223,7 +234,7 @@ class CustomAdminController extends AdminController
             ]
         ]);
         $titleStyle = array_merge($centerStyle, [
-            'font' => ['size'=>16, 'bold' => true],
+            'font' => ['size' => 16, 'bold' => true],
         ]);
         $border = [
             'borders' => array(
@@ -235,37 +246,37 @@ class CustomAdminController extends AdminController
         ];
         $header = ['Username', 'Tên', 'Bộ phận'];
         $table_key = [
-            'A'=>'username',
-            'B'=>'name',
-            'C'=>'bo_phan',
+            'A' => 'username',
+            'B' => 'name',
+            'C' => 'bo_phan',
         ];
-        foreach($header as $key => $cell){
-            if(!is_array($cell)){
+        foreach ($header as $key => $cell) {
+            if (!is_array($cell)) {
                 $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
             }
-            $start_col+=1;
+            $start_col += 1;
         }
-        
-        $sheet->setCellValue([1, 1], 'Quản lý tài khoản')->mergeCells([1, 1, $start_col-1, 1])->getStyle([1, 1, $start_col-1, 1])->applyFromArray($titleStyle);
+
+        $sheet->setCellValue([1, 1], 'Quản lý tài khoản')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
         $sheet->getRowDimension(1)->setRowHeight(40);
         $table_col = 1;
-        $table_row = $start_row+1;
-        foreach($users->toArray() as $key => $row){
+        $table_row = $start_row + 1;
+        foreach ($users->toArray() as $key => $row) {
             $table_col = 1;
             $row = (array)$row;
-            foreach($table_key as $k=>$value){
-                if(isset($row[$value])){
-                    $sheet->setCellValue($k.$table_row,$row[$value])->getStyle($k.$table_row)->applyFromArray($centerStyle);
-                }else{
+            foreach ($table_key as $k => $value) {
+                if (isset($row[$value])) {
+                    $sheet->setCellValue($k . $table_row, $row[$value])->getStyle($k . $table_row)->applyFromArray($centerStyle);
+                } else {
                     continue;
                 }
-                $table_col+=1;
+                $table_col += 1;
             }
-            $table_row+=1;
+            $table_row += 1;
         }
         foreach ($sheet->getColumnIterator() as $column) {
             $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-            $sheet->getStyle($column->getColumnIndex().($start_row).':'.$column->getColumnIndex().($table_row-1))->applyFromArray($border);
+            $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
         }
         header("Content-Description: File Transfer");
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -279,7 +290,8 @@ class CustomAdminController extends AdminController
         return $this->success($href);
     }
 
-    public function importUsers(Request $request){
+    public function importUsers(Request $request)
+    {
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
@@ -308,29 +320,49 @@ class CustomAdminController extends AdminController
                 // }
                 $validated = CustomUser::validateUpdate($input);
                 if ($validated->fails()) {
-                    return $this->failure('', 'Lỗi dòng thứ '.($key).': '.$validated->errors()->first());
+                    return $this->failure('', 'Lỗi dòng thứ ' . ($key) . ': ' . $validated->errors()->first());
                 }
                 $data[] = $input;
             }
         }
         foreach ($data as $key => $input) {
             $user = CustomUser::where('username', $input['username'])->first();
-            if($user){
+            if ($user) {
                 $user->update($input);
                 DB::table('admin_role_users')->where('user_id', $user->id)->delete();
-                foreach(explode(',', $input['bo_phan']) as $bo_phan){
-                    $role = DB::table('admin_roles')->where('slug', Str::slug(str_replace(' ', '', $bo_phan)))->first();
-                    if($role){
-                        DB::table('admin_role_users')->insert(['role_id'=>$role->id,'user_id'=>$user->id]);
+                foreach (explode(',', $input['bo_phan']) as $bo_phan) {
+                    $role = DB::table('admin_roles')->where('name', trim($bo_phan))->first();
+                    if ($role) {
+                        $exists = DB::table('admin_role_users')
+                            ->where('role_id', $role->id)
+                            ->where('user_id', $user->id)
+                            ->exists();
+
+                        if (!$exists) {
+                            DB::table('admin_role_users')->insert([
+                                'role_id' => $role->id,
+                                'user_id' => $user->id,
+                            ]);
+                        }
                     }
                 }
-            }else{
+            } else {
                 $input['password'] = Hash::make('123456');
                 $user = CustomUser::create($input);
-                foreach(explode(',', $input['bo_phan']) as $bo_phan){
-                    $role = DB::table('admin_roles')->where('slug', Str::slug(str_replace(' ', '', $bo_phan)))->first();
-                    if($role){
-                        DB::table('admin_role_users')->insert(['role_id'=>$role->id,'user_id'=>$user->id]);
+                foreach (explode(',', $input['bo_phan']) as $bo_phan) {
+                    $role = DB::table('admin_roles')->where('name', trim($bo_phan))->first();
+                    if ($role) {
+                        $exists = DB::table('admin_role_users')
+                            ->where('role_id', $role->id)
+                            ->where('user_id', $user->id)
+                            ->exists();
+
+                        if (!$exists) {
+                            DB::table('admin_role_users')->insert([
+                                'role_id' => $role->id,
+                                'user_id' => $user->id,
+                            ]);
+                        }
                     }
                 }
             }

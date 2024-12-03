@@ -88,4 +88,9 @@ class Machine extends Model
         );
         return $validated;
     }
+
+    public function maintenance()
+    {
+        return $this->hasMany(Maintenance::class, 'machine_id');
+    }
 }

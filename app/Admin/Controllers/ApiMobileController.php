@@ -123,6 +123,7 @@ class ApiMobileController extends AdminController
             $user = Admin::user();
             $user = $this->user->find($user->id);
             // $user->tokens()->delete();
+            $user->update(['login_times_in_day'=>$user->login_times_in_day + 1, 'last_use_at'=>Carbon::now()]);
             return $this->success($this->parseDataUser($user), 'Đăng nhập thành công');
         }
         return $this->failure([], 'Sai tên đăng nhập hoặc mật khẩu!');

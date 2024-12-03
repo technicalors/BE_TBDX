@@ -24,6 +24,17 @@ class VehicleController extends AdminController
     {
         $query = Vehicle::with('driver', 'assistant_driver1', 'assistant_driver2');
         $records = $query->get();
+        foreach ($records as $key => $record) {
+            $record->user1_name = $record->driver->name ?? "";
+            $record->user1_username = $record->driver->username ?? "";
+            $record->user1_phone_number = $record->driver->phone_number ?? "";
+            $record->user2_name = $record->assistant_driver1->name ?? "";
+            $record->user2_username = $record->assistant_driver1->username ?? "";
+            $record->user2_phone_number = $record->assistant_driver1->phone_number ?? "";
+            $record->user3_name = $record->assistant_driver2->name ?? "";
+            $record->user3_username = $record->assistant_driver2->username ?? "";
+            $record->user3_phone_number = $record->assistant_driver2->phone_number ?? "";
+        }
         return $this->success($records);
     }
     public function updateVehicles(Request $request)
@@ -33,26 +44,34 @@ class VehicleController extends AdminController
         if ($vehicle) {
             $update = $vehicle->update($input);
             if ($update) {
+                isset($input['user1_phone_number']) && $vehicle->driver()->update(['phone_number' => $input['user1_phone_number']]);
+                isset($input['user2_phone_number']) && $vehicle->assistant_driver1()->update(['phone_number' => $input['user2_phone_number']]);
+                isset($input['user3_phone_number']) && $vehicle->assistant_driver2()->update(['phone_number' => $input['user3_phone_number']]);
                 return $this->success($update);
             } else {
                 return $this->failure('', 'Không thành công');
             }
         } else {
-            return $this->failure('', 'Không tìm thấy đơn hàng');
+            return $this->failure('', 'Không tìm thấy xe');
         }
     }
 
     public function createVehicles(Request $request)
     {
         $input = $request->all();
+        $check = Vehicle::find($input['id']);
+        if($check) return $this->failure('', 'Số xe đã tồn tại trong hệ thống');
         $vehicle = Vehicle::create($input);
+        isset($input['user1_phone_number']) && $vehicle->driver()->update(['phone_number' => $input['user1_phone_number']]);
+        isset($input['user2_phone_number']) && $vehicle->assistant_driver1()->update(['phone_number' => $input['user2_phone_number']]);
+        isset($input['user3_phone_number']) && $vehicle->assistant_driver2()->update(['phone_number' => $input['user3_phone_number']]);
         return $this->success($vehicle, 'Tạo thành công');
     }
 
     public function deleteVehicles(Request $request)
     {
         $input = $request->all();
-        Vehicle::where('id', $input)->delete();
+        Vehicle::whereIn('id', $input)->delete();
         return $this->success('Xoá thành công');
     }
 
@@ -60,7 +79,7 @@ class VehicleController extends AdminController
     {
         $query = Vehicle::with('driver', 'assistant_driver1', 'assistant_driver2');
         $records = $query->get();
-        foreach($records as $record){
+        foreach ($records as $record) {
             $record->user1_name = $record->driver->name ?? "";
             $record->user1_username = $record->driver->username ?? "";
             $record->user1_phone_number = $record->driver->phone_number ?? "";
@@ -105,24 +124,24 @@ class VehicleController extends AdminController
                 ),
             ),
         ];
-        $header = ['STT', 'Phương tiện', 'Tải trọng', 'Lái xe'=>['Họ và tên', 'MÃ NV', 'SĐT'], 'Phụ xe 1'=>['Họ và tên', 'MÃ NV', 'SĐT'], 'Phụ xe 2'=>['Họ và tên', 'MÃ NV', 'SĐT']];
+        $header = ['STT', 'Phương tiện', 'Tải trọng', 'Lái xe' => ['Họ và tên', 'MÃ NV', 'SĐT'], 'Phụ xe 1' => ['Họ và tên', 'MÃ NV', 'SĐT'], 'Phụ xe 2' => ['Họ và tên', 'MÃ NV', 'SĐT']];
         $table_key = [
-            'A'=>'stt',
-            'B'=>'id',
-            'C'=>'weight',
-            'D'=>'user1_name',
-            'E'=>'user1_username',
-            'F'=>'user1_phone_number',
-            'G'=>'user2_name',
-            'H'=>'user2_username',
-            'I'=>'user2_phone_number',
-            'J'=>'user3_name',
-            'K'=>'user3_username',
-            'L'=>'user3_phone_number',
+            'A' => 'stt',
+            'B' => 'id',
+            'C' => 'weight',
+            'D' => 'user1_name',
+            'E' => 'user1_username',
+            'F' => 'user1_phone_number',
+            'G' => 'user2_name',
+            'H' => 'user2_username',
+            'I' => 'user2_phone_number',
+            'J' => 'user3_name',
+            'K' => 'user3_username',
+            'L' => 'user3_phone_number',
         ];
         foreach ($header as $key => $cell) {
             if (!is_array($cell)) {
-                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row+1])->getStyle([$start_col, $start_row, $start_col, $start_row+1])->applyFromArray($headerStyle);
+                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
             } else {
                 $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
                 foreach ($cell as $val) {
@@ -188,17 +207,16 @@ class VehicleController extends AdminController
                 $input = [];
                 $input['id'] = $row['B'];
                 $input['weight'] = $row['C'];
-                $user1 = CustomUser::where('username', (int)$row['E'])->where('username', '<>','admin')->first();
+                $user1 = CustomUser::where('username', (int)$row['E'])->where('username', '<>', 'admin')->first();
                 $input['user1'] = $user1->id ?? null;
-                $user2 = CustomUser::where('username', (int)$row['H'])->where('username', '<>','admin')->first();
+                $user2 = CustomUser::where('username', (int)$row['H'])->where('username', '<>', 'admin')->first();
                 $input['user2'] = $user2->id ?? null;
-                $user3 = CustomUser::where('username', (int)$row['K'])->where('username', '<>','admin')->first();
+                $user3 = CustomUser::where('username', (int)$row['K'])->where('username', '<>', 'admin')->first();
                 $input['user3'] = $user3->id ?? null;
                 if ($input['id']) {
                     $vehicle[] = $input;
                 }
             }
-            
         }
         foreach ($vehicle as $key => $input) {
             Vehicle::create($input);

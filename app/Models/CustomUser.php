@@ -17,11 +17,18 @@ class CustomUser extends Model
     use HasApiTokens, Notifiable;
     protected $table = 'admin_users';
     protected $fillable = [
+        'id',
         'name',
         'username',
         'id',
         'password',
-        'phone_number'
+        'phone_number',
+        'login_times_in_day',
+        'last_use_at',
+        'usage_time_in_day',
+        'created_at',
+        'updated_at',
+        'deleted_at'
     ];
     protected $casts = [
         'id' => 'string'

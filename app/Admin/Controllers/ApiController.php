@@ -495,6 +495,15 @@ class ApiController extends AdminController
             'status' => $info->status > 1 ? $info->status : 2,
             'nhan_vien_sx' => $request->user()->id ?? null,
         ]);
+        $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
+        if ($tracking) {
+            $tracking->update([
+                'lo_sx' => null,
+                'so_ra' => 0,
+                'thu_tu_uu_tien' => null,
+                'sl_kh' => 0
+            ]);
+        }
         return $this->success('', 'Đã cập nhật');
     }
 
@@ -693,16 +702,14 @@ class ApiController extends AdminController
                         $this->reorderInfoCongDoan();
                         $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
                         $info_ids = InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray();
-                        $next_info = InfoCongDoan::with('order')->whereIn('id', $info_ids)->whereDate('ngay_sx', now())->whereHas('order', function ($order_query) use ($request) {
-                            $order_query->where('so_dao', $request['Set_Counter']);
-                        })->first();
+                        $next_info = InfoCongDoan::with('order')->whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
                         if ($next_info) {
                             $order = $next_info->order ?? null;
                             $so_ra = $order->so_ra ?? $next_info->so_ra;
                             $next_info->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s'), 'status' => 1, 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $so_ra, 'so_ra' => $so_ra]);
-                            $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
+                            // $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
                             $tracking->update([
-                                'sl_kh' => ceil(($next_info->dinh_muc * ($formula->he_so ?? 1)) / $so_ra) ?? 0,
+                                'sl_kh' => $next_info->so_dao,
                                 'lo_sx' => $next_info->lo_sx,
                                 'so_ra' => $so_ra,
                                 'thu_tu_uu_tien' => $next_info->thu_tu_uu_tien,
@@ -750,16 +757,14 @@ class ApiController extends AdminController
                 }
             } else {
                 $info_ids = InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray();
-                $next_info = InfoCongDoan::with('order')->whereIn('id', $info_ids)->whereDate('ngay_sx', now())->whereHas('order', function ($order_query) use ($request) {
-                    $order_query->where('so_dao', $request['Set_Counter']);
-                })->first();
+                $next_info = InfoCongDoan::with('order')->whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
                 if ($next_info) {
                     $order = $next_info->order ?? null;
                     $so_ra = $order->so_ra ?? $next_info->so_ra;
                     $next_info->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s'), 'status' => 1, 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $so_ra, 'so_ra' => $so_ra]);
-                    $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
+                    // $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
                     $tracking->update([
-                        'sl_kh' => ceil(($next_info->dinh_muc * ($formula->he_so ?? 1)) / $so_ra) ?? 0,
+                        'sl_kh' => $next_info->so_dao,
                         'lo_sx' => $next_info->lo_sx,
                         'so_ra' => $so_ra,
                         'thu_tu_uu_tien' => $next_info->thu_tu_uu_tien,
@@ -1605,8 +1610,8 @@ class ApiController extends AdminController
             $info->dot = $order->dot ?? '';
             $info->note = $order->note_3 ?? '';
             $info->slg_sx = $order->sl ?? '';
-            if ($tracking && $info->lo_sx === $tracking->lo_sx) {
-                $info->status = 1;
+            if ($info->quy_cach === "x") {
+                $info->quy_cach = $order->kich_thuoc ?? "";
             }
             $data[] = $info;
         }
@@ -2751,12 +2756,6 @@ class ApiController extends AdminController
         $start_of_day = date('Y-m-d 07:30:00');
         $now = date('Y-m-d H:i:s');
 
-        // Lấy kế hoạch sản xuất của máy trong ngày
-        $plan = ProductionPlan::where('machine_id', $request->machine_id)
-            ->whereNotNull('ngay_sx')
-            ->whereBetween('ngay_sx', [date('Y-m-d 00:00:00'), date('Y-m-d 23:59:59')])
-            ->get();
-
         // Lấy thời gian dừng từ MachineLog
         $machine_logs = MachineLog::selectRaw('TIMESTAMPDIFF(SECOND, start_time, end_time) as total_time')
             ->where('machine_id', $request->machine_id)
@@ -2900,7 +2899,6 @@ class ApiController extends AdminController
     {
         $machine = Machine::with('line')->where('id', $request->machine_id)->first();
         if (!$machine) return $this->failure('Không tìm thấy máy');
-        $line = $machine->line;
         $errors = ErrorMachine::select('*', 'code as value', 'ten_su_co as label')->where('line_id', $machine->line_id)->get();
         // if (!$errors) return $this->failure('', 'Không tìm thấy lỗi');
         return $this->success($errors);
@@ -2992,7 +2990,7 @@ class ApiController extends AdminController
             return $this->failure('', 'Mã cuộn không tồn tại');
         }
         $material->material_id = $material->id;
-        $warehouse_log = WarehouseMLTLog::where('material_id', $material->id)->orderBy('created_at', 'DESC')->first();
+        $warehouse_log = WarehouseMLTLog::where('material_id', $material->id)->orderBy('updated_at', 'DESC')->first();
         if ($warehouse_log) {
             if (!$warehouse_log->locator_id === 'C13') {
                 return $this->failure('', 'Không thể xuất cuộn ở khu 13');
@@ -3024,7 +3022,7 @@ class ApiController extends AdminController
         try {
             DB::beginTransaction();
             $material->update(['so_kg' => 0]);
-            $warehouse_log = WarehouseMLTLog::where('material_id', $material->id)->orderBy('created_at', 'DESC')->first();
+            $warehouse_log = WarehouseMLTLog::where('material_id', $material->id)->orderBy('updated_at', 'DESC')->first();
             if ($warehouse_log) {
                 $warehouse_log->update($inp);
             } else {
@@ -4006,26 +4004,27 @@ class ApiController extends AdminController
         $machines = Machine::whereNull('parent_id')->where('is_iot', 1)->get();
         $data = [];
         foreach ($machines as $machine) {
-            $info_cong_doan = InfoCongDoan::select(
-                '*',
-                DB::raw('sl_dau_ra_hang_loat - sl_ng_sx - sl_ng_qc as sl_ok'),
-                DB::raw('TIMEDIFF(thoi_gian_ket_thuc, thoi_gian_bam_may) as run_time'),
-                DB::raw('TIMEDIFF(thoi_gian_ket_thuc, thoi_gian_bat_dau) as total_time'),
-            )
+            // Lấy thời gian dừng từ MachineLog
+            $machine_logs = MachineLog::selectRaw('TIMESTAMPDIFF(SECOND, start_time, end_time) as total_time')
                 ->where('machine_id', $machine->id)
-                ->whereBetween('created_at', [date('Y-m-d 00:00:00', strtotime($request->start_date)), date('Y-m-d 23:59:59', strtotime($request->end_date))])
+                ->whereBetween('start_time', [date('Y-m-d 07:30:00'), date('Y-m-d 23:59:59')])
                 ->get();
-            $plan = ProductionPlan::select('*', DB::raw('TIMEDIFF(ngay_giao_hang, ngay_sx) as plan_run_time'))
-                ->where('machine_id', $request->machine_id)
-                ->get();
-            $machine_logs = MachineLog::select('*', DB::raw('TIMEDIFF(end_time, start_time) as tg_dung_may'))
-                ->where('machine_id', $request->machine_id)->whereBetween('created_at', [date('Y-m-d 00:00:00', strtotime($request->start_date)), date('Y-m-d 23:59:59', strtotime($request->end_date))])
-                ->get();
-            $A = $plan->sum('plan_run_time') ? ($info_cong_doan->sum('run_time') / $plan->sum('plan_run_time')) * 100 : 0;
-            $P = $info_cong_doan->sum('run_time') ? ($info_cong_doan->sum('sl_dau_ra_hang_loat') * 3600 / $info_cong_doan->sum('run_time')) * 100 : 0;
-            $Q = $info_cong_doan->sum('sl_dau_ra_hang_loat') ? ($info_cong_doan->sum('sl_ok') / $info_cong_doan->sum('sl_dau_ra_hang_loat')) * 100 : 0;
-            $OEE = ($A * $P * $Q) / 10000;
-            $data[] = ['percent' => $OEE, 'name' => $machine->name];
+
+            // Tính tổng thời gian dừng
+            $thoi_gian_dung = floor($machine_logs->sum('total_time') / 60); // Đổi giây sang giờ
+            $so_lan_dung = count($machine_logs);
+
+            // Tính thời gian làm việc từ 7:30 sáng đến hiện tại
+            $thoi_gian_lam_viec = 16; // Đổi giây sang giờ
+
+            // Tính thời gian chạy bằng thời gian làm việc - thời gian dừng
+            $thoi_gian_chay = max(0, $thoi_gian_lam_viec - $thoi_gian_dung); // Đảm bảo không âm
+
+            // Tính tỷ lệ vận hành
+            $ty_le_van_hanh = floor(($thoi_gian_chay / max(1, $thoi_gian_lam_viec)) * 100); // Tính phần trăm
+
+            $percent = $ty_le_van_hanh;
+            $data[] = ['percent' => $percent, 'name' => $machine->id];
         }
 
         return $this->success($data);
@@ -4079,15 +4078,15 @@ class ApiController extends AdminController
     public function errorMachineFrequency(Request $request)
     {
         $query = $this->queryMachineLog($request);
-        $machine_logs = $query->whereNotNull('error_machine_id')
-            ->selectRaw('count(error_machine_id) as value, error_machine_id')
-            ->groupBy('error_machine_id')
-            ->get();
+        $machine_logs = $query->get()->groupBy(function ($item) {
+            return $item->error_machine->ten_su_co ?? "";
+        });
         $data = [];
-        foreach ($machine_logs as $log) {
+        foreach ($machine_logs as $key => $log) {
+            if (!$key) continue;
             $obj = new stdClass();
-            $obj->value = $log->value;
-            $obj->name = $log->error_machine->ten_su_co;
+            $obj->value = count($log);
+            $obj->name = $key;
             $data[] = $obj;
         }
         return $this->success($data);
@@ -5793,11 +5792,11 @@ class ApiController extends AdminController
         $input = $request->all();
         $query = WarehouseMLTLog::with('material', 'warehouse_mtl_export')->orderBy('tg_xuat', 'DESC')->whereNotNull('tg_xuat');
         if (isset($input['start_date']) && $input['end_date']) {
-            $query->whereDate('updated_at', '>=', date('Y-m-d', strtotime($input['start_date'])))
-                ->whereDate('updated_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
+            $query->whereDate('tg_xuat', '>=', date('Y-m-d', strtotime($input['start_date'])))
+                ->whereDate('tg_xuat', '<=', date('Y-m-d', strtotime($input['end_date'])));
         } else {
-            $query->whereDate('updated_at', '>=', date('Y-m-d'))
-                ->whereDate('updated_at', '<=', date('Y-m-d'));
+            $query->whereDate('tg_xuat', '>=', date('Y-m-d'))
+                ->whereDate('tg_xuat', '<=', date('Y-m-d'));
         }
         if (isset($input['material_id'])) {
             $query = $query->where('material_id', 'like', '%' . $input['material_id'] . '%');
@@ -5817,22 +5816,24 @@ class ApiController extends AdminController
         $records = $query->offset($page * $pageSize)->limit($pageSize)->get();
         $data = [];
         foreach ($records as $key => $record) {
+            $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $obj = new stdClass();
-            $obj->id = $record->id;
-            $obj->locator_id = $record->locator_id;
-            $obj->material_id = $record->material_id;
-            $obj->dau_may = $record->position_name;
+            $obj->stt = $key + 1;
             $obj->machine = "Sóng";
-            $obj->time_need = isset($record->warehouse_mtl_export->time_need) ? date('Y-m-d H:i:s', strtotime($record->warehouse_mtl_export->time_need)) : '';
-            $obj->so_kg_nhap = $record->so_kg_nhap ?? 0;
-            $obj->so_kg_ban_dau = $record->material->so_kg_dau ?? 0;
-            $obj->so_kg_con_lai = $record->material->so_kg ?? 0;
-            $obj->so_kg_xuat = $obj->so_kg_nhap - $obj->so_kg_con_lai;
-            $obj->loai_giay = $record->material->loai_giay ?? "";
+            $obj->dau_may = $record->position_name;
             $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
-            $obj->dinh_luong = $record->material->dinh_luong ?? 0;
-            $obj->kho_giay = $record->material->kho_giay ?? 0;
-            $obj->so_m_toi = $record->material->so_m_toi ?? 0;
+            $obj->material_id = $record->material_id;
+            $obj->locator_id = $record->locator_id;
+            $obj->loai_giay = $record->material->loai_giay ?? "";
+            $obj->fsc = isset($record->material->fsc) ? ($record->material->fsc ? "X" : "") : "";
+            $obj->kho_giay = $record->material->kho_giay ?? "0";
+            $obj->dinh_luong = $record->material->dinh_luong ?? "0";
+            $obj->so_kg_ban_dau = $record->material->so_kg_dau ?? "0";
+            $obj->so_kg_nhap = $record->so_kg_nhap ?? "0";
+            $obj->so_kg_xuat = $obj->so_kg_nhap - $so_con_lai;
+            $obj->so_kg_con_lai = $so_con_lai;
+            $obj->so_m_toi = $record->material->so_m_toi ?? "0";
             $obj->thoi_gian_xuat = $record->tg_xuat ? date('d/m/Y H:i:s', strtotime($record->tg_xuat)) : "";
             $obj->nhan_vien_xuat = $record->exporter->name ?? "";
             $data[] = $obj;
@@ -5843,13 +5844,13 @@ class ApiController extends AdminController
     public function exportListMaterialExport(Request $request)
     {
         $input = $request->all();
-        $query = WarehouseMLTLog::with('material', 'warehouse_mtl_export')->whereNotNull('tg_xuat');
+        $query = WarehouseMLTLog::with('material', 'warehouse_mtl_export')->orderBy('tg_xuat', 'DESC')->whereNotNull('tg_xuat');
         if (isset($input['start_date']) && $input['end_date']) {
-            $query->whereDate('updated_at', '>=', date('Y-m-d', strtotime($input['start_date'])))
-                ->whereDate('updated_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
+            $query->whereDate('tg_xuat', '>=', date('Y-m-d', strtotime($input['start_date'])))
+                ->whereDate('tg_xuat', '<=', date('Y-m-d', strtotime($input['end_date'])));
         } else {
-            $query->whereDate('updated_at', '>=', date('Y-m-d'))
-                ->whereDate('updated_at', '<=', date('Y-m-d'));
+            $query->whereDate('tg_xuat', '>=', date('Y-m-d'))
+                ->whereDate('tg_xuat', '<=', date('Y-m-d'));
         }
         if (isset($input['material_id'])) {
             $query = $query->where('material_id', 'like', '%' . $input['material_id'] . '%');
@@ -5864,6 +5865,8 @@ class ApiController extends AdminController
         $records = $query->get();
         $data = [];
         foreach ($records as $key => $record) {
+            $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $obj = new stdClass();
             $obj->stt = $key + 1;
             $obj->machine = "Sóng";
@@ -5877,8 +5880,8 @@ class ApiController extends AdminController
             $obj->dinh_luong = $record->material->dinh_luong ?? "0";
             $obj->so_kg_ban_dau = $record->material->so_kg_dau ?? "0";
             $obj->so_kg_nhap = $record->so_kg_nhap ?? "0";
-            $obj->so_kg_xuat = $obj->so_kg_nhap - ($record->material->so_kg ?? "0");
-            $obj->so_kg_con_lai = $record->material->so_kg ?? "0";
+            $obj->so_kg_xuat = $obj->so_kg_nhap - $so_con_lai;
+            $obj->so_kg_con_lai = $so_con_lai;
             $obj->so_m_toi = $record->material->so_m_toi ?? "0";
             $obj->thoi_gian_xuat = $record->tg_xuat ? date('d/m/Y H:i:s', strtotime($record->tg_xuat)) : "";
             $obj->nhan_vien_xuat = $record->exporter->name ?? "";
@@ -6988,7 +6991,8 @@ class ApiController extends AdminController
                         }
                         DB::table('group_plan_order')->insert($group_orders);
                     }
-                    // //Tạo info cùng với plan
+                    $order = Order::find($plan_input['order_id'] ?? "");
+                    $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
                     $info_cong_doan = InfoCongDoan::create([
                         'lo_sx' => $plan->lo_sx,
                         'machine_id' => $plan->machine_id,
@@ -6998,14 +7002,12 @@ class ApiController extends AdminController
                         'so_ra' => $plan->order->so_ra ?? 1,
                         'order_id' => $plan->order_id,
                         'plan_id' => $plan->id,
-                        'status' => 0
+                        'status' => 0,
+                        'so_dao' => isset($order->so_ra) ? ceil($plan->sl_kh * ($formula->he_so ?? 1) / $order->so_ra) : $order->so_dao,
                     ]);
                     if ($machine->line_id == '31') {
-                        if (isset($plan_input['order_id'])) {
-                            $order = Order::find($plan_input['order_id']);
-                            if ($order) {
-                                $this->mappingIn($order->layout_id, $plan_input['lo_sx'], $plan_input['machine_id']);
-                            }
+                        if ($order) {
+                            $this->mappingIn($order->layout_id, $plan_input['lo_sx'], $plan_input['machine_id']);
                         }
                     }
                 }
@@ -7493,283 +7495,289 @@ class ApiController extends AdminController
     }
     function exportPreviewPlanXaLot(Request $request)
     {
-        $centerStyle = [
-            'alignment' => [
-                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-            ],
-            'borders' => array(
-                'allBorders' => array(
-                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                    'color' => array('argb' => '000000'),
+        try {
+            ini_set('memory_limit', '1024M');
+            ini_set('max_execution_time', 0);
+            $centerStyle = [
+                'alignment' => [
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                ],
+                'borders' => array(
+                    'allBorders' => array(
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => array('argb' => '000000'),
+                    ),
                 ),
-            ),
-        ];
-        $headerStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true, 'color' => array('rgb' => '632523')],
-        ]);
-        $titleStyle = array_merge($centerStyle, [
-            'font' => ['bold' => true, 'color' => array('rgb' => '632523'), 'size' => 18],
-        ]);
-        $bold = [
-            'font' => ['bold' => true],
-        ];
-        $red = [
-            'font' => ['color' => array('rgb' => 'FF0000')],
-        ];
-        //Xả lót
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Xả Lót');
-        $plans = $request->plans;
-        $headerXL = [
-            'STT',
-            'MĐH',
-            'KH',
-            'Số lớp',
-            'Kết cấu giấy',
-            'Đơn hàng' => [
-                'Dài (lấy từ cột L)',
-                'Rộng (lấy từ cột W)',
-                'Cao (lấy từ cột H)',
-                'Kích thước ĐH'
-            ],
-            'Kế hoạch' => [
-                'Dài (Lấy từ KT chuẩn)',
-                'Rộng (Lấy từ KT chuẩn)',
-                'Cao (Lấy từ KT chuẩn)',
-            ],
-            'Số lượng',
-            'Dài tấm',
-            'Ghi chú',
-            'Đợt'
-        ];
-        $table_keyXL = [
-            'A' => 'stt',
-            'B' => 'mdh',
-            'C' => 'short_name',
-            'D' => 'so_lop',
-            'E' => 'ket_cau_giay',
-            'F' => 'length',
-            'G' => 'width',
-            'H' => 'height',
-            'I' => 'kich_thuoc',
-            'J' => 'dai',
-            'K' => 'rong',
-            'L' => 'cao',
-            'M' => 'sl_kh',
-            'N' => 'dai_tam',
-            'O' => 'note_3',
-            'P' => 'dot',
-        ];
-        $tableStyleXL = [
-            'A' => $centerStyle,
-            'B' => array_merge_recursive($centerStyle, $bold),
-            'C' => array_merge_recursive($centerStyle, $bold),
-            'D' => $centerStyle,
-            'E' => array_merge_recursive($centerStyle, $bold),
-            'F' => $centerStyle,
-            'G' => $centerStyle,
-            'H' => $centerStyle,
-            'I' => $centerStyle,
-            'J' => array_merge_recursive($centerStyle, $bold),
-            'K' => array_merge_recursive($centerStyle, $bold),
-            'L' => array_merge_recursive($centerStyle, $bold),
-            'M' => array_merge_recursive($centerStyle, $bold, $red),
-            'N' => $centerStyle,
-            'O' => array_merge_recursive($centerStyle, $red),
-            'P' => $centerStyle,
-        ];
-        $headerXT = [
-            'STT',
-            'MĐH',
-            'KH',
-            'Số lớp',
-            'Kết cấu giấy',
-            'Dài',
-            'Rộng',
-            'Cao',
-            'Số lượng',
-            'Dài tấm',
-            'Ghi chú',
-        ];
-        $table_keyXT = [
-            'A' => 'stt',
-            'B' => 'mdh',
-            'C' => 'short_name',
-            'D' => 'so_lop',
-            'E' => 'ket_cau_giay',
-            'F' => 'dai',
-            'G' => 'rong',
-            'H' => 'cao',
-            'I' => 'sl_kh',
-            'J' => 'dai_tam',
-            'K' => 'note_3',
-        ];
-        $tableStyleXT = [
-            'A' => $centerStyle,
-            'B' => array_merge_recursive($centerStyle, $bold),
-            'C' => array_merge_recursive($centerStyle, $bold),
-            'D' => $centerStyle,
-            'E' => array_merge_recursive($centerStyle, $bold),
-            'F' => $centerStyle,
-            'G' => $centerStyle,
-            'H' => $centerStyle,
-            'I' => array_merge_recursive($centerStyle, $bold, $red),
-            'J' => $centerStyle,
-            'K' => array_merge_recursive($centerStyle, $red),
-        ];
-        $dataXL = [];
-        $dataXT = [];
-        $index = 1;
-        foreach ($plans as $key => $plan) {
-            $plan = new ProductionPlan($plan);
-            $order = $plan->order;
-            $buyer = $order->buyer;
-            $obj = $plan ?? new stdClass;
-            $obj->stt = $index++;
-            $obj->so_lop = $buyer->so_lop ?? "";
-            $obj->short_name = $order->short_name ?? "";
-            $obj->length = $order->length ?? "";
-            $obj->width = $order->width ?? "";
-            $obj->height = $order->height ?? "";
-            $obj->kich_thuoc = $order->kich_thuoc ?? "";
-            $obj->dai = $order->dai ?? "";
-            $obj->rong = $order->rong ?? "";
-            $obj->cao = $order->cao ?? "";
-            $obj->mql = $order->mql ?? "";
-            $obj->mdh = $order->mdh ?? "";
-            $obj->note_3 = $order->note_3 ?? "";
-            $obj->dot = $order->dot ?? "";
-            $obj->dai_tam = $order->dai_tam ?? "";
-            $obj->ket_cau_giay = $order->buyer->ket_cau_giay ?? "";
-            $parse_data = [];
-            $obj = $obj->toArray();
-            if (!$obj['cao']) {
-                foreach ($table_keyXL as $key_col => $col) {
-                    if (isset($obj[$col])) {
-                        $parse_data[$key_col] = $obj[$col];
+            ];
+            $headerStyle = array_merge($centerStyle, [
+                'font' => ['bold' => true, 'color' => array('rgb' => '632523')],
+            ]);
+            $titleStyle = array_merge($centerStyle, [
+                'font' => ['bold' => true, 'color' => array('rgb' => '632523'), 'size' => 18],
+            ]);
+            $bold = [
+                'font' => ['bold' => true],
+            ];
+            $red = [
+                'font' => ['color' => array('rgb' => 'FF0000')],
+            ];
+            //Xả lót
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Xả Lót');
+            $plans = $request->plans;
+            $headerXL = [
+                'STT',
+                'MĐH',
+                'KH',
+                'Số lớp',
+                'Kết cấu giấy',
+                'Đơn hàng' => [
+                    'Dài (lấy từ cột L)',
+                    'Rộng (lấy từ cột W)',
+                    'Cao (lấy từ cột H)',
+                    'Kích thước ĐH'
+                ],
+                'Kế hoạch' => [
+                    'Dài (Lấy từ KT chuẩn)',
+                    'Rộng (Lấy từ KT chuẩn)',
+                    'Cao (Lấy từ KT chuẩn)',
+                ],
+                'Số lượng',
+                'Dài tấm',
+                'Ghi chú',
+                'Đợt'
+            ];
+            $table_keyXL = [
+                'A' => 'stt',
+                'B' => 'mdh',
+                'C' => 'short_name',
+                'D' => 'so_lop',
+                'E' => 'ket_cau_giay',
+                'F' => 'length',
+                'G' => 'width',
+                'H' => 'height',
+                'I' => 'kich_thuoc',
+                'J' => 'dai',
+                'K' => 'rong',
+                'L' => 'cao',
+                'M' => 'sl_kh',
+                'N' => 'dai_tam',
+                'O' => 'note_3',
+                'P' => 'dot',
+            ];
+            $tableStyleXL = [
+                'A' => $centerStyle,
+                'B' => array_merge_recursive($centerStyle, $bold),
+                'C' => array_merge_recursive($centerStyle, $bold),
+                'D' => $centerStyle,
+                'E' => array_merge_recursive($centerStyle, $bold),
+                'F' => $centerStyle,
+                'G' => $centerStyle,
+                'H' => $centerStyle,
+                'I' => $centerStyle,
+                'J' => array_merge_recursive($centerStyle, $bold),
+                'K' => array_merge_recursive($centerStyle, $bold),
+                'L' => array_merge_recursive($centerStyle, $bold),
+                'M' => array_merge_recursive($centerStyle, $bold, $red),
+                'N' => $centerStyle,
+                'O' => array_merge_recursive($centerStyle, $red),
+                'P' => $centerStyle,
+            ];
+            $headerXT = [
+                'STT',
+                'MĐH',
+                'KH',
+                'Số lớp',
+                'Kết cấu giấy',
+                'Dài',
+                'Rộng',
+                'Cao',
+                'Số lượng',
+                'Dài tấm',
+                'Ghi chú',
+            ];
+            $table_keyXT = [
+                'A' => 'stt',
+                'B' => 'mdh',
+                'C' => 'short_name',
+                'D' => 'so_lop',
+                'E' => 'ket_cau_giay',
+                'F' => 'dai',
+                'G' => 'rong',
+                'H' => 'cao',
+                'I' => 'sl_kh',
+                'J' => 'dai_tam',
+                'K' => 'note_3',
+            ];
+            $tableStyleXT = [
+                'A' => $centerStyle,
+                'B' => array_merge_recursive($centerStyle, $bold),
+                'C' => array_merge_recursive($centerStyle, $bold),
+                'D' => $centerStyle,
+                'E' => array_merge_recursive($centerStyle, $bold),
+                'F' => $centerStyle,
+                'G' => $centerStyle,
+                'H' => $centerStyle,
+                'I' => array_merge_recursive($centerStyle, $bold, $red),
+                'J' => $centerStyle,
+                'K' => array_merge_recursive($centerStyle, $red),
+            ];
+            $dataXL = [];
+            $dataXT = [];
+            $index = 1;
+            foreach ($plans as $key => $plan) {
+                $plan = new ProductionPlan($plan);
+                $order = $plan->order;
+                $buyer = $order->buyer;
+                $obj = $plan ?? new stdClass;
+                $obj->stt = $index++;
+                $obj->so_lop = $buyer->so_lop ?? "";
+                $obj->short_name = $order->short_name ?? "";
+                $obj->length = $order->length ?? "";
+                $obj->width = $order->width ?? "";
+                $obj->height = $order->height ?? "";
+                $obj->kich_thuoc = $order->kich_thuoc ?? "";
+                $obj->dai = $order->dai ?? "";
+                $obj->rong = $order->rong ?? "";
+                $obj->cao = $order->cao ?? "";
+                $obj->mql = $order->mql ?? "";
+                $obj->mdh = $order->mdh ?? "";
+                $obj->note_3 = $order->note_3 ?? "";
+                $obj->dot = $order->dot ?? "";
+                $obj->dai_tam = $order->dai_tam ?? "";
+                $obj->ket_cau_giay = $order->buyer->ket_cau_giay ?? "";
+                $parse_data = [];
+                $obj = $obj->toArray();
+                if (!$obj['cao']) {
+                    foreach ($table_keyXL as $key_col => $col) {
+                        if (isset($obj[$col])) {
+                            $parse_data[$key_col] = $obj[$col];
+                        }
                     }
+                    $dataXL[] = $parse_data;
+                } else {
+                    foreach ($table_keyXT as $key_col => $col) {
+                        if (isset($obj[$col])) {
+                            $parse_data[$key_col] = $obj[$col];
+                        }
+                    }
+                    $dataXT[] = $parse_data;
                 }
-                $dataXL[] = $parse_data;
-            } else {
+            }
+            $start_col = 1;
+            $start_row = 1;
+            $sheet->setCellValue([1, $start_row], 'KẾ HOẠCH XẢ LÓT ' . date('d.m.Y', strtotime($request->start_time)))->mergeCells([1, $start_row, count($table_keyXL), $start_row])->getStyle([1, $start_row, count($table_keyXL), $start_row])->applyFromArray($titleStyle);
+            $start_row += 1;
+            foreach ($headerXL as $key => $cell) {
+                if (!is_array($cell)) {
+                    $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
+                } else {
+                    $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
+                    foreach ($cell as $val) {
+                        $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($headerStyle);
+                        $start_col += 1;
+                    }
+                    continue;
+                }
+                $start_col += 1;
+            }
+            // return $request->start_date
+
+            $table_col = 1;
+            $table_row = $start_row + 2;
+            foreach ($dataXL as $key => $row) {
+                $table_col = 1;
+                foreach ($row as $k => $value) {
+                    $sheet->setCellValue($k . $table_row, $value)->getStyle($k . $table_row)->applyFromArray($tableStyleXL[$k]);
+                    $table_col += 1;
+                }
+                $table_row += 1;
+            }
+            $start_row = $table_row + 1;
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+                // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
+            }
+            //Xả thùng
+            $spreadsheet->createSheet();
+            $sheet = $spreadsheet->setActiveSheetIndex(1);
+            $sheet->setTitle('Xả Thùng');
+            $start_row = 1;
+            $data = [];
+            $index = 1;
+            foreach ($plans as $key => $plan) {
+                $plan = new ProductionPlan($plan);
+                $order = $plan->order;
+                $buyer = $order->buyer;
+                $obj = $plan;
+                $obj->stt = $index++;
+                $obj->so_lop = $buyer->so_lop ?? "";
+                $obj->short_name = $order->short_name ?? "";
+                $obj->dai = $order->dai ?? "";
+                $obj->rong = $order->rong ?? "";
+                $obj->cao = $order->cao ?? "";
+                $obj->mql = $order->mql ?? "";
+                $obj->mdh = $order->mdh ?? "";
+                $obj->dai_tam = $order->dai_tam ?? "";
+                $obj->note_3 = $order->note_3 ?? "";
+                $obj->ket_cau_giay = $order->buyer->ket_cau_giay ?? "";
+                $parse_data = [];
+                $obj = $obj->toArray();
                 foreach ($table_keyXT as $key_col => $col) {
                     if (isset($obj[$col])) {
                         $parse_data[$key_col] = $obj[$col];
                     }
                 }
-                $dataXT[] = $parse_data;
+                $data[] = $parse_data;
             }
-        }
-        $start_col = 1;
-        $start_row = 1;
-        $sheet->setCellValue([1, $start_row], 'KẾ HOẠCH XẢ LÓT ' . date('d.m.Y', strtotime($request->start_time)))->mergeCells([1, $start_row, count($table_keyXL), $start_row])->getStyle([1, $start_row, count($table_keyXL), $start_row])->applyFromArray($titleStyle);
-        $start_row += 1;
-        foreach ($headerXL as $key => $cell) {
-            if (!is_array($cell)) {
-                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
-            } else {
-                $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
-                foreach ($cell as $val) {
-                    $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($headerStyle);
-                    $start_col += 1;
+            $start_col = 1;
+            $start_row = 1;
+            $sheet->setCellValue([1, $start_row], 'KẾ HOẠCH XẢ THÙNG ' . date('d.m.Y', strtotime($request->start_time)))->mergeCells([1, $start_row, count($headerXT), $start_row])->getStyle([1, $start_row, count($headerXL), $start_row])->applyFromArray($titleStyle);
+            $start_row += 1;
+            foreach ($headerXT as $key => $cell) {
+                if (!is_array($cell)) {
+                    $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
+                } else {
+                    $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
+                    foreach ($cell as $val) {
+                        $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($headerStyle);
+                        $start_col += 1;
+                    }
+                    continue;
                 }
-                continue;
+                $start_col += 1;
             }
-            $start_col += 1;
-        }
-        // return $request->start_date
 
-        $table_col = 1;
-        $table_row = $start_row + 2;
-        foreach ($dataXL as $key => $row) {
             $table_col = 1;
-            foreach ($row as $k => $value) {
-                $sheet->setCellValue($k . $table_row, $value)->getStyle($k . $table_row)->applyFromArray($tableStyleXL[$k]);
-                $table_col += 1;
-            }
-            $table_row += 1;
-        }
-        $start_row = $table_row + 1;
-        foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-            // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
-        }
-        //Xả thùng
-        $spreadsheet->createSheet();
-        $sheet = $spreadsheet->setActiveSheetIndex(1);
-        $sheet->setTitle('Xả Thùng');
-        $start_row = 1;
-        $data = [];
-        $index = 1;
-        foreach ($plans as $key => $plan) {
-            $plan = new ProductionPlan($plan);
-            $order = $plan->order;
-            $buyer = $order->buyer;
-            $obj = $plan;
-            $obj->stt = $index++;
-            $obj->so_lop = $buyer->so_lop ?? "";
-            $obj->short_name = $order->short_name ?? "";
-            $obj->dai = $order->dai ?? "";
-            $obj->rong = $order->rong ?? "";
-            $obj->cao = $order->cao ?? "";
-            $obj->mql = $order->mql ?? "";
-            $obj->mdh = $order->mdh ?? "";
-            $obj->dai_tam = $order->dai_tam ?? "";
-            $obj->note_3 = $order->note_3 ?? "";
-            $obj->ket_cau_giay = $order->buyer->ket_cau_giay ?? "";
-            $parse_data = [];
-            $obj = $obj->toArray();
-            foreach ($table_keyXT as $key_col => $col) {
-                if (isset($obj[$col])) {
-                    $parse_data[$key_col] = $obj[$col];
+            $table_row = $start_row + 1;
+            foreach ($dataXT as $key => $row) {
+                $table_col = 1;
+                foreach ($row as $k => $value) {
+                    $sheet->setCellValue($k . $table_row, $value)->getStyle($k . $table_row)->applyFromArray($tableStyleXT[$k]);
+                    $table_col += 1;
                 }
+                $table_row += 1;
             }
-            $data[] = $parse_data;
-        }
-        $start_col = 1;
-        $start_row = 1;
-        $sheet->setCellValue([1, $start_row], 'KẾ HOẠCH XẢ THÙNG ' . date('d.m.Y', strtotime($request->start_time)))->mergeCells([1, $start_row, count($headerXT), $start_row])->getStyle([1, $start_row, count($headerXL), $start_row])->applyFromArray($titleStyle);
-        $start_row += 1;
-        foreach ($headerXT as $key => $cell) {
-            if (!is_array($cell)) {
-                $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
-            } else {
-                $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($headerStyle);
-                foreach ($cell as $val) {
-                    $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($headerStyle);
-                    $start_col += 1;
-                }
-                continue;
+            $start_row = $table_row + 1;
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+                // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
             }
-            $start_col += 1;
+            header("Content-Description: File Transfer");
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="Kế hoạch sản xuất xả lót - thùng.xlsx"');
+            header('Cache-Control: max-age=0');
+            header("Content-Transfer-Encoding: binary");
+            header('Expires: 0');
+            $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save('exported_files/Kế hoạch xả lót - thùng.xlsx');
+            $href = '/exported_files/Kế hoạch xả lót - thùng.xlsx';
+            return $this->success($href);
+        } catch (\Throwable $th) {
+            throw $th;
         }
-
-        $table_col = 1;
-        $table_row = $start_row + 1;
-        foreach ($dataXT as $key => $row) {
-            $table_col = 1;
-            foreach ($row as $k => $value) {
-                $sheet->setCellValue($k . $table_row, $value)->getStyle($k . $table_row)->applyFromArray($tableStyleXT[$k]);
-                $table_col += 1;
-            }
-            $table_row += 1;
-        }
-        $start_row = $table_row + 1;
-        foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-            // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
-        }
-        header("Content-Description: File Transfer");
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="Kế hoạch sản xuất xả lót - thùng.xlsx"');
-        header('Cache-Control: max-age=0');
-        header("Content-Transfer-Encoding: binary");
-        header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        $writer->save('exported_files/Kế hoạch xả lót - thùng.xlsx');
-        $href = '/exported_files/Kế hoạch xả lót - thùng.xlsx';
-        return $this->success($href);
     }
 
     public function importKHSX(Request $request)
@@ -8587,7 +8595,7 @@ class ApiController extends AdminController
     function customQueryWarehouseMLTLog($request)
     {
         $input = $request->all();
-        $query = WarehouseMLTLog::has('material')->orderBy('created_at', 'DESC');
+        $query = WarehouseMLTLog::has('material')->orderBy('material_id')->orderBy('tg_nhap', 'DESC')->whereRaw('updated_at IN (SELECT MAX(updated_at) FROM warehouse_mlt_logs GROUP BY material_id)');
         if (isset($input['loai_giay']) || isset($input['kho_giay']) || isset($input['dinh_luong']) || isset($input['ma_cuon_ncc']) || isset($input['ma_vat_tu']) || isset($input['so_kg']) || isset($input['so_cuon'])) {
             $query->whereHas('material', function ($q) use ($input) {
                 if (isset($input['loai_giay'])) $q->where('loai_giay', 'like', "%" . $input['loai_giay'] . "%");
@@ -8625,18 +8633,23 @@ class ApiController extends AdminController
         $query->offset($page * $pageSize)->limit($pageSize ?? 20);
         $records = $query->get();
         foreach ($records as $key => $record) {
+            if ($record->tg_xuat) {
+                $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            } else {
+                $nextImportLog = null;
+            }
+            $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $record->ten_ncc = ($record->material && $record->material->supplier) ? $record->material->supplier->name : '';
             $record->loai_giay = $record->material->loai_giay ?? '';
             $record->fsc = ($record->material && $record->material->fsc) ? 'X' : '';
             $record->kho_giay = $record->material->kho_giay ?? '';
             $record->dinh_luong = $record->material->dinh_luong ?? '';
-            $record->so_kg_nhap = $record->so_kg_nhap;
             $record->ma_cuon_ncc = $record->material->ma_cuon_ncc ?? "";
             $record->ma_vat_tu = $record->material->ma_vat_tu ?? '';
             $record->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $record->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
-            $record->so_kg_dau = $record->material->so_kg_dau ?? '';
-            $record->sl_xuat = $record->so_kg_xuat;
+            $record->so_kg_dau = $record->material->so_kg_dau ?? "0";
+            $record->so_kg_xuat = $record->so_kg_nhap - $so_con_lai;
             $record->so_kg_cuoi = $record->material->so_kg ?? 0;
             $record->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
             $record->so_cuon = ($record->material && $record->material->so_kg == $record->material->so_kg_dau) ? 1 : 0;
@@ -8652,6 +8665,12 @@ class ApiController extends AdminController
         $records = $query->with('material', 'warehouse_mlt_import')->get();
         $data = [];
         foreach ($records as $key => $record) {
+            if ($record->tg_xuat) {
+                $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            } else {
+                $nextImportLog = null;
+            }
+            $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $obj = new stdClass;
             $obj->stt = $key + 1;
             $obj->material_id = $record->material_id;
@@ -8660,14 +8679,14 @@ class ApiController extends AdminController
             $obj->fsc = $record->material->fsc ? 'X' : '';
             $obj->kho_giay = $record->material->kho_giay ?? "";
             $obj->dinh_luong = $record->material->dinh_luong ?? "";
-            $obj->so_kg_nhap = $record->so_kg_nhap;
             $obj->ma_cuon_ncc = $record->warehouse_mlt_import->ma_cuon_ncc ?? "";
             $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
-            $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $obj->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
-            $obj->so_kg_dau = $record->material->so_kg_dau ?? "";
-            $obj->sl_xuat = "";
-            $obj->so_kg_cuoi = $record->material->so_kg ?? "";
+            $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
+            $obj->so_kg_dau = $record->material->so_kg_dau ?? "0";
+            $obj->so_kg_nhap = $record->so_kg_nhap ?? "0";
+            $obj->so_kg_xuat = $obj->so_kg_nhap - $so_con_lai;
+            $obj->so_kg_cuoi = $record->material->so_kg ?? 0;
             $obj->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
             $obj->so_cuon = $record->material->so_kg == $record->material->so_kg_dau ? 1 : 0;
             $obj->khu_vuc = $record->locatorMlt->warehouse_mlt->name ?? "";
@@ -8708,12 +8727,12 @@ class ApiController extends AdminController
             'FSC',
             'Khổ giấy (cm)',
             'Định lượng',
-            'Số kg nhập',
             'Mã cuộn NCC',
             'Mã vật tư',
-            'Ngày nhập',
             'Số phiếu nhập kho',
+            'Ngày nhập',
             'SL đầu (kg)',
+            'Số kg nhập',
             'SL xuất (kg)',
             'SL cuối (kg)',
             'Ngày xuất',
@@ -8736,7 +8755,7 @@ class ApiController extends AdminController
         }
         $sheet->setCellValue([1, 1], 'Quản lý kho NVL')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
         $sheet->getRowDimension(1)->setRowHeight(40);
-        $sheet->fromArray($data, NULL, 'A3');
+        $sheet->fromArray($data, NULL, 'A3', true);
         foreach ($sheet->getColumnIterator() as $column) {
             $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
             // $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
@@ -8770,7 +8789,7 @@ class ApiController extends AdminController
     {
         $input = $request->all();
         $query = WarehouseFGLog::where('type', 1)->with('user', 'lo_sx_pallet')->orderBy('created_at')->withAggregate('order', 'mdh')->withAggregate('order', 'mql')->orderBy('order_mdh', 'ASC')->orderBy('order_mql', 'ASC');
-        if (isset($input['start_date']) && isset($input['start_date'])) {
+        if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }
         if (isset($input['locator_id'])) {
@@ -9124,10 +9143,10 @@ class ApiController extends AdminController
         $data = [];
         foreach ($records as $record) {
             $record->so_luong_xuat = $record->so_luong;
-            $record->sl_ton = $record->lsxpallets()->sum('lsx_pallet.so_luong');
-            if ($record->sl_ton <= 0) {
-                continue;
-            }
+            $record->sl_ton = (int)$record->lsxpallets()->sum('lsx_pallet.so_luong');
+            // if ($record->sl_ton <= 0) {
+            //     continue;
+            // }
             if ($record->order) {
                 $data[] = array_merge($record->order->toArray(), $record->toArray());
             } else {
@@ -9328,8 +9347,8 @@ class ApiController extends AdminController
                 $q->whereNotNull('material_id');
             }])->having('warehouse_mlt_import_count', '<=', 0)->first();
             if ($note) {
-                $note->delete();
                 $note->warehouse_mlt_import()->delete();
+                $note->delete();
                 DB::commit();
                 return $this->success('', 'Xoá thành công');
             } else {

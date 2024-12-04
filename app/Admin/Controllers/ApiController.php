@@ -76,6 +76,7 @@ use Throwable;
 use App\Events\ProductionUpdated;
 use App\Models\InfoCongDoanPriority;
 use App\Models\ShiftAssignment;
+use App\Models\Supplier;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
@@ -5300,10 +5301,11 @@ class ApiController extends AdminController
                     $input['dinh_luong'] = $row['F'];
                     $input['fsc'] = (($row['D'] && strtolower($row['D']) === 'x') ? 1 : 0);
                     $input['goods_receipt_note_id'] = $receipt_note->id;
-                    $warehouse_mlt_materials[] = $input;
+                    $warehouse_mlt_import = WareHouseMLTImport::create($input);
+                    Supplier::firstOrCreate(['id' => $input['loai_giay']], ['name' => $input['supplier_name']]);
                 }
             }
-            $warehouse_mlt_import = WareHouseMLTImport::insert($warehouse_mlt_materials);
+            
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();

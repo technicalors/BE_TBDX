@@ -120,9 +120,6 @@ async function postMachineParams(data) {
 async function processData(device, token) {
     try {
         const {data, status, params} = await fetchTelemetryData(device, token);
-        if( device =='0a6afda0-85db-11ee-8392-a51389126dc6'){
-            console.log(status);
-        }
         const prevStatus = previousStatus[device];
         if (!isStatusDuplicate(prevStatus, status)) {
             previousStatus[device] = status;
@@ -131,7 +128,7 @@ async function processData(device, token) {
             console.log(`Duplicate data for device ${device}, not sending.`);
         }
 
-        await postMachineParams(params);
+        // await postMachineParams(params);
 
         if (!data) return;
         const prev = previousData[device];

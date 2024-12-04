@@ -2768,11 +2768,11 @@ class ApiController extends AdminController
             ->get();
 
         // Tính tổng thời gian dừng
-        $thoi_gian_dung = floor($machine_logs->sum('total_time') / 60); // Đổi giây sang giờ
+        $thoi_gian_dung = floor($machine_logs->sum('total_time') / 60); // Đổi giây sang phút
         $so_lan_dung = count($machine_logs);
 
         // Tính thời gian làm việc từ 7:30 sáng đến hiện tại
-        $thoi_gian_lam_viec = floor((strtotime($now) - strtotime($start_of_day)) / 60); // Đổi giây sang giờ
+        $thoi_gian_lam_viec = floor((strtotime($now) - strtotime($start_of_day)) / 60); // Đổi giây sang phút
 
         // Tính thời gian chạy bằng thời gian làm việc - thời gian dừng
         $thoi_gian_chay = max(0, $thoi_gian_lam_viec - $thoi_gian_dung); // Đảm bảo không âm
@@ -4011,12 +4011,13 @@ class ApiController extends AdminController
         foreach ($machines as $machine) {
             // Lấy thời gian dừng từ MachineLog
             $machine_logs = MachineLog::selectRaw('TIMESTAMPDIFF(SECOND, start_time, end_time) as total_time')
+                ->whereNotNull('start_time')->whereNotNull('end_time')
                 ->where('machine_id', $machine->id)
                 ->whereBetween('start_time', [date('Y-m-d 07:30:00'), date('Y-m-d 23:59:59')])
                 ->get();
 
             // Tính tổng thời gian dừng
-            $thoi_gian_dung = floor($machine_logs->sum('total_time') / 60); // Đổi giây sang giờ
+            $thoi_gian_dung = floor($machine_logs->sum('total_time') / 3600); // Đổi giây sang giờ
             $so_lan_dung = count($machine_logs);
 
             // Tính thời gian làm việc từ 7:30 sáng đến hiện tại
@@ -8600,7 +8601,13 @@ class ApiController extends AdminController
     function customQueryWarehouseMLTLog($request)
     {
         $input = $request->all();
-        $query = WarehouseMLTLog::has('material')->orderBy('material_id')->orderBy('tg_nhap', 'DESC')->whereRaw('updated_at IN (SELECT MAX(updated_at) FROM warehouse_mlt_logs GROUP BY material_id)');
+        $ids = WarehouseMLTLog::has('material')
+            ->selectRaw("id, material_id, MAX(tg_nhap) as latest_tg_nhap")
+            ->groupBy('material_id')
+            ->pluck('id')->toArray();
+        $query = WarehouseMLTLog::whereIn('id', $ids)
+        ->orderBy('material_id')
+        ->orderBy('tg_nhap', 'DESC');
         if (isset($input['loai_giay']) || isset($input['kho_giay']) || isset($input['dinh_luong']) || isset($input['ma_cuon_ncc']) || isset($input['ma_vat_tu']) || isset($input['so_kg']) || isset($input['so_cuon'])) {
             $query->whereHas('material', function ($q) use ($input) {
                 if (isset($input['loai_giay'])) $q->where('loai_giay', 'like', "%" . $input['loai_giay'] . "%");

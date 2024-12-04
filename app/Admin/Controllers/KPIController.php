@@ -11,6 +11,7 @@ use App\Models\Line;
 use App\Models\LocatorMLTMap;
 use App\Models\Machine;
 use App\Models\MachineLog;
+use App\Models\MachineParameterLogs;
 use App\Models\Material;
 use App\Models\Order;
 use App\Models\ProductionPlan;
@@ -58,31 +59,40 @@ class KPIController extends AdminController
 
     public function kpiTonKhoNVL(Request $request)
     {
-        $results = WarehouseMLTLog::whereNotNull('tg_nhap')
-            ->whereNull('tg_xuat')
+        $results = WarehouseMLTLog::has('material')
             ->selectRaw("
-                CASE 
-                    WHEN DATEDIFF(NOW(), tg_nhap) BETWEEN 1 AND 90 THEN '1 Quý'
-                    WHEN DATEDIFF(NOW(), tg_nhap) BETWEEN 91 AND 180 THEN '2 Quý'
-                    WHEN DATEDIFF(NOW(), tg_nhap) BETWEEN 181 AND 270 THEN '3 Quý'
-                    WHEN DATEDIFF(NOW(), tg_nhap) BETWEEN 271 AND 365 THEN '4 Quý'
-                    ELSE '> 1 năm'
-                END AS period,
-                COUNT(*) AS so_luong_ton
+                so_kg_nhap,
+                material_id,
+                MAX(tg_nhap) as latest_tg_nhap,
+                DATEDIFF(NOW(), MAX(tg_nhap)) AS days_since_latest
             ")
-            ->groupBy('period')
-            ->get();
+            ->groupBy('material_id')
+            ->get()
+            ->groupBy(function ($item) {
+                if ($item->days_since_latest >= 0 && $item->days_since_latest <= 90) {
+                    return '1 Quý';
+                } else if ($item->days_since_latest >= 91 && $item->days_since_latest <= 180) {
+                    return '2 Quý';
+                } else if ($item->days_since_latest >= 181 && $item->days_since_latest <= 270) {
+                    return '3 Quý';
+                } else if ($item->days_since_latest >= 271 && $item->days_since_latest <= 365) {
+                    return '4 Quý';
+                } else if ($item->days_since_latest > 365) {
+                    return '> 1 Năm';
+                }
+            })->sortKeys();
+            // return $results;
         $quarters = [
             '1 Quý' => 0,
             '2 Quý' => 0,
             '3 Quý' => 0,
             '4 Quý' => 0,
-            '> 1 năm' => 0,
+            '> 1 Năm' => 0,
         ];
 
         // Gán dữ liệu từ kết quả truy vấn
-        foreach ($results as $row) {
-            $quarters[$row->period] = (int)$row->so_luong_ton;
+        foreach ($results as $key => $row) {
+            $quarters[$key] = $row->sum('so_kg_nhap');
         }
         $data['categories'] = array_keys($quarters);
         $data['inventory'] = array_values($quarters);
@@ -107,7 +117,7 @@ class KPIController extends AdminController
                 ")
                 ->first();
 
-            $ty_le = round(($result->ty_le) ?? 0, 1);
+            $ty_le = round(($result->ty_le) ?? 0, 2);
             $data['categories'][] = $label; // Ngày trên trục hoành
             $data['ty_le_ng'][] = $ty_le;
         }
@@ -123,23 +133,43 @@ class KPIController extends AdminController
             'categories' => [], // Trục hoành (ngày)
             'ti_le_van_hanh' => [],  // Số lượng tất cả công đoạn
         ];
-        $machines = Machine::where('is_iot', 1)->get();
+        $machines = Machine::where('is_iot', 1)->pluck('id')->toArray();
         foreach ($period as $date) {
             $label = $date->format('d/m');
-            $machine_logs = MachineLog::selectRaw('TIMESTAMPDIFF(SECOND, start_time, end_time) as total_time')
-                ->whereBetween('start_time', [date('Y-m-d 07:30:00'), date('Y-m-d 23:59:59')])
+            $machine_param_logs = MachineParameterLogs::whereIn('machine_id', $machines)
+                ->where('info->Machine_Status', '!=', '0.0')
+                ->whereNotNull('info')
+                ->whereDate('created_at', $date->format('Y-m-d'))
+                ->select(
+                    'machine_id',
+                    DB::raw('DATE(created_at) as log_date'), // Tách ngày
+                    DB::raw('MIN(created_at) as start_time'), // Log đầu tiên trong ngày
+                    DB::raw('MAX(created_at) as end_time'),   // Log cuối cùng trong ngày
+                    DB::raw('TIMESTAMPDIFF(SECOND, MIN(created_at), MAX(created_at)) as working_seconds') // Thời gian làm việc
+                )
+                ->groupBy('machine_id', 'log_date')
                 ->get();
-
+            // return $machine_param_logs;
+            $machine_logs = MachineLog::selectRaw("
+                    machine_id,
+                    CASE 
+                        WHEN DATE(start_time) != DATE(end_time) THEN 
+                            TIMESTAMPDIFF(SECOND, start_time, TIMESTAMP(DATE(start_time), '23:59:59'))
+                        ELSE 
+                            TIMESTAMPDIFF(SECOND, start_time, end_time)
+                    END as total_time
+                ")
+                ->whereIn('machine_id', $machines)
+                ->whereNotNull('start_time')->whereNotNull('end_time')
+                ->whereDate('start_time', $date->format('Y-m-d'))
+                ->get();
             // Tính tổng thời gian dừng
-            $thoi_gian_dung = floor($machine_logs->sum('total_time') / 60); // Đổi giây sang giờ
-            $so_lan_dung = count($machine_logs);
-
+            $thoi_gian_dung = $machine_logs->sum('total_time');
             // Tính thời gian làm việc từ 7:30 sáng đến hiện tại
-            $thoi_gian_lam_viec = 16 * count($machines); // Đổi giây sang giờ
-
+            $thoi_gian_lam_viec = min(24 * 3600 * count($machines), $machine_param_logs->sum('working_seconds'));
+            // return $thoi_gian_dung;
             // Tính thời gian chạy bằng thời gian làm việc - thời gian dừng
             $thoi_gian_chay = max(0, $thoi_gian_lam_viec - $thoi_gian_dung); // Đảm bảo không âm
-
             // Tính tỷ lệ vận hành
             $ty_le_van_hanh = floor(($thoi_gian_chay / max(1, $thoi_gian_lam_viec)) * 100); // Tính phần trăm
 
@@ -257,7 +287,7 @@ class KPIController extends AdminController
                 ")
                 ->first();
 
-            $ty_le = round(($result->ty_le) ?? 0, 1);
+            $ty_le = round(($result->ty_le) ?? 0, 2);
             $data['categories'][] = $label; // Ngày trên trục hoành
             $data['ty_le_ng'][] = $ty_le;
         }

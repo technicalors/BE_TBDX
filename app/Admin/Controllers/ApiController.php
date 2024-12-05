@@ -4342,9 +4342,9 @@ class ApiController extends AdminController
             if (!$material) {
                 return $this->failure('', 'Mã cuộn không tồn tại');
             }
-            $log = WarehouseMLTLog::where('material_id', $material->id)->whereNull('tg_xuat')->orderBy('updated_at', 'DESC')->first();
+            $log = WarehouseMLTLog::where('material_id', $material->id)->orderBy('updated_at', 'DESC')->first();
             $material_mlt_map = LocatorMLTMap::where('material_id', $material->id)->first();
-            if ($log) return $this->failure('', 'Cuộn ' . $material->id . ' đã ở trong kho');
+            if ($log && !$log->tg_xuat) return $this->failure('', 'Cuộn ' . $material->id . ' đã ở trong kho');
             $material->material_id = $material->id;
             $material->status = 1;
             return $this->success($material);

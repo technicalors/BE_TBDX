@@ -5302,7 +5302,9 @@ class ApiController extends AdminController
                     $input['fsc'] = (($row['D'] && strtolower($row['D']) === 'x') ? 1 : 0);
                     $input['goods_receipt_note_id'] = $receipt_note->id;
                     $warehouse_mlt_import = WareHouseMLTImport::create($input);
-                    Supplier::firstOrCreate(['id' => $input['loai_giay']], ['name' => $input['supplier_name']]);
+                    if(!empty($allDataInSheet[3]['B'])){
+                        Supplier::firstOrCreate(['id' => $input['loai_giay']], ['name' => $allDataInSheet[3]['B']]);
+                    }
                 }
             }
             

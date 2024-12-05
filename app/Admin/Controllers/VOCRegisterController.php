@@ -184,7 +184,6 @@ class VOCRegisterController extends AdminController
         // Kiểm tra thư mục có tồn tại không
         if (!File::exists($directory)) {
             return $this->failure('Thư mục không tồn tại: ' . $directory);
-            return;
         }
 
         // Lấy danh sách tất cả các file trong thư mục

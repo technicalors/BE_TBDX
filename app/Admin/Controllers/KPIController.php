@@ -117,7 +117,7 @@ class KPIController extends AdminController
                 ")
                 ->first();
 
-            $ty_le = round(($result->ty_le) ?? 0, 3);
+            $ty_le = round(($result->ty_le) ?? 0, 3) * 100;
             $data['categories'][] = $label; // Ngày trên trục hoành
             $data['ty_le_ng'][] = $ty_le;
         }
@@ -287,7 +287,7 @@ class KPIController extends AdminController
                 ")
                 ->first();
 
-            $ty_le = round(($result->ty_le) ?? 0, 3);
+            $ty_le = round(($result->ty_le) ?? 0, 3) * 100;
             $data['categories'][] = $label; // Ngày trên trục hoành
             $data['ty_le_ng'][] = $ty_le;
         }

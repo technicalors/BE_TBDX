@@ -1923,6 +1923,16 @@ class ApiController extends AdminController
         if (!isset($request->lo_sx) && !isset($request->so_luong)) {
             return $this->failure('', 'Không quét được');
         }
+        $previousQCLog = QCLog::where('lo_sx', $request->lo_sx)->orderBy('updated_at', 'DESC')->first();
+        if ($previousQCLog) {
+            if (isset($previousQCLog->info['phan_dinh'])) {
+                if ($previousQCLog->info['phan_dinh'] === 2) {
+                    return $this->failure('', 'Lô ' . $request->lo_sx . ' bị NG');
+                }
+            } else {
+                return $this->failure('', 'Lô ' . $request->lo_sx . ' chưa qua QC');
+            }
+        }
         $info_lo_sx = InfoCongDoan::where(['lo_sx' => $request->lo_sx, 'machine_id' => $request->machine_id])->first();
         if (!$info_lo_sx) {
             $info_lo_sx = InfoCongDoan::create([

@@ -4994,17 +4994,15 @@ class ApiUIController extends AdminController
 
     public function updateInfoCongDoanPriority()
     {
-        $infos = InfoCongDoan::with('plan')->whereNotNull('ngay_sx')->where('machine_id', 'So01')->whereIn('status', [0, 1])->orderBy('ngay_sx')->orderBy('thu_tu_uu_tien')->orderBy('updated_at')->get();
+        $infos = InfoCongDoan::with('plan')->where('ngay_sx', '>=', date('Y-m-d'))->where('machine_id', 'So01')->whereIn('status', [0, 1])->orderBy('ngay_sx')->orderBy('thu_tu_uu_tien')->orderBy('updated_at')->get();
         try {
             DB::beginTransaction();
-            InfoCongDoanPriority::query()->delete();
             $index = 1;
             foreach ($infos as $key => $info) {
                 InfoCongDoanPriority::create([
                     'info_cong_doan_id' => $info->id,
                     'priority' => $index,
                 ]);
-                $info->update(['thu_tu_uu_tien' => $info->plan->thu_tu_uu_tien ?? $info->thu_tu_uu_tien, 'ngay_sx' => date('Y-m-d')]);
                 $index++;
             }
             DB::commit();

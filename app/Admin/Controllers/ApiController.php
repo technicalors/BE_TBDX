@@ -1864,92 +1864,51 @@ class ApiController extends AdminController
     public function scan(Request $request)
     {
         $tracking = Tracking::where('machine_id', $request->machine_id)->first();
+        $machine = Machine::with('line')->find($request->machine_id);
+        $line = $machine->line;
+        $tem = Tem::where('lo_sx', $request->lo_sx)->first();
+        if (!$tem) {
+            return $this->failure('', 'Không có KHSX');
+        }
+        if (empty($request->so_luong)) {
+            return $this->failure('', 'Không có số lượng');
+        }
+        $check = InfoCongDoan::where('lo_sx', $request->lo_sx)->where('machine_id', $request->machine_id)->first();
+        if ($check) {
+            return $this->failure('', 'Đã quét lô này');
+        }
+        $previousQCLog = QCLog::where('lo_sx', $request->lo_sx)->orderBy('updated_at', 'DESC')->first();
+        if ($previousQCLog) {
+            if (isset($previousQCLog->info['phan_dinh'])) {
+                if ($previousQCLog->info['phan_dinh'] === 2) {
+                    return $this->failure('', 'Lô ' . $request->lo_sx . ' bị NG');
+                }
+            } else {
+                return $this->failure('', 'Lô ' . $request->lo_sx . ' chưa qua QC');
+            }
+        }
         try {
             DB::beginTransaction();
-            $machine = Machine::with('line')->find($request->machine_id);
-            $line = $machine->line;
-            switch ($line->id) {
-                case Line::LINE_IN:
-                    $tem = Tem::where('lo_sx', $request->lo_sx)->first();
-                    if (!$tem) {
-                        return $this->failure('', 'Không có KHSX');
-                    }
-                    if (empty($request->so_luong)) {
-                        return $this->failure('', 'Không có số lượng');
-                    }
-                    $check = InfoCongDoan::where('lo_sx', $request->lo_sx)->where('machine_id', $request->machine_id)->first();
-                    if ($check) {
-                        return $this->failure('', 'Đã quét lô này');
-                    }
-                    $tracking->update([
-                        'lo_sx' => $tem->lo_sx,
-                        'sl_kh' => $request->so_luong,
-                        'thu_tu_uu_tien' => $tem->ordering,
-                        'is_running' => 1,
-                        'pre_counter' => 0,
-                        'error_counter' => 0,
-                    ]);
-                    InfoCongDoan::create([
-                        'lo_sx' => $request->lo_sx,
-                        'machine_id' => $request->machine_id,
-                        'dinh_muc' => $request->so_luong,
-                        'sl_dau_ra_hang_loat' => 0,
-                        'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
-                        'ngay_sx' => date('Y-m-d'),
-                        'nhan_vien_sx' => $request->user()->id ?? null,
-                        'status' => 0,
-                        'order_id' => $tem->order_id ?? null
-                    ]);
-                    break;
-                case Line::LINE_DAN:
-                    // $print_machine = Machine::where('line_id', Line::LINE_IN)->pluck('id')->toArray();
-                    // $lo_sx_in = InfoCongDoan::where('lo_sx', $request->lo_sx)->whereIn('machine_id', $print_machine)->orderBy('updated_at', 'DESC')->first();
-                    // if ($lo_sx_in) {
-                    //     $tracking->update([
-                    //         'lo_sx' => $lo_sx_in->lo_sx,
-                    //         'sl_kh' => $lo_sx_in->sl_dau_ra_hang_loat - $lo_sx_in->sl_ng_sx - $lo_sx_in->sl_ng_qc,
-                    //         'is_running' => 1,
-                    //         'parent_id' => $lo_sx_in->id,
-                    //     ]);
-                    //     InfoCongDoan::where('machine_id', $request->machine_id)->where('status', 1)->update(['status' => 2, 'thoi_gian_ket_thuc' => Carbon::now()]);
-                    // } else {
-                    //     return $this->failure('', 'Lô này chưa được chạy sản xuất công đoạn In');
-                    // }
-                    $tem = Tem::where('lo_sx', $request->lo_sx)->first();
-                    if (!$tem) {
-                        return $this->failure('', 'Không có KHSX');
-                    }
-                    if (empty($request->so_luong)) {
-                        return $this->failure('', 'Không có số lượng');
-                    }
-                    $check = InfoCongDoan::where('lo_sx', $request->lo_sx)->where('machine_id', $request->machine_id)->first();
-                    if ($check) {
-                        return $this->failure('', 'Đã quét lô này');
-                    }
-                    $tracking->update([
-                        'lo_sx' => $tem->lo_sx,
-                        'sl_kh' => $request->so_luong,
-                        'thu_tu_uu_tien' => $tem->ordering,
-                        'is_running' => 1,
-                        'pre_counter' => 0,
-                        'error_counter' => 0,
-                    ]);
-                    InfoCongDoan::create([
-                        'lo_sx' => $request->lo_sx,
-                        'machine_id' => $request->machine_id,
-                        'dinh_muc' => $request->so_luong,
-                        'sl_dau_ra_hang_loat' => 0,
-                        'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
-                        'ngay_sx' => date('Y-m-d'),
-                        'nhan_vien_sx' => $request->user()->id ?? null,
-                        'status' => 0,
-                        'order_id' => $tem->order_id ?? null
-                    ]);
-                    break;
-                default:
-                    # code...
-                    break;
-            }
+
+            $tracking->update([
+                'lo_sx' => $tem->lo_sx,
+                'sl_kh' => $request->so_luong,
+                'thu_tu_uu_tien' => $tem->ordering,
+                'is_running' => 1,
+                'pre_counter' => 0,
+                'error_counter' => 0,
+            ]);
+            InfoCongDoan::create([
+                'lo_sx' => $request->lo_sx,
+                'machine_id' => $request->machine_id,
+                'dinh_muc' => $request->so_luong,
+                'sl_dau_ra_hang_loat' => 0,
+                'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
+                'ngay_sx' => date('Y-m-d'),
+                'nhan_vien_sx' => $request->user()->id ?? null,
+                'status' => 0,
+                'order_id' => $tem->order_id ?? null
+            ]);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -4578,6 +4537,16 @@ class ApiController extends AdminController
         if ($info->step !== 0) {
             return $this->failure([], 'Lô ' . $info->lo_sx . ' chưa sẵn sàng nhập kho');
         }
+        $previousQCLog = QCLog::where('lo_sx', $request->lo_sx)->orderBy('updated_at', 'DESC')->first();
+        if ($previousQCLog) {
+            if (isset($previousQCLog->info['phan_dinh'])) {
+                if ($previousQCLog->info['phan_dinh'] === 2) {
+                    return $this->failure('', 'Lô ' . $request->lo_sx . ' bị NG');
+                }
+            } else {
+                return $this->failure('', 'Lô ' . $request->lo_sx . ' chưa qua QC');
+            }
+        }
         if (isset($request->list_losx) && count($request->list_losx) > 0) {
             $lo_sx = InfoCongDoan::where('lo_sx', $request->list_losx[0])->with('tem', 'plan')->first();
             $customer = "";
@@ -5302,12 +5271,12 @@ class ApiController extends AdminController
                     $input['fsc'] = (($row['D'] && strtolower($row['D']) === 'x') ? 1 : 0);
                     $input['goods_receipt_note_id'] = $receipt_note->id;
                     $warehouse_mlt_import = WareHouseMLTImport::create($input);
-                    if(!empty($allDataInSheet[3]['B'])){
+                    if (!empty($allDataInSheet[3]['B'])) {
                         Supplier::firstOrCreate(['id' => $input['loai_giay']], ['name' => $allDataInSheet[3]['B']]);
                     }
                 }
             }
-            
+
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -8605,8 +8574,8 @@ class ApiController extends AdminController
             ->groupBy('material_id')
             ->pluck('id')->toArray();
         $query = WarehouseMLTLog::whereIn('id', $ids)
-        ->orderBy('material_id')
-        ->orderBy('tg_nhap', 'DESC');
+            ->orderBy('material_id')
+            ->orderBy('tg_nhap', 'DESC');
         if (isset($input['loai_giay']) || isset($input['kho_giay']) || isset($input['dinh_luong']) || isset($input['ma_cuon_ncc']) || isset($input['ma_vat_tu']) || isset($input['so_kg']) || isset($input['so_cuon'])) {
             $query->whereHas('material', function ($q) use ($input) {
                 if (isset($input['loai_giay'])) $q->where('loai_giay', 'like', "%" . $input['loai_giay'] . "%");

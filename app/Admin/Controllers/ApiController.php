@@ -5296,7 +5296,7 @@ class ApiController extends AdminController
                     $input['ma_cuon_ncc'] = trim($row['B']);
                     $input['ma_vat_tu'] = $row['C'] . '(' . $row['F'] . ')' . $row['E'];
                     $input['so_kg'] = str_replace([',', '.'], '', $row['G']);
-                    $input['loai_giay'] = $row['C'];
+                    $input['loai_giay'] = trim($row['C']);
                     $input['kho_giay'] = $row['E'];
                     $input['dinh_luong'] = $row['F'];
                     $input['fsc'] = (($row['D'] && strtolower($row['D']) === 'x') ? 1 : 0);

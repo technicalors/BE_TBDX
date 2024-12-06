@@ -81,7 +81,7 @@ class KPIController extends AdminController
                     return '> 1 Năm';
                 }
             })->sortKeys();
-            // return $results;
+        // return $results;
         $quarters = [
             '1 Quý' => 0,
             '2 Quý' => 0,
@@ -203,36 +203,59 @@ class KPIController extends AdminController
 
     public function kpiTonKhoTP(Request $request)
     {
-        $inventories = WarehouseFGLog::select('pallet_id', 'lo_sx')
-            ->selectRaw('SUM(CASE WHEN type = 1 THEN so_luong ELSE 0 END) AS tong_nhap')
-            ->selectRaw('SUM(CASE WHEN type = 2 THEN so_luong ELSE 0 END) AS tong_xuat')
-            ->selectRaw('(SUM(CASE WHEN type = 1 THEN so_luong ELSE 0 END) - SUM(CASE WHEN type = 2 THEN so_luong ELSE 0 END)) AS ton_kho')
+        $machineDan = Machine::where('line_id', 32)->get()->pluck('id')->toArray();
+        $machineXaLot = Machine::where('line_id', 33)->get()->pluck('id')->toArray();
+        $thung = InfoCongDoan::whereIn('machine_id', $machineDan)->get()->pluck('lo_sx')->unique()->toArray();
+        $lot = InfoCongDoan::whereIn('machine_id', $machineXaLot)->get()->pluck('lo_sx')->unique()->toArray();
+        $export = DB::table('warehouse_fg_logs')->where('type', 2)->pluck('lo_sx')->toArray();
+        // return $export;
+        $inventories = DB::table('warehouse_fg_logs')
+            ->select('so_luong', 'lo_sx')
             ->selectRaw("
-                CASE 
-                    WHEN DATEDIFF(NOW(), created_at) BETWEEN 1 AND 30 THEN '1 tháng'
-                    WHEN DATEDIFF(NOW(), created_at) BETWEEN 31 AND 60 THEN '2 tháng'
-                    WHEN DATEDIFF(NOW(), created_at) BETWEEN 61 AND 90 THEN '3 tháng'
-                    WHEN DATEDIFF(NOW(), created_at) BETWEEN 91 AND 120 THEN '4 tháng'
+                CASE
+                    WHEN lo_sx IN ('" . implode("','", $thung) . "') THEN 'Thùng'
+                    WHEN lo_sx IN ('" . implode("','", $lot) . "') THEN 'Lot'
+                END AS lotType,
+                CASE
+                    WHEN TIMESTAMPDIFF(MONTH, created_at, NOW()) <= 1 THEN '1 tháng'
+                    WHEN TIMESTAMPDIFF(MONTH, created_at, NOW()) <= 2 THEN '2 tháng'
+                    WHEN TIMESTAMPDIFF(MONTH, created_at, NOW()) <= 3 THEN '3 tháng'
+                    WHEN TIMESTAMPDIFF(MONTH, created_at, NOW()) <= 4 THEN '4 tháng'
                     ELSE '> 5 tháng'
-                END AS thoi_gian_ton
+                END AS time_range
             ")
-            ->groupBy('pallet_id', 'lo_sx', 'thoi_gian_ton')
-            ->havingRaw('ton_kho > 0') // Chỉ lấy tồn dương
-            ->get();
-        $months = [
-            '1 tháng' => 0,
-            '2 tháng' => 0,
-            '3 tháng' => 0,
-            '4 tháng' => 0,
-            '> 5 tháng' => 0,
-        ];
-
-        // Gán dữ liệu từ kết quả truy vấn
-        foreach ($inventories as $row) {
-            $months[$row->thoi_gian_ton] = (int)$row->ton_kho;
+            ->where('type', 1)
+            ->whereNotIn('lo_sx', $export)
+            ->get() // Loại bỏ các `lo_sx` đã xuất
+            ->groupBy(['lotType', function ($item) {
+                return $item->time_range;
+            }], preserveKeys: true);
+            $months = [
+                '1 tháng' => 0,
+                '2 tháng' => 0,
+                '3 tháng' => 0,
+                '4 tháng' => 0,
+                '> 5 tháng' => 0,
+            ];
+        $series = [];
+        foreach($inventories as $lotType => $inventory){
+            if(!$lotType){
+                continue;
+            }
+            $seriesItem = [];
+            $seriesItem['name'] = $lotType;
+            $seriesItem['data'] = [];
+            foreach ($months as $key => $month) {
+                if(isset($inventory[$key])){
+                    $seriesItem['data'][] = (int)$inventory[$key]->sum('so_luong');
+                }else{
+                    $seriesItem['data'][] = 0;
+                }
+            }
+            $series[] = $seriesItem;
         }
         $data['categories'] = array_keys($months);
-        $data['inventory'] = array_values($months);
+        $data['series'] = $series;
         return $this->success($data);
     }
 

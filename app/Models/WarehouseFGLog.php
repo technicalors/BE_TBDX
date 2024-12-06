@@ -49,11 +49,15 @@ class WarehouseFGLog extends Model
 
     public function order()
     {
-        return $this->hasOne(Order::class, 'id', 'order_id');   
+        return $this->hasOne(Order::class, 'id', 'order_id');
     }
 
     public function warehouse_fg_export()
     {
         return $this->belongsTo(WareHouseFGExport::class, ['order_id', 'delivery_note_id'], ['order_id', 'delivery_note_id']);
+    }
+    public function typeTwoRecords()
+    {
+        return $this->hasMany(WarehouseFgLog::class, 'lo_sx', 'lo_sx');
     }
 }

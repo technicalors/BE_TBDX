@@ -681,7 +681,7 @@ class ApiUIController extends AdminController
         foreach ($lines as $line_id) {
             $line = Line::find($line_id);
             $machine_ids = Machine::where('line_id', $line_id)->where('is_iot', 1)->pluck('id')->toArray();
-            $info_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->whereDate('ngay_sx', date('Y-m-d'));
+            $info_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->whereDate('thoi_gian_bat_dau', date('Y-m-d'));
             $infos = (clone $info_query)->get();
             $sl_hien_tai = (clone $info_query)->where('status', '>=', 1)->sum('sl_dau_ra_hang_loat');
             $ke_hoach_ca = 0;

@@ -681,13 +681,16 @@ class ApiUIController extends AdminController
         foreach ($lines as $line_id) {
             $line = Line::find($line_id);
             $machine_ids = Machine::where('line_id', $line_id)->where('is_iot', 1)->pluck('id')->toArray();
+            $info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->where(function($q){
+                $q->whereDate('ngay_sx', date('Y-m-d'))->orWhereDate('thoi_gian_bat_dau', date('Y-m-d'));
+            });
             $info_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->whereDate('thoi_gian_bat_dau', date('Y-m-d'));
             $infos = (clone $info_query)->get();
             $sl_hien_tai = (clone $info_query)->where('status', '>=', 1)->sum('sl_dau_ra_hang_loat');
             $ke_hoach_ca = 0;
             switch ((string)$line_id) {
                 case '30':
-                    $ke_hoach_ca = $infos->sum('dinh_muc');
+                    $ke_hoach_ca = $info_plan_query->sum('dinh_muc');
                     // $sl_muc_tieu = (int)(($ke_hoach_ca / 8) * (int)((strtotime(date('Y-m-d H:i:s')) - strtotime(date('Y-m-d 07:30:00'))) / 3600));
                     $sl_muc_tieu = $ke_hoach_ca;
                     break;

@@ -219,12 +219,13 @@ class KPIController extends AdminController
                     WHEN lo_sx IN ('" . implode("','", $lot) . "') THEN 'Lot'
                 END AS lotType,
                 CASE
-                    WHEN TIMESTAMPDIFF(MONTH, created_at, NOW()) <= 1 THEN '1 tháng'
-                    WHEN TIMESTAMPDIFF(MONTH, created_at, NOW()) <= 2 THEN '2 tháng'
-                    WHEN TIMESTAMPDIFF(MONTH, created_at, NOW()) <= 3 THEN '3 tháng'
-                    WHEN TIMESTAMPDIFF(MONTH, created_at, NOW()) <= 4 THEN '4 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) <= 30 THEN '1 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 31 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 60 THEN '2 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 61 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 90 THEN '3 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 91 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 120 THEN '4 tháng'
                     ELSE '> 5 tháng'
-                END AS time_range
+                END AS time_range,
+                DATEDIFF(NOW(), created_at) AS days_since_latest
             ")
             ->where('type', 1)
             ->whereNotIn('lo_sx', $export)

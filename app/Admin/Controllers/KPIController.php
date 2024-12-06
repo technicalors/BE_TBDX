@@ -203,6 +203,8 @@ class KPIController extends AdminController
 
     public function kpiTonKhoTP(Request $request)
     {
+        ini_set('memory_limit', '1024M');
+        ini_set('max_execution_time', 0);
         $machineDan = Machine::where('line_id', 32)->get()->pluck('id')->toArray();
         $machineXaLot = Machine::where('line_id', 33)->get()->pluck('id')->toArray();
         $thung = InfoCongDoan::whereIn('machine_id', $machineDan)->get()->pluck('lo_sx')->unique()->toArray();

@@ -48,7 +48,9 @@ class KPIController extends AdminController
         $machines = Machine::where('is_iot', 1)->where('line_id', 30)->pluck('id')->toArray();
         foreach ($period as $date) {
             $label = $date->format('d/m');
-            $plannedQuantity = InfoCongDoan::whereIn('machine_id', $machines)->whereDate('ngay_sx', $date->format("Y-m-d"))->sum('dinh_muc');
+            $plannedQuantity = InfoCongDoan::whereIn('machine_id', $machines)->where(function ($q) use ($date) {
+                $q->whereDate('ngay_sx', $date->format("Y-m-d"))->orWhereDate('thoi_gian_bat_dau', $date->format("Y-m-d"));
+            })->sum('dinh_muc');
             $actualQuantity = InfoCongDoan::whereIn('machine_id', $machines)->whereDate('ngay_sx', $date->format("Y-m-d"))->sum('sl_dau_ra_hang_loat');
             $data['categories'][] = $label; // Ngày trên trục hoành
             $data['plannedQuantity'][] = (int)$plannedQuantity; // Tổng số lượng tất cả công đoạn
@@ -192,7 +194,9 @@ class KPIController extends AdminController
         $machines = Machine::where('is_iot', 1)->where('line_id', 31)->pluck('id')->toArray();
         foreach ($period as $date) {
             $label = $date->format('d/m');
-            $plannedQuantity = InfoCongDoan::whereIn('machine_id', $machines)->whereDate('thoi_gian_bat_dau', $date->format("Y-m-d"))->sum('dinh_muc');
+            $plannedQuantity = InfoCongDoan::whereIn('machine_id', $machines)->where(function ($q) use ($date) {
+                $q->whereDate('ngay_sx', $date->format("Y-m-d"))->orWhereDate('thoi_gian_bat_dau', $date->format("Y-m-d"));
+            })->sum('dinh_muc');
             $actualQuantity = InfoCongDoan::whereIn('machine_id', $machines)->whereDate('thoi_gian_bat_dau', $date->format("Y-m-d"))->sum('sl_dau_ra_hang_loat');
             $data['categories'][] = $label; // Ngày trên trục hoành
             $data['plannedQuantity'][] = (int)$plannedQuantity; // Tổng số lượng tất cả công đoạn
@@ -233,25 +237,25 @@ class KPIController extends AdminController
             ->groupBy(['lotType', function ($item) {
                 return $item->time_range;
             }], preserveKeys: true);
-            $months = [
-                '1 tháng' => 0,
-                '2 tháng' => 0,
-                '3 tháng' => 0,
-                '4 tháng' => 0,
-                '> 5 tháng' => 0,
-            ];
+        $months = [
+            '1 tháng' => 0,
+            '2 tháng' => 0,
+            '3 tháng' => 0,
+            '4 tháng' => 0,
+            '> 5 tháng' => 0,
+        ];
         $series = [];
-        foreach($inventories as $lotType => $inventory){
-            if(!$lotType){
+        foreach ($inventories as $lotType => $inventory) {
+            if (!$lotType) {
                 continue;
             }
             $seriesItem = [];
             $seriesItem['name'] = $lotType;
             $seriesItem['data'] = [];
             foreach ($months as $key => $month) {
-                if(isset($inventory[$key])){
+                if (isset($inventory[$key])) {
                     $seriesItem['data'][] = (int)$inventory[$key]->sum('so_luong');
-                }else{
+                } else {
                     $seriesItem['data'][] = 0;
                 }
             }

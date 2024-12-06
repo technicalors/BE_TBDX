@@ -28,7 +28,9 @@ class CustomUser extends Model
         'usage_time_in_day',
         'created_at',
         'updated_at',
-        'deleted_at'
+        'deleted_at',
+        'function_user',
+        'department_id'
     ];
     protected $casts = [
         'id' => 'string'
@@ -110,5 +112,10 @@ class CustomUser extends Model
     public function deliveryNotes()
     {
         return $this->belongsToMany(DeliveryNote::class, 'admin_user_delivery_note', 'admin_user_id', 'delivery_note_id');
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class, 'department_id');
     }
 }

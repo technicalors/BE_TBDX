@@ -4,6 +4,7 @@ use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\ApiController;
 use App\Admin\Controllers\DeliveryNoteController;
+use App\Admin\Controllers\DepartmentController;
 use App\Admin\Controllers\InfoCongDoanController;
 use App\Admin\Controllers\KPIController;
 use App\Admin\Controllers\LSXPalletController;
@@ -700,6 +701,11 @@ Route::group([
     $router->get('kpi-ty-le-loi-may', [KPIController::class, 'kpiTyLeLoiMay']);
     $router->get('kpi-ty-le-ng-oqc', [KPIController::class, 'kpiTyLeNGOQC']);
     $router->get('kpi-ton-kho-tp', [KPIController::class, 'kpiTonKhoTP']);
+
+    $router->get('departments/list', [DepartmentController::class, 'index']);
+    $router->post('departments/create', [DepartmentController::class, 'create']);
+    $router->post('departments/delete', [DepartmentController::class, 'delete']);
+    $router->patch('departments/update', [DepartmentController::class, 'update']);
 });
 
 Route::group([

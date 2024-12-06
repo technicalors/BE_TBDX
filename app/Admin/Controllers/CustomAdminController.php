@@ -3,6 +3,7 @@
 namespace App\Admin\Controllers;
 
 use App\Models\CustomUser;
+use App\Models\Department;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
@@ -134,7 +135,7 @@ class CustomAdminController extends AdminController
     public function getUsers(Request $request)
     {
         $query = CustomUser::with('roles');
-        if(!isset($request->all_user)){
+        if (!isset($request->all_user)) {
             $query->whereNull('deleted_at');
         }
         if (isset($request->name)) {
@@ -143,9 +144,15 @@ class CustomAdminController extends AdminController
         if (isset($request->username)) {
             $query->where('username', 'like', "%$request->username%");
         }
-        $users = $query->get();
+        if (isset($request->department_name)) {
+            $query->whereHas('department', function($q)use($request){
+                $q->where('name', 'like', "$request->department_name%");
+            });
+        }
+        $users = $query->with('department')->get();
         foreach ($users as $key => $user) {
             $user->usage_time = round($user->usage_time_in_day / 60);
+            $user->department_name = $user->department->name ?? "";
         }
         return $this->success($users);
     }
@@ -166,7 +173,7 @@ class CustomAdminController extends AdminController
             $update = $user->update($input);
             if ($update) {
                 $user_roles = DB::table('admin_role_users')->where('user_id', $user->id)->delete();
-                foreach ($input['roles'] as $role) {
+                foreach ($input['roles'] ?? [] as $role) {
                     DB::table('admin_role_users')->insert(['role_id' => $role, 'user_id' => $user->id]);
                 }
                 return $this->success($user);
@@ -192,15 +199,26 @@ class CustomAdminController extends AdminController
     public function deleteUsers(Request $request)
     {
         $input = $request->all();
-        CustomUser::whereIn('id', $input)->update(['deleted_at'=>now()]);
+        CustomUser::whereIn('id', $input)->update(['deleted_at' => now()]);
         return $this->success('Xoá thành công');
     }
 
     public function exportUsers(Request $request)
     {
         $query = CustomUser::with('roles')->whereNull('deleted_at');
+        if (!isset($request->all_user)) {
+            $query->whereNull('deleted_at');
+        }
         if (isset($request->name)) {
             $query->where('name', 'like', "%$request->name%");
+        }
+        if (isset($request->username)) {
+            $query->where('username', 'like', "%$request->username%");
+        }
+        if (isset($request->department_name)) {
+            $query->whereHas('department', function($q)use($request){
+                $q->where('name', 'like', "$request->department_name%");
+            });
         }
         $users = $query->get();
         foreach ($users as $user) {
@@ -209,6 +227,7 @@ class CustomAdminController extends AdminController
                 $bo_phan[] = $role->name;
             }
             $user->bo_phan = implode(", ", $bo_phan);
+            $user->department_name = $user->department->name ?? "";
         }
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -218,6 +237,7 @@ class CustomAdminController extends AdminController
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
                 'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'wrapText' => true
             ],
             'borders' => array(
                 'outline' => array(
@@ -244,11 +264,13 @@ class CustomAdminController extends AdminController
                 ),
             ),
         ];
-        $header = ['Username', 'Tên', 'Bộ phận'];
+        $header = ['Username', 'Tên', 'Bộ phận', 'Phân quyền', 'User chức năng'];
         $table_key = [
             'A' => 'username',
             'B' => 'name',
-            'C' => 'bo_phan',
+            'C' => 'department_name',
+            'D' => 'bo_phan',
+            'E' => 'function_user'
         ];
         foreach ($header as $key => $cell) {
             if (!is_array($cell)) {
@@ -275,7 +297,12 @@ class CustomAdminController extends AdminController
             $table_row += 1;
         }
         foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            if ($column->getColumnIndex() === 'D') {
+                $sheet->getColumnDimension($column->getColumnIndex())->setWidth(50);
+            } else {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            }
+
             $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($table_row - 1))->applyFromArray($border);
         }
         header("Content-Description: File Transfer");
@@ -314,7 +341,9 @@ class CustomAdminController extends AdminController
                 }
                 $input['username'] = $row['A'];
                 $input['name'] = $row['B'];
-                $input['bo_phan'] = $row['C'];
+                $input['department_name'] = $row['C'];
+                $input['bo_phan'] = $row['D'];
+                $input['function_user'] = $row['E'];
                 // if(!$input['username'] &&  $input['name'] && $input['bo_phan']){
                 //     break;
                 // }
@@ -329,43 +358,29 @@ class CustomAdminController extends AdminController
             $user = CustomUser::where('username', $input['username'])->first();
             if ($user) {
                 $user->update($input);
-                DB::table('admin_role_users')->where('user_id', $user->id)->delete();
-                foreach (explode(',', $input['bo_phan']) as $bo_phan) {
-                    $role = DB::table('admin_roles')->where('name', trim($bo_phan))->first();
-                    if ($role) {
-                        $exists = DB::table('admin_role_users')
-                            ->where('role_id', $role->id)
-                            ->where('user_id', $user->id)
-                            ->exists();
-
-                        if (!$exists) {
-                            DB::table('admin_role_users')->insert([
-                                'role_id' => $role->id,
-                                'user_id' => $user->id,
-                            ]);
-                        }
-                    }
-                }
             } else {
                 $input['password'] = Hash::make('123456');
                 $user = CustomUser::create($input);
-                foreach (explode(',', $input['bo_phan']) as $bo_phan) {
-                    $role = DB::table('admin_roles')->where('name', trim($bo_phan))->first();
-                    if ($role) {
-                        $exists = DB::table('admin_role_users')
-                            ->where('role_id', $role->id)
-                            ->where('user_id', $user->id)
-                            ->exists();
+            }
+            DB::table('admin_role_users')->where('user_id', $user->id)->delete();
+            foreach (explode(',', $input['bo_phan']) as $bo_phan) {
+                $role = DB::table('admin_roles')->where('name', trim($bo_phan))->first();
+                if ($role) {
+                    $exists = DB::table('admin_role_users')
+                        ->where('role_id', $role->id)
+                        ->where('user_id', $user->id)
+                        ->exists();
 
-                        if (!$exists) {
-                            DB::table('admin_role_users')->insert([
-                                'role_id' => $role->id,
-                                'user_id' => $user->id,
-                            ]);
-                        }
+                    if (!$exists) {
+                        DB::table('admin_role_users')->insert([
+                            'role_id' => $role->id,
+                            'user_id' => $user->id,
+                        ]);
                     }
                 }
             }
+            $department = Department::where('name', trim($input['department_name']))->first();
+            $user->update(['department_id'=>$department->id ?? null]);
         }
         return $this->success([], 'Upload thành công');
     }

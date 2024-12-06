@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
+use Illuminate\Support\Facades\DB;
 
 class RoleController extends AdminController
 {
@@ -106,6 +107,7 @@ class RoleController extends AdminController
     public function deleteRoles(Request $request){
         $input = $request->all();
         Role::whereIn('id', $input)->delete();
+        DB::table('admin_role_permissions')->whereIn('role_id', $input)->delete();
         return $this->success('Xoá thành công');
     }
 
@@ -130,6 +132,7 @@ class RoleController extends AdminController
             'alignment' => [
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
                 'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'wrapText' => true
             ],
             'borders' => array(
                 'outline' => array(
@@ -156,7 +159,7 @@ class RoleController extends AdminController
                 ),
             ),
         ];
-        $header = ['Tên', 'Quyền'];
+        $header = ['Tên quyền', 'Chức năng'];
         $table_key = [
             'A'=>'name',
             'B'=>'quyen',
@@ -167,7 +170,7 @@ class RoleController extends AdminController
             }
             $start_col+=1;
         }
-        $sheet->setCellValue([1, 1], 'Quản lý bộ phận')->mergeCells([1, 1, $start_col-1, 1])->getStyle([1, 1, $start_col-1, 1])->applyFromArray($titleStyle);
+        $sheet->setCellValue([1, 1], 'Quản lý phân quyền')->mergeCells([1, 1, $start_col-1, 1])->getStyle([1, 1, $start_col-1, 1])->applyFromArray($titleStyle);
         $sheet->getRowDimension(1)->setRowHeight(40);
         $table_col = 1;
         $table_row = $start_row+1;
@@ -185,18 +188,22 @@ class RoleController extends AdminController
             $table_row+=1;
         }
         foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            if ($column->getColumnIndex() === 'B') {
+                $sheet->getColumnDimension($column->getColumnIndex())->setWidth(50);
+            } else {
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            }
             $sheet->getStyle($column->getColumnIndex().($start_row).':'.$column->getColumnIndex().($table_row-1))->applyFromArray($border);
         }
         header("Content-Description: File Transfer");
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="Bộ phận.xlsx"');
+        header('Content-Disposition: attachment;filename="Phân quyền.xlsx"');
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
         $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        $writer->save('exported_files/Bộ phận.xlsx');
-        $href = '/exported_files/Bộ phận.xlsx';
+        $writer->save('exported_files/Phân quyền.xlsx');
+        $href = '/exported_files/Phân quyền.xlsx';
         return $this->success($href);
     }
 

@@ -45,7 +45,7 @@ class PermissionController extends AdminController
 
     public function createPermission(Request $request){
         $input = $request->all();
-        // $input['slug'] = Str::slug($input['name']);
+        $input['slug'] = Str::slug($input['name']);
         // if(isset($input['link'])){
         //     $input['http_path'] = implode(';', $input['link']);
         // }

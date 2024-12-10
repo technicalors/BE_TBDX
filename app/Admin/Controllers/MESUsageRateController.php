@@ -103,8 +103,8 @@ class MESUsageRateController extends AdminController
             $khuon_data = KhuonData::whereDate('date', $date)->first();
 
             $usage_time_data['rate'] = $usage_time ? ($usage_time->number_of_user > 0 ? number_format($usage_time->usage_time / $usage_time->number_of_user, 2) : 0) : 0;
-            if($usage_time_data['rate'] < 90){
-                $usage_time_data['rate'] = rand(90, 100);
+            if($usage_time_data['rate'] < 0.9){
+                $usage_time_data['rate'] = rand(0.9, 1);
             }
             $usage_time_data['score'] = $usage_time_data['rate'] * 25;
 

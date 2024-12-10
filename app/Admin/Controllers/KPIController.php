@@ -166,7 +166,7 @@ class KPIController extends AdminController
                 ->whereDate('start_time', $date->format('Y-m-d'))
                 ->get();
             // Tính tổng thời gian dừng
-            $thoi_gian_dung = $machine_logs->sum('total_time');
+            $thoi_gian_dung = $machine_logs->sum('total_time') / count($machines);
             // Tính thời gian làm việc từ 7:30 sáng đến hiện tại
             $thoi_gian_lam_viec = min(24 * 3600 * count($machines), $machine_param_logs->sum('working_seconds'));
             // return $thoi_gian_dung;

@@ -387,7 +387,16 @@ class OrderController extends AdminController
         try {
             DB::beginTransaction();
             $input = $request->all();
-            $input['id'] = isset($input['dot']) ? $input['mdh'] . '-' . $input['mql'] . '-' . $input['dot'] : $input['mdh'] . '-' . $input['mql'];
+            if(empty($input['mdh'])){
+                return $this->failure('', 'Không có mã đơn hàng');
+            }
+            if(empty($input['mql'])){
+                return $this->failure('', 'Không có mã quản lý');
+            }
+            if(empty($input['hna_giao'])){
+                return $this->failure('', 'Không có hạn giao');
+            }
+            $input['id'] = $this->createNextOrderId($input['mdh'], $input['mql'], $input['han_giao']);
             $order = Order::create($input);
             DB::commit();
         } catch (\Throwable $th) {

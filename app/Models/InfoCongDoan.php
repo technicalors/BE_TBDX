@@ -112,4 +112,12 @@ class InfoCongDoan extends Model
     {
         return $this->hasOne(InfoCongDoanPriority::class, 'info_cong_doan_id');
     }
+    public function lsxpallet()
+    {
+        return $this->hasOne(LSXPallet::class, 'lo_sx', 'lo_sx');
+    }
+    public function warehouseFGLog()
+    {
+        return $this->hasOne(WarehouseFGLog::class, 'lo_sx', 'lo_sx');
+    }
 }

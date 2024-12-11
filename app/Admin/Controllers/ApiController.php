@@ -4540,7 +4540,7 @@ class ApiController extends AdminController
     public function checkLosx(Request $request)
     {
         $input = $request->all();
-        $info = InfoCongDoan::with('tem', 'plan')->where('lo_sx', $input['lo_sx'])->orderBy('created_at', 'DESC')->first();
+        $info = InfoCongDoan::with('tem', 'plan', 'lsxpallet', 'warehouseFGLog')->where('lo_sx', $input['lo_sx'])->orderBy('created_at', 'DESC')->first();
         if (!$info) {
             return $this->failure([], 'Lô chưa được quét vào sản xuất');
         }
@@ -4556,6 +4556,12 @@ class ApiController extends AdminController
             } else {
                 return $this->failure('', 'Lô ' . $request->lo_sx . ' chưa qua QC');
             }
+        }
+        if($info->lsxpallet){
+            return $this->failure('', 'Lô ' . $request->lo_sx . ' đã quét tem gộp');
+        }
+        if($info->warehouseFGLog){
+            return $this->failure('', 'Lô ' . $request->lo_sx . ' đã quét nhập kho');
         }
         if (isset($request->list_losx) && count($request->list_losx) > 0) {
             $lo_sx = InfoCongDoan::where('lo_sx', $request->list_losx[0])->with('tem', 'plan')->first();

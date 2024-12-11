@@ -681,7 +681,7 @@ class ApiUIController extends AdminController
         foreach ($lines as $line_id) {
             $line = Line::find($line_id);
             $machine_ids = Machine::where('line_id', $line_id)->where('is_iot', 1)->pluck('id')->toArray();
-            $info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->where(function($q){
+            $info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->where(function ($q) {
                 $q->whereDate('ngay_sx', date('Y-m-d'))->orWhereDate('thoi_gian_bat_dau', date('Y-m-d'));
             });
             $info_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->whereDate('thoi_gian_bat_dau', date('Y-m-d'));
@@ -5047,9 +5047,44 @@ class ApiUIController extends AdminController
     }
     public function wtf()
     {
-        $array = CustomUser::all()->pluck('username')->toArray();
-        // $user = CustomUser::whereNotIn('id', [1,2,3,4,6,7,10,11,13,14,15,17,18,19,20,21,22,23,24,25,26,27,28,29,31,39,43,49,50,53,54,55,56,57,61,62,64,65,66,68,69,70,80,85,86,87,88,90,92,94,96,98,99,100,101,103,106,107,109,110,116,117,119,123,124,125,126,128,129,131,133,134,135,136,137,140,141,142,143,144,145,147,148,192,193,194,195,196,197,198,199,200,201,202,203,205,215,216,218,220,221,223,224,225,227,228,229,231,232,233,234,235,238,239,240,255,263,264,266,267,268,269,273,274,275,276,277,278,279,280,282,283,284,285,286,287,288])
-        // ->update(['deleted_at'=>now()]);
-        return implode(",", $array);
+        $materials = array(
+            array('id' => '24-22578'),
+            array('id' => '24-22577'),
+            array('id' => '24-22576'),
+            array('id' => '24-22575'),
+            array('id' => '24-22574'),
+            array('id' => '24-22573'),
+            array('id' => '24-22572'),
+            array('id' => '24-22571'),
+            array('id' => '24-22570'),
+            array('id' => '24-22569'),
+            array('id' => '24-22568'),
+            array('id' => '24-22567'),
+            array('id' => '24-22566'),
+            array('id' => '24-22565'),
+            array('id' => '24-22564'),
+            array('id' => '24-22563'),
+            array('id' => '24-22562'),
+            array('id' => '24-22561')
+        );
+        $material_ids = array_column($materials, 'id');
+        $start = 14798;
+        try {
+            DB::beginTransaction();
+            foreach ($material_ids as $key => $value) {
+                $id = '24-'.$start;
+                $material = Material::where('id', $value)->update(['id'=>$id]);
+                $log = WarehouseMLTLog::where('material_id', $value)->update(['material_id'=>$id]);
+                $locator = LocatorMLTMap::where('material_id', $value)->update(['material_id'=>$id]);
+                $start + 1;
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            throw $th;
+        }
+        
+        
+        return 'done';
     }
 }

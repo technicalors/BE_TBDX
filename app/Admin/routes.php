@@ -473,7 +473,7 @@ Route::group([
 
     $router->get('warehouse/fg/export/list', [ApiController::class, 'getWarehouseFGExportList']);
     $router->post('warehouse/fg/export/update', [ApiController::class, 'updateWarehouseFGExport']);
-    $router->post('warehouse/fg/export/create', [ApiController::class, 'createWarehouseFGExport']);
+    $router->post('warehouse/fg/export/create', [ApiController::class, 'createWarehouseFGExport'])->middleware('prevent-duplicate-requests');;
     $router->delete('warehouse/fg/export/delete/{id}', [ApiController::class, 'deleteWarehouseFGExport']);
     $router->get('warehouse/list-pallet', [ApiController::class, 'getListPalletWarehouse']);
     $router->get('warehouse/fg/export/list/export', [ApiController::class, 'exportWarehouseFGExportList']);

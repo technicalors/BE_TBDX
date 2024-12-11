@@ -2667,10 +2667,10 @@ class ApiController extends AdminController
             DB::beginTransaction();
             if ($phan_dinh === 1) {
                 $material = Material::orderByraw('CHAR_LENGTH(id) DESC')->where('id', 'like', date('y') . '-%')->orderBy('id', 'DESC')->whereRaw('LENGTH(id) = 8')->first();
-                $counter = $material ? explode('-', $material->id) : [0, 0];
+                $matches = $material ? explode('-', $material->id) : [0, 0];
                 $material_input = $mtl_import->toArray();
-                if (isset($counter[1])) {
-                    $material_id = ($counter[0] ? $counter[0] : date('y')) . '-' . str_pad($counter[1] + 1, 5, '0', STR_PAD_LEFT);
+                if (isset($matches[1])) {
+                    $material_id = ($matches[0] ? $matches[0] : date('y')) . '-' . str_pad($matches[1] + 1, 5, '0', STR_PAD_LEFT);
                     $material_input['id'] = $material_id;
                     $material_input['so_kg_dau'] = $material_input['so_kg'];
                     $material_input['so_m_toi'] = floor($material_input['so_kg'] / ($material_input['kho_giay'] / 100) / ($material_input['dinh_luong'] / 1000));

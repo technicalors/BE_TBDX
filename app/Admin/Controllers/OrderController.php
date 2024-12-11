@@ -614,46 +614,27 @@ class OrderController extends AdminController
         // file path
         $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-        $orderData = [];
         $customer_array = Customer::pluck('id')->toArray();
-        foreach ($allDataInSheet as $key => $row) {
-            if (!$row['O'] && !$row['F'] && !$row['D']) {
-                break;
-            }
-            if ($key > 1 && $row['B']) {
-                if (!$row['O']) {
-                    return $this->failure([], 'Hàng số ' . $key . ': Thiếu thông tin số lượng');
-                }
-                if (!$row['F']) {
-                    return $this->failure([], 'Hàng số ' . $key . ': Thiếu thông tin mdh');
-                }
-                if (!$row['D']) {
-                    return $this->failure([], 'Hàng số ' . $key . ': Thiếu thông mã khách hàng');
-                }
-                if(!in_array($row['D'], $customer_array)){
-                    // return $this->failure([], 'Hàng số ' . $key . ': Mã khách hàng không tồn tại'); 
-                    Customer::updateOrCreate(['id'=>$row['D']], ['name'=>$row['C'], 'namp_input'=>$row['C']]);
-                    CustomerShort::updateOrCreate(['customer_id'=>$row['D'], 'short_name'=>$row['C']]);
-                }
-                $id = $row['F'] . '-' . $row['H'];
-                $check = Order::where('id', $id)->withTrashed()->forceDelete();
-                // if ($check) {
-                //     $check->forceDelete();
-                // }
-            }
-            $orderData[$key] = $row;
-        }
+        $data = [];
         try {
             DB::beginTransaction();
-            foreach ($orderData as $key => $row) {
-                //Lấy dứ liệu từ dòng thứ 3
-                if (!$row['O'] && !$row['F'] && !$row['D']) {
-                    break;
-                }
+            foreach ($allDataInSheet as $key => $row) {
                 if ($key > 1 && $row['B']) {
+                    if (!$row['O']) {
+                        return $this->failure([], 'Hàng số ' . $key . ': Thiếu thông tin số lượng');
+                    }
+                    if (!$row['F']) {
+                        return $this->failure([], 'Hàng số ' . $key . ': Thiếu thông tin mdh');
+                    }
+                    if (!$row['D']) {
+                        return $this->failure([], 'Hàng số ' . $key . ': Thiếu thông mã khách hàng');
+                    }
+                    if(!in_array($row['D'], $customer_array)){
+                        Customer::updateOrCreate(['id'=>$row['D']], ['name'=>$row['C'], 'namp_input'=>$row['C']]);
+                        CustomerShort::updateOrCreate(['customer_id'=>$row['D'], 'short_name'=>$row['C']]);
+                    }
                     // $row['F'] = $this->formarMDH($row['F']);
                     $row = array_map('trim', $row);
-                    $input['id'] = $row['F'] . '-' . $row['H'];
                     $input['ngay_dat_hang'] = $this->formatDate($row['B']);
                     $input['short_name'] = $row['C'];
                     $input['customer_id'] = $row['D'];
@@ -690,35 +671,50 @@ class OrderController extends AdminController
                     $input['size'] = $row['Y'];
                     $input['price'] = $row['Z'] ? str_replace(',', '', $row['Z']) : null;
                     $input['into_money'] = $row['AA'] ? str_replace(',', '', $row['AA']) : null;
-                    $input['dot'] = $row['AB'];
+                    $input['dot'] = $row['AB'] ?? null;
                     $input['han_giao'] = $row['AE'] ? $this->formatDate($row['AE']) : null;
                     $input['han_giao_sx'] = $row['AE'] ? $this->formatDate($row['AE']) : null;
-                    $input['xuong_giao'] = $row['AC'] ?? "";
-                    $input['note_1'] = $row['AD'] ?? "";
-                    $input['note_2'] = $row['AF'] ?? "";
-                    $input['xuat_tai_kho'] = $row['AG'] ?? "";
+                    $input['xuong_giao'] = $row['AC'] ?? null;
+                    $input['note_1'] = $row['AD'] ?? null;
+                    $input['note_2'] = $row['AF'] ?? null;
+                    $input['xuat_tai_kho'] = $row['AG'] ?? null;
                     $input['tg_doi_model'] = 0;
                     $input['toc_do'] = 80;
-
-                    // $input['layout_id'] = $row['AH'];
-                    $check = Order::find($input['id']);
-                    if ($check) {
-                        continue;
-                    }
-                    if (isset($input['mdh']) && isset($input['ngay_dat_hang'])) {
-                        $input['created_by'] = $request->user()->id;
-                        Order::create($input);
-                    }
+                    $input['id'] = $this->createNextOrderId($input['mdh'], $input['mql'], $input['han_giao']);
+                    $input['created_by'] = $request->user()->id;
+                    $data[] = $input;
                     unset($input);
                 }
+            }
+            foreach($data as $value){
+                $value['created_by'] = $request->user()->id;
+                Order::updateOrCreate(['id'=>$value['id']], $value);
             }
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
             ErrorLog::saveError($request, $th);
+            throw $th;
             return $this->failure($th, 'File import có vấn đề vui lòng kiểm tra lại');
         }
         return $this->success([], 'Upload thành công');
+    }
+
+    function createNextOrderId($mdh, $mql, $hanGiao) {
+        // Tìm tất cả bản ghi trùng `mdh`, `mql`, và `han_giao`
+        $latestOrderId = Order::where('id', 'like', $mdh."-".$mql."%") // Tìm các id có cùng tiền tố
+        ->where('han_giao', '!=', $hanGiao)
+        ->withTrashed()
+        ->get()
+        ->sortByDesc('id', SORT_NATURAL)
+        ->first();
+        if (!$latestOrderId) {
+            return "$mdh-$mql";
+        }
+        $parts = explode('-', $latestOrderId->id);
+        $latestStt = isset($parts[2]) ? (int)$parts[2] : 0;
+        $nextStt = $latestStt + 1;
+        return "$mdh-$mql-$nextStt";
     }
 
     public function splitOrders(Request $request)

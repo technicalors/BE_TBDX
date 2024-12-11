@@ -5048,29 +5048,29 @@ class ApiUIController extends AdminController
     public function wtf()
     {
         $materials = array(
-            array('id' => '24-22578', 'old_id'=>'24-14798'),
-            array('id' => '24-22577', 'old_id'=>'24-14799'),
-            array('id' => '24-22576', 'old_id'=>'24-14800'),
-            array('id' => '24-22575', 'old_id'=>'24-14801'),
-            array('id' => '24-22574', 'old_id'=>'24-14802'),
-            array('id' => '24-22573', 'old_id'=>'24-14803'),
-            array('id' => '24-22572', 'old_id'=>'24-14804'),
-            array('id' => '24-22571', 'old_id'=>'24-14805'),
-            array('id' => '24-22570', 'old_id'=>'24-14806'),
-            array('id' => '24-22569', 'old_id'=>'24-14807'),
-            array('id' => '24-22568', 'old_id'=>'24-14808'),
-            array('id' => '24-22567', 'old_id'=>'24-14809'),
-            array('id' => '24-22566', 'old_id'=>'24-14810'),
-            array('id' => '24-22565', 'old_id'=>'24-14811'),
-            array('id' => '24-22564', 'old_id'=>'24-14812'),
-            array('id' => '24-22563', 'old_id'=>'24-14813'),
-            array('id' => '24-22562', 'old_id'=>'24-14814'),
-            array('id' => '24-22561', 'old_id'=>'24-14815')
+            array('id' => '24-22578', 'new_id'=>'24-14798'),
+            array('id' => '24-22577', 'new_id'=>'24-14799'),
+            array('id' => '24-22576', 'new_id'=>'24-14800'),
+            array('id' => '24-22575', 'new_id'=>'24-14801'),
+            array('id' => '24-22574', 'new_id'=>'24-14802'),
+            array('id' => '24-22573', 'new_id'=>'24-14803'),
+            array('id' => '24-22572', 'new_id'=>'24-14804'),
+            array('id' => '24-22571', 'new_id'=>'24-14805'),
+            array('id' => '24-22570', 'new_id'=>'24-14806'),
+            array('id' => '24-22569', 'new_id'=>'24-14807'),
+            array('id' => '24-22568', 'new_id'=>'24-14808'),
+            array('id' => '24-22567', 'new_id'=>'24-14809'),
+            array('id' => '24-22566', 'new_id'=>'24-14810'),
+            array('id' => '24-22565', 'new_id'=>'24-14811'),
+            array('id' => '24-22564', 'new_id'=>'24-14812'),
+            array('id' => '24-22563', 'new_id'=>'24-14813'),
+            array('id' => '24-22562', 'new_id'=>'24-14814'),
+            array('id' => '24-22561', 'new_id'=>'24-14815')
         );
         try {
             DB::beginTransaction();
             foreach ($materials as $key => $value) {
-                $import = WareHouseMLTImport::where('material_id', $value['old_id'])->update(['material_id'=> $value['id']]);
+                $import = WareHouseMLTImport::where('material_id', $value['id'])->update(['material_id'=> $value['new_id']]);
             }
             DB::commit();
         } catch (\Throwable $th) {

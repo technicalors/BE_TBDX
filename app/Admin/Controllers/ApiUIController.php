@@ -5076,7 +5076,7 @@ class ApiUIController extends AdminController
                 $material = Material::where('id', $value)->update(['id'=>$id]);
                 $log = WarehouseMLTLog::where('material_id', $value)->update(['material_id'=>$id]);
                 $locator = LocatorMLTMap::where('material_id', $value)->update(['material_id'=>$id]);
-                $start + 1;
+                $start += 1;
             }
             DB::commit();
         } catch (\Throwable $th) {

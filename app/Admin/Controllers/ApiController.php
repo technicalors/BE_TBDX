@@ -8815,7 +8815,7 @@ class ApiController extends AdminController
                     $q->where('length', 'like', "%" . $input['length'] . "%");
                 }
                 if (isset($input['width'])) {
-                    $q->where('width', 'like', "%" . $input['kich_thuoc'] . "%");
+                    $q->where('width', 'like', "%" . $input['width'] . "%");
                 }
                 if (isset($input['height'])) {
                     $q->where('height', 'like', "%" . $input['height'] . "%");

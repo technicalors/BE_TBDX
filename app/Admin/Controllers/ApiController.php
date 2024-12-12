@@ -4557,10 +4557,10 @@ class ApiController extends AdminController
                 return $this->failure('', 'Lô ' . $request->lo_sx . ' chưa qua QC');
             }
         }
-        if($info->lsxpallet){
+        if ($info->lsxpallet) {
             return $this->failure('', 'Lô ' . $request->lo_sx . ' đã quét tem gộp');
         }
-        if($info->warehouseFGLog){
+        if ($info->warehouseFGLog) {
             return $this->failure('', 'Lô ' . $request->lo_sx . ' đã quét nhập kho');
         }
         if (isset($request->list_losx) && count($request->list_losx) > 0) {
@@ -8784,9 +8784,46 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with('user', 'lo_sx_pallet')->orderBy('created_at')->withAggregate('order', 'mdh')->withAggregate('order', 'mql')->orderBy('order_mdh', 'ASC')->orderBy('order_mql', 'ASC');
-        if (isset($input['start_date']) && isset($input['end_date'])) {
-            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
+        $filtered_lo_sx = WarehouseFGLog::where('type', 1)->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])))->pluck('lo_sx')->unique()->toArray(); // Lấy danh sách `lo_sx` nằm trong khoảng thời gian
+        $query = WarehouseFGLog::select(
+            'warehouse_fg_logs.*',
+            'orders.mdh',
+            'orders.mql',
+            DB::raw("(SELECT created_by FROM warehouse_fg_logs AS sub_logs WHERE sub_logs.type = 1 AND sub_logs.lo_sx = warehouse_fg_logs.lo_sx ORDER BY created_at DESC LIMIT 1) as import_user_id"), // Người nhập
+            DB::raw("(SELECT created_by FROM warehouse_fg_logs AS sub_logs WHERE sub_logs.type = 2 AND sub_logs.lo_sx = warehouse_fg_logs.lo_sx ORDER BY created_at DESC LIMIT 1) as export_user_id"), // Người xuất
+            DB::raw("(SELECT MAX(created_at) FROM warehouse_fg_logs AS sub_logs WHERE sub_logs.type = 1 AND sub_logs.lo_sx = warehouse_fg_logs.lo_sx) as tg_nhap"), // Thời gian nhập gần nhất
+            DB::raw("MAX(CASE WHEN type = 2 THEN warehouse_fg_logs.created_at ELSE NULL END) as tg_xuat"), // Thời gian xuất cuối cùng
+            DB::raw("SUM(CASE WHEN type = 1 THEN so_luong ELSE 0 END) as sl_nhap"),
+            DB::raw("SUM(CASE WHEN type = 2 THEN so_luong ELSE 0 END) as sl_xuat"),
+            DB::raw("SUM(CASE WHEN type = 1 THEN so_luong ELSE 0 END) - SUM(CASE WHEN type = 2 THEN so_luong ELSE 0 END) as sl_ton"),
+            DB::raw("DATEDIFF(CURRENT_DATE, MAX(CASE WHEN type = 1 THEN warehouse_fg_logs.created_at ELSE NULL END)) as so_ngay_ton")
+        )
+            ->whereIn('lo_sx', $filtered_lo_sx)
+            ->groupBy('lo_sx')
+            ->with('user', 'order')
+            ->orderBy('warehouse_fg_logs.created_at')
+            ->withAggregate('order', 'mdh as order_mdh')
+            ->withAggregate('order', 'mql as order_mql')
+            ->leftJoin('orders', 'warehouse_fg_logs.order_id', '=', 'orders.id')
+            ->orderBy('orders.mdh', 'ASC')
+            ->orderBy('orders.mql', 'ASC');
+        // if (isset($input['start_date']) && isset($input['end_date'])) {
+        //     $query->whereDate('warehouse_fg_logs.created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('warehouse_fg_logs.created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
+        // }
+        if (isset($input['sl_ton_max'])) {
+            $query->havingRaw('sl_ton <=' . $input['sl_ton_max']);
+        }
+        if (isset($input['sl_ton_min'])) {
+            $query->havingRaw('sl_ton >=' . $input['sl_ton_min']);
+        }
+        if (isset($input['so_ngay_ton_min'])) {
+            $query->havingRaw('so_ngay_ton >=' . $input['so_ngay_ton_min']);
+        }
+        if (isset($input['so_ngay_ton_max'])) {
+            $query->havingRaw('so_ngay_ton <=' . $input['so_ngay_ton_max']);
+        }
+        if (isset($input['locator_id'])) {
+            $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
         }
         if (isset($input['locator_id'])) {
             $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
@@ -8829,11 +8866,11 @@ class ApiController extends AdminController
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
         $query = $this->customQueryWarehouseFGLog($request);
-        $totalPage = $query->count();
+        $totalPage = (clone $query)->get()->count();
         $query->offset($page * $pageSize)->limit($pageSize ?? 10);
         $records = $query->get();
         foreach ($records as $key => $record) {
-            $export = WarehouseFGLog::with('user')->where('type', 2)->where('lo_sx', $record->lo_sx)->where('pallet_id', $record->pallet_id)->first();
+            // $export = WarehouseFGLog::with('user')->where('type', 2)->where('lo_sx', $record->lo_sx)->where('pallet_id', $record->pallet_id)->first();
             $record->khu_vuc = $record->locator_id ? "Khu " . ((int)substr($record->locator_id, 1, 2) ?? "") : "";
             $record->vi_tri = $record->locator_id;
             $record->pallet_id = $record->pallet_id;
@@ -8847,14 +8884,16 @@ class ApiController extends AdminController
             $record->kich_thuoc = $record->order->kich_thuoc ?? "";
             $info_cong_doan = InfoCongDoan::where('lo_sx', $record->lo_sx)->where('step', 0)->orderBy('created_at', 'DESC')->first();
             $record->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) : "Không";
-            $record->tg_nhap = $record->created_at;
-            $record->tg_xuat = $export->created_at ?? "";
-            $record->sl_nhap = $record->so_luong ?? "";
-            $record->sl_xuat = $export->so_luong ?? "";
-            $record->nguoi_nhap = $record->user->name ?? "";
-            $record->nguoi_xuat = $export->user->name ?? "";
-            $record->sl_ton = $record->so_luong - ($export->so_luong ?? 0);
-            $record->so_ngay_ton = $record->sl_ton > 0 ? abs(ceil((strtotime("now") - strtotime($record->created_at)) / 86400)) : 0;
+            // $record->tg_nhap = $record->created_at;
+            // $record->tg_xuat = $export->created_at ?? "";
+            // $record->sl_nhap = $record->sl_nhap ?? "";
+            // $record->sl_xuat = $export->so_luong ?? "";
+            $importer = CustomUser::find($record->import_user_id ?? "");
+            $exporter = CustomUser::find($record->export_user_id ?? "");
+            $record->nguoi_nhap = $importer->name ?? "";
+            $record->nguoi_xuat = $exporter->name ?? "";
+            // $record->sl_ton = $record->so_luong - ($export->so_luong ?? 0);
+            // $record->so_ngay_ton = $record->sl_ton > 0 ? abs(ceil((strtotime("now") - strtotime($record->created_at)) / 86400)) : 0;
             $record->import_id = $record->id;
             $record->export_id = $export->id ?? null;
         }
@@ -8871,24 +8910,27 @@ class ApiController extends AdminController
             $obj = new stdClass;
             $obj->stt = $key + 1;
             $obj->khu_vuc = $record->locator_id ? "Khu " . ((int)substr($record->locator_id, 1, 2) ?? "") : "";
-            $obj->khach_hang = $record->lo_sx_pallet->customer_id ?? "";
-            $obj->mdh = $record->lo_sx_pallet->mdh ?? "";
-            $obj->mql = $record->lo_sx_pallet->mql ?? "";
-            $obj->length = $record->lo_sx_pallet->order->length ?? "";
-            $obj->width = $record->lo_sx_pallet->order->width ?? "";
-            $obj->height = $record->lo_sx_pallet->order->height ?? "";
-            $obj->kich_thuoc = $record->lo_sx_pallet->order->kich_thuoc ?? "";
-            $obj->ngay_nhap = $record ? date('d/m/Y', strtotime($record->created_at)) : "";
-            $obj->tg_nhap = $record ? date('H:i', strtotime($record->created_at)) : "";
-            $obj->sl_nhap = $record->so_luong ?? "";
-            $obj->nhap_du = $record->so_luong - ($record->lo_sx_pallet->so_luong ?? 0) > 0 ? "Có" : "Không";
-            $obj->nguoi_nhap = $record->user->name ?? "";
-            $obj->ngay_xuat = $export ? date('d/m/Y', strtotime($export->created_at)) : "";
-            $obj->tg_xuat = $export ? date('H:i', strtotime($export->created_at)) : "";
-            $obj->sl_xuat = $export->so_luong ?? "";
-            $obj->nguoi_xuat = $export->user->name ?? "";
-            $obj->sl_ton = $record->so_luong - ($export->so_luong ?? 0);
-            $obj->so_ngay_ton = $obj->sl_ton > 0 ? abs(ceil((strtotime("now") - strtotime($record->created_at)) / 86400)) : 0;
+            $obj->khach_hang = $record->order->short_name ?? "";
+            $obj->mdh = $record->order->mdh ?? "";
+            $obj->mql = $record->order->mql ?? "";
+            $obj->length = $record->order->length ?? "";
+            $obj->height = $record->order->height ?? "";
+            $obj->width = $record->order->width ?? "";
+            $obj->kich_thuoc = $record->order->kich_thuoc ?? "";
+            $obj->sl_ton = $record->sl_ton;
+            $obj->so_ngay_ton = $record->so_ngay_ton;
+            $info_cong_doan = InfoCongDoan::where('lo_sx', $record->lo_sx)->where('step', 0)->orderBy('created_at', 'DESC')->first();
+            $importer = CustomUser::find($record->import_user_id ?? "");
+            $exporter = CustomUser::find($record->export_user_id ?? "");
+            $obj->ngay_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : '';
+            $obj->gio_nhap = $record->tg_nhap ? date('H:i', strtotime($record->tg_nhap)) : '';
+            $obj->sl_nhap = $record->sl_nhap;
+            $obj->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) : "Không";
+            $obj->nguoi_nhap = $importer->name ?? "";
+            $obj->ngay_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
+            $obj->gio_xuat = $record->tg_xuat ? date('H:i', strtotime($record->tg_xuat)) : '';
+            $obj->sl_xuat = $record->sl_xuat;
+            $obj->nguoi_xuat = $exporter->name ?? "";
             $obj->vi_tri = $record->locator_id;
             $obj->pallet_id = $record->pallet_id;
             $obj->lo_sx = $record->lo_sx;
@@ -8929,7 +8971,11 @@ class ApiController extends AdminController
             'L',
             'W',
             'H',
-            'L+H+W',
+            'Kích thước',
+            'Tồn kho' => [
+                'SL tồn',
+                'Số ngày tồn'
+            ],
             'Nhập kho' => [
                 'Ngày nhập',
                 'Thời gian nhập',
@@ -8942,10 +8988,6 @@ class ApiController extends AdminController
                 'Thời gian xuất',
                 'SL xuất',
                 'Người xuất'
-            ],
-            'Tồn kho' => [
-                'SL tồn',
-                'Số ngày tồn'
             ],
             'Vị trí',
             'Mã tem (pallet)',

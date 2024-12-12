@@ -26,6 +26,7 @@ use App\Traits\API;
 use Error;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class OrderController extends AdminController
@@ -691,13 +692,9 @@ class OrderController extends AdminController
                     $input['toc_do'] = 80;
                     $input['id'] = $this->createNextOrderId($input['mdh'], $input['mql'], $input['han_giao']);
                     $input['created_by'] = $request->user()->id;
-                    $data[] = $input;
+                    Order::updateOrCreate(['id'=>$input['id']], $input);
                     unset($input);
                 }
-            }
-            foreach($data as $value){
-                $value['created_by'] = $request->user()->id;
-                Order::updateOrCreate(['id'=>$value['id']], $value);
             }
             DB::commit();
         } catch (\Throwable $th) {
@@ -711,6 +708,13 @@ class OrderController extends AdminController
 
     function createNextOrderId($mdh, $mql, $hanGiao) {
         // Tìm tất cả bản ghi trùng `mdh`, `mql`, và `han_giao`
+        $existedOrder = Order::where('id', 'like', $mdh."-".$mql."%") // Tìm các id có cùng tiền tố
+        ->where('han_giao', $hanGiao)
+        ->withTrashed()
+        ->first();
+        if($existedOrder){
+            return $existedOrder->id;
+        }
         $latestOrderId = Order::where('id', 'like', $mdh."-".$mql."%") // Tìm các id có cùng tiền tố
         ->where('han_giao', '!=', $hanGiao)
         ->withTrashed()

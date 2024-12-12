@@ -8846,7 +8846,7 @@ class ApiController extends AdminController
             $record->width = $record->order->width ?? "";
             $record->kich_thuoc = $record->order->kich_thuoc ?? "";
             $info_cong_doan = InfoCongDoan::where('lo_sx', $record->lo_sx)->where('step', 0)->orderBy('created_at', 'DESC')->first();
-            $record->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - $record->order->sl) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - $record->order->sl) : "Không";
+            $record->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) : "Không";
             $record->tg_nhap = $record->created_at;
             $record->tg_xuat = $export->created_at ?? "";
             $record->sl_nhap = $record->so_luong ?? "";

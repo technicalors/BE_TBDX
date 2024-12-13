@@ -1923,6 +1923,10 @@ class ApiController extends AdminController
         if (!isset($request->lo_sx) && !isset($request->so_luong)) {
             return $this->failure('', 'Không quét được');
         }
+        $tem = Tem::where('lo_sx', $request->lo_sx)->first();
+        if (!$tem) {
+            return $this->failure('', 'Không có KHSX');
+        }
         $previousQCLog = QCLog::where('lo_sx', $request->lo_sx)->orderBy('updated_at', 'DESC')->first();
         if ($previousQCLog) {
             if (isset($previousQCLog->info['phan_dinh'])) {
@@ -8895,11 +8899,34 @@ class ApiController extends AdminController
 
     public function exportWarehouseFGLog(Request $request)
     {
+        $input = $request->all();
         $query = $this->customQueryWarehouseFGLog($request);
-        $records = $query->get();
+        $allData = $query->get()->map(function ($item){
+            if(!$item->exportRecord){
+                $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
+                $item->sl_ton = $item->so_luong;
+            }
+            return $item;
+        });
+        $records = $allData->filter(function ($item) use ($input) {
+            $passes = true;
+            if (isset($input['sl_ton_max']) && $item->sl_ton > $input['sl_ton_max']) {
+                $passes = false;
+            }
+            if (isset($input['sl_ton_min']) && $item->sl_ton < $input['sl_ton_min']) {
+                $passes = false;
+            }
+            if (isset($input['so_ngay_ton_min']) && $item->so_ngay_ton < $input['so_ngay_ton_min']) {
+                $passes = false;
+            }
+            if (isset($input['so_ngay_ton_max']) && $item->so_ngay_ton > $input['so_ngay_ton_max']) {
+                $passes = false;
+            }
+            return $passes;
+        })->values();
         $data = [];
         foreach ($records as $key => $record) {
-            $export = WarehouseFGLog::with('user')->where('type', 2)->where('lo_sx', $record->lo_sx)->where('pallet_id', $record->pallet_id)->first();
+            $export = $record->exportRecord;
             $obj = new stdClass;
             $obj->stt = $key + 1;
             $obj->khu_vuc = $record->locator_id ? "Khu " . ((int)substr($record->locator_id, 1, 2) ?? "") : "";
@@ -8913,17 +8940,15 @@ class ApiController extends AdminController
             $obj->sl_ton = $record->sl_ton;
             $obj->so_ngay_ton = $record->so_ngay_ton;
             $info_cong_doan = InfoCongDoan::where('lo_sx', $record->lo_sx)->where('step', 0)->orderBy('created_at', 'DESC')->first();
-            $importer = CustomUser::find($record->import_user_id ?? "");
-            $exporter = CustomUser::find($record->export_user_id ?? "");
-            $obj->ngay_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : '';
-            $obj->gio_nhap = $record->tg_nhap ? date('H:i', strtotime($record->tg_nhap)) : '';
-            $obj->sl_nhap = $record->sl_nhap;
+            $obj->ngay_nhap = $record->created_at ? date('d/m/Y', strtotime($record->created_at)) : '';
+            $obj->gio_nhap = $record->created_at ? date('H:i', strtotime($record->created_at)) : '';
+            $obj->sl_nhap = $record->so_luong ?? 0;
             $obj->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) : "Không";
-            $obj->nguoi_nhap = $importer->name ?? "";
-            $obj->ngay_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
-            $obj->gio_xuat = $record->tg_xuat ? date('H:i', strtotime($record->tg_xuat)) : '';
-            $obj->sl_xuat = $record->sl_xuat;
-            $obj->nguoi_xuat = $exporter->name ?? "";
+            $obj->nguoi_nhap = $record->user->name ?? "";
+            $obj->ngay_xuat = isset($export->created_at) ? date('d/m/Y', strtotime($export->created_at)) : '';
+            $obj->gio_xuat = isset($export->created_at) ? date('H:i', strtotime($export->created_at)) : '';
+            $obj->sl_xuat = $export->so_luong ?? 0;
+            $obj->nguoi_xuat = $export->user->name ?? "";
             $obj->vi_tri = $record->locator_id;
             $obj->pallet_id = $record->pallet_id;
             $obj->lo_sx = $record->lo_sx;

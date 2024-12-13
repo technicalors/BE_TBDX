@@ -3299,6 +3299,9 @@ class ApiController extends AdminController
         if ($request->machine) {
             $query->whereIn('machine_id', $request->machine);
         }
+        if ($request->lo_sx) {
+            $query->where('lo_sx', $request->lo_sx);
+        }
         if (isset($request->end_date) && isset($request->start_date)) {
             // $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))
             //     ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)));
@@ -3321,49 +3324,33 @@ class ApiController extends AdminController
         $plan_query = ProductionPlan::query();
         $tem_query = Tem::query();
         if (isset($request->customer_id) || isset($request->mdh) || isset($request->mql) || isset($request->quy_cach) || isset($request->dot)) {
-            $plan_query->whereHas('order', function ($order_query) use ($request) {
-                if (isset($request->customer_id)) {
-                    $order_query->where('short_name', 'like', "$request->customer_id%");
-                }
-                if (isset($request->mdh)) {
-                    $order_query->where(function ($q) use ($request) {
-                        foreach ($request->mdh ?? [] as $key => $mdh) {
-                            $q->orWhere('mdh', 'like', "$mdh%");
-                        }
-                    });
-                }
-                if (isset($request->mql)) {
-                    $order_query->whereIn('mql', $request->mql ?? []);
-                }
-                if (isset($request->quy_cach)) {
-                    $order_query->where(DB::raw('CONCAT_WS("x", dai, rong, cao)'), 'like', "%$request->quy_cach%");
-                }
-                if (isset($request->dot)) {
-                    $order_query->where('dot', $request->dot);
-                }
-            });
+            $order_query = Order::query();
             if (isset($request->customer_id)) {
-                $tem_query->where('khach_hang', 'like', "$request->customer_id%");
+                $order_query->where('short_name', 'like', "$request->customer_id%");
             }
             if (isset($request->mdh)) {
-                $tem_query->where(function ($q) use ($request) {
+                $order_query->where(function ($q) use ($request) {
                     foreach ($request->mdh ?? [] as $key => $mdh) {
                         $q->orWhere('mdh', 'like', "$mdh%");
                     }
                 });
             }
             if (isset($request->mql)) {
-                $tem_query->whereIn('mql', $request->mql ?? []);
+                $order_query->whereIn('mql', $request->mql ?? []);
             }
             if (isset($request->quy_cach)) {
-                $tem_query->where('quy_cach', 'like', "$request->quy_cach%");
+                $order_query->where(DB::raw('CONCAT_WS("x", dai, rong, cao)'), 'like', "%$request->quy_cach%");
             }
             if (isset($request->dot)) {
-                $tem_query->whereHas('order', function ($order_query) use ($request) {
-                    $order_query->where('dot', $request->dot);
-                });
+                $order_query->where('dot', $request->dot);
             }
-            $lo_sx = array_merge($lo_sx, $plan_query->pluck('lo_sx')->toArray(), $tem_query->pluck('lo_sx')->toArray());
+            if (isset($request->customer_id)) {
+                $tem_query->where('khach_hang', 'like', "$request->customer_id%");
+            }
+            $orders = $order_query->pluck('id')->unique()->toArray();
+            $tems = Tem::where('order_id', $orders)->pluck('lo_sx')->toArray();
+            $plans = ProductionPlan::where('order_id', $orders)->pluck('lo_sx')->toArray();
+            $lo_sx = array_merge($lo_sx, $plans, $tems);
             $query->whereIn('lo_sx', array_unique($lo_sx));
         }
         $query->with("plan.order.customer", "line", "user", "tem.order");

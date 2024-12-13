@@ -56,4 +56,16 @@ class WarehouseFGLog extends Model
     {
         return $this->belongsTo(WareHouseFGExport::class, ['order_id', 'delivery_note_id'], ['order_id', 'delivery_note_id']);
     }
+
+    // Quan hệ để lấy bản ghi nhập (import) liên quan đến bản ghi xuất (export)
+    public function importRecord()
+    {
+        return $this->hasOne(WarehouseFGLog::class, 'lo_sx', 'lo_sx')->where('type', 1); // Bản ghi nhập
+    }
+
+    // Quan hệ để lấy bản ghi xuất (export) liên quan đến bản ghi nhập (import)
+    public function exportRecord()
+    {
+        return $this->hasOne(WarehouseFGLog::class, 'lo_sx', 'lo_sx')->where('type', 2); // Bản ghi xuất
+    }
 }

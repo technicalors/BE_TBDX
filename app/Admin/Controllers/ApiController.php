@@ -3314,12 +3314,12 @@ class ApiController extends AdminController
             $end = date('Y-m-d');
         }
         $machine_iot = Machine::where('is_iot', 1)->pluck('id')->toArray();
-        $query->whereRaw("
-            CASE 
-                WHEN machine_id IN ('" . implode("','", $machine_iot) . "') THEN DATE(ngay_sx) BETWEEN ? AND ?
-                ELSE DATE(created_at) BETWEEN ? AND ?
-            END
-        ", [$start, $end, $start, $end]);
+        // $query->whereRaw("
+        //     CASE 
+        //         WHEN machine_id IN ('" . implode("','", $machine_iot) . "') THEN DATE(ngay_sx) BETWEEN ? AND ?
+        //         ELSE DATE(created_at) BETWEEN ? AND ?
+        //     END
+        // ", [$start, $end, $start, $end]);
         $lo_sx = [];
         $plan_query = ProductionPlan::query();
         $tem_query = Tem::query();

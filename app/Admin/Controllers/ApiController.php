@@ -3329,7 +3329,7 @@ class ApiController extends AdminController
                 $order_query->where('short_name', 'like', "$request->customer_id%");
             }
             if (isset($request->mdh)) {
-                $order_query->whereIn('id', $request->mdh ?? []);
+                $order_query->whereIn('mdh', $request->mdh ?? []);
                 // $order_query->where(function ($q) use ($request) {
                 //     foreach ($request->mdh ?? [] as $key => $mdh) {
                 //         $q->orWhere('mdh', 'like', "%$mdh%");

@@ -1923,6 +1923,10 @@ class ApiController extends AdminController
         if (!isset($request->lo_sx) && !isset($request->so_luong)) {
             return $this->failure('', 'Không quét được');
         }
+        $tem = Tem::where('lo_sx', $request->lo_sx)->first();
+        if (!$tem) {
+            return $this->failure('', 'Không có KHSX');
+        }
         $previousQCLog = QCLog::where('lo_sx', $request->lo_sx)->orderBy('updated_at', 'DESC')->first();
         if ($previousQCLog) {
             if (isset($previousQCLog->info['phan_dinh'])) {
@@ -3295,6 +3299,9 @@ class ApiController extends AdminController
         if ($request->machine) {
             $query->whereIn('machine_id', $request->machine);
         }
+        if ($request->lo_sx) {
+            $query->where('lo_sx', $request->lo_sx);
+        }
         if (isset($request->end_date) && isset($request->start_date)) {
             // $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))
             //     ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)));
@@ -3317,49 +3324,33 @@ class ApiController extends AdminController
         $plan_query = ProductionPlan::query();
         $tem_query = Tem::query();
         if (isset($request->customer_id) || isset($request->mdh) || isset($request->mql) || isset($request->quy_cach) || isset($request->dot)) {
-            $plan_query->whereHas('order', function ($order_query) use ($request) {
-                if (isset($request->customer_id)) {
-                    $order_query->where('short_name', 'like', "$request->customer_id%");
-                }
-                if (isset($request->mdh)) {
-                    $order_query->where(function ($q) use ($request) {
-                        foreach ($request->mdh ?? [] as $key => $mdh) {
-                            $q->orWhere('mdh', 'like', "$mdh%");
-                        }
-                    });
-                }
-                if (isset($request->mql)) {
-                    $order_query->whereIn('mql', $request->mql ?? []);
-                }
-                if (isset($request->quy_cach)) {
-                    $order_query->where(DB::raw('CONCAT_WS("x", dai, rong, cao)'), 'like', "%$request->quy_cach%");
-                }
-                if (isset($request->dot)) {
-                    $order_query->where('dot', $request->dot);
-                }
-            });
+            $order_query = Order::query();
             if (isset($request->customer_id)) {
-                $tem_query->where('khach_hang', 'like', "$request->customer_id%");
+                $order_query->where('short_name', 'like', "$request->customer_id%");
             }
             if (isset($request->mdh)) {
-                $tem_query->where(function ($q) use ($request) {
+                $order_query->where(function ($q) use ($request) {
                     foreach ($request->mdh ?? [] as $key => $mdh) {
                         $q->orWhere('mdh', 'like', "$mdh%");
                     }
                 });
             }
             if (isset($request->mql)) {
-                $tem_query->whereIn('mql', $request->mql ?? []);
+                $order_query->whereIn('mql', $request->mql ?? []);
             }
             if (isset($request->quy_cach)) {
-                $tem_query->where('quy_cach', 'like', "$request->quy_cach%");
+                $order_query->where(DB::raw('CONCAT_WS("x", dai, rong, cao)'), 'like', "%$request->quy_cach%");
             }
             if (isset($request->dot)) {
-                $tem_query->whereHas('order', function ($order_query) use ($request) {
-                    $order_query->where('dot', $request->dot);
-                });
+                $order_query->where('dot', $request->dot);
             }
-            $lo_sx = array_merge($lo_sx, $plan_query->pluck('lo_sx')->toArray(), $tem_query->pluck('lo_sx')->toArray());
+            if (isset($request->customer_id)) {
+                $tem_query->where('khach_hang', 'like', "$request->customer_id%");
+            }
+            $orders = $order_query->pluck('id')->unique()->toArray();
+            $tems = Tem::where('order_id', $orders)->pluck('lo_sx')->toArray();
+            $plans = ProductionPlan::where('order_id', $orders)->pluck('lo_sx')->toArray();
+            $lo_sx = array_merge($lo_sx, $plans, $tems);
             $query->whereIn('lo_sx', array_unique($lo_sx));
         }
         $query->with("plan.order.customer", "line", "user", "tem.order");
@@ -4557,10 +4548,10 @@ class ApiController extends AdminController
                 return $this->failure('', 'Lô ' . $request->lo_sx . ' chưa qua QC');
             }
         }
-        if($info->lsxpallet){
+        if ($info->lsxpallet) {
             return $this->failure('', 'Lô ' . $request->lo_sx . ' đã quét tem gộp');
         }
-        if($info->warehouseFGLog){
+        if ($info->warehouseFGLog) {
             return $this->failure('', 'Lô ' . $request->lo_sx . ' đã quét nhập kho');
         }
         if (isset($request->list_losx) && count($request->list_losx) > 0) {
@@ -8784,9 +8775,18 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with('user', 'lo_sx_pallet')->orderBy('created_at')->withAggregate('order', 'mdh')->withAggregate('order', 'mql')->orderBy('order_mdh', 'ASC')->orderBy('order_mql', 'ASC');
+        // $filtered_lo_sx = WarehouseFGLog::where('type', 1)->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])))->pluck('lo_sx')->unique()->toArray(); // Lấy danh sách `lo_sx` nằm trong khoảng thời gian
+        $query = WarehouseFGLog::where('type', 1)->with('user', 'lo_sx_pallet', 'exportRecord.user')->orderBy('created_at')->withAggregate('order', 'mdh')->withAggregate('order', 'mql')->orderBy('order_mdh', 'ASC')->orderBy('order_mql', 'ASC');
+        // $query = WarehouseFGLog::select(
+        //     'warehouse_fg_logs.*',
+        //     DB::raw("IFNULL((SELECT MAX(created_at) FROM warehouse_fg_logs AS exports WHERE exports.lo_sx = warehouse_fg_logs.lo_sx AND exports.type = 2), CURRENT_DATE) as last_activity_date"),
+        //     DB::raw("DATEDIFF(CURRENT_DATE, warehouse_fg_logs.created_at) as stock_age")
+        // );
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
+        }
+        if (isset($input['locator_id'])) {
+            $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
         }
         if (isset($input['locator_id'])) {
             $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
@@ -8826,14 +8826,37 @@ class ApiController extends AdminController
     }
     public function warehouseFGLog(Request $request)
     {
+        $input = $request->all();
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
         $query = $this->customQueryWarehouseFGLog($request);
-        $totalPage = $query->count();
-        $query->offset($page * $pageSize)->limit($pageSize ?? 10);
-        $records = $query->get();
+        $allData = $query->get()->map(function ($item){
+            if(!$item->exportRecord){
+                $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
+                $item->sl_ton = $item->so_luong;
+            }
+            return $item;
+        });
+        $allData = $allData->filter(function ($item) use ($input) {
+            $passes = true;
+            if (isset($input['sl_ton_max']) && $item->sl_ton > $input['sl_ton_max']) {
+                $passes = false;
+            }
+            if (isset($input['sl_ton_min']) && $item->sl_ton < $input['sl_ton_min']) {
+                $passes = false;
+            }
+            if (isset($input['so_ngay_ton_min']) && $item->so_ngay_ton < $input['so_ngay_ton_min']) {
+                $passes = false;
+            }
+            if (isset($input['so_ngay_ton_max']) && $item->so_ngay_ton > $input['so_ngay_ton_max']) {
+                $passes = false;
+            }
+            return $passes;
+        })->values();
+        $totalPage = count($allData);
+        $records = $allData->skip(($input['page'] - 1) * $input['pageSize'])->take($input['pageSize'])->values();
         foreach ($records as $key => $record) {
-            $export = WarehouseFGLog::with('user')->where('type', 2)->where('lo_sx', $record->lo_sx)->where('pallet_id', $record->pallet_id)->first();
+            $export = $record->exportRecord;
             $record->khu_vuc = $record->locator_id ? "Khu " . ((int)substr($record->locator_id, 1, 2) ?? "") : "";
             $record->vi_tri = $record->locator_id;
             $record->pallet_id = $record->pallet_id;
@@ -8846,15 +8869,15 @@ class ApiController extends AdminController
             $record->width = $record->order->width ?? "";
             $record->kich_thuoc = $record->order->kich_thuoc ?? "";
             $info_cong_doan = InfoCongDoan::where('lo_sx', $record->lo_sx)->where('step', 0)->orderBy('created_at', 'DESC')->first();
-            $record->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - $record->order->sl) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - $record->order->sl) : "Không";
+            $record->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) : "Không";
             $record->tg_nhap = $record->created_at;
             $record->tg_xuat = $export->created_at ?? "";
             $record->sl_nhap = $record->so_luong ?? "";
             $record->sl_xuat = $export->so_luong ?? "";
             $record->nguoi_nhap = $record->user->name ?? "";
             $record->nguoi_xuat = $export->user->name ?? "";
-            $record->sl_ton = $record->so_luong - ($export->so_luong ?? 0);
-            $record->so_ngay_ton = $record->sl_ton > 0 ? abs(ceil((strtotime("now") - strtotime($record->created_at)) / 86400)) : 0;
+            $record->sl_ton = $record->sl_ton ?? 0;
+            $record->so_ngay_ton = $record->so_ngay_ton ?? 0;
             $record->import_id = $record->id;
             $record->export_id = $export->id ?? null;
         }
@@ -8863,32 +8886,56 @@ class ApiController extends AdminController
 
     public function exportWarehouseFGLog(Request $request)
     {
+        $input = $request->all();
         $query = $this->customQueryWarehouseFGLog($request);
-        $records = $query->get();
+        $allData = $query->get()->map(function ($item){
+            if(!$item->exportRecord){
+                $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
+                $item->sl_ton = $item->so_luong;
+            }
+            return $item;
+        });
+        $records = $allData->filter(function ($item) use ($input) {
+            $passes = true;
+            if (isset($input['sl_ton_max']) && $item->sl_ton > $input['sl_ton_max']) {
+                $passes = false;
+            }
+            if (isset($input['sl_ton_min']) && $item->sl_ton < $input['sl_ton_min']) {
+                $passes = false;
+            }
+            if (isset($input['so_ngay_ton_min']) && $item->so_ngay_ton < $input['so_ngay_ton_min']) {
+                $passes = false;
+            }
+            if (isset($input['so_ngay_ton_max']) && $item->so_ngay_ton > $input['so_ngay_ton_max']) {
+                $passes = false;
+            }
+            return $passes;
+        })->values();
         $data = [];
         foreach ($records as $key => $record) {
-            $export = WarehouseFGLog::with('user')->where('type', 2)->where('lo_sx', $record->lo_sx)->where('pallet_id', $record->pallet_id)->first();
+            $export = $record->exportRecord;
             $obj = new stdClass;
             $obj->stt = $key + 1;
             $obj->khu_vuc = $record->locator_id ? "Khu " . ((int)substr($record->locator_id, 1, 2) ?? "") : "";
-            $obj->khach_hang = $record->lo_sx_pallet->customer_id ?? "";
-            $obj->mdh = $record->lo_sx_pallet->mdh ?? "";
-            $obj->mql = $record->lo_sx_pallet->mql ?? "";
-            $obj->length = $record->lo_sx_pallet->order->length ?? "";
-            $obj->width = $record->lo_sx_pallet->order->width ?? "";
-            $obj->height = $record->lo_sx_pallet->order->height ?? "";
-            $obj->kich_thuoc = $record->lo_sx_pallet->order->kich_thuoc ?? "";
-            $obj->ngay_nhap = $record ? date('d/m/Y', strtotime($record->created_at)) : "";
-            $obj->tg_nhap = $record ? date('H:i', strtotime($record->created_at)) : "";
-            $obj->sl_nhap = $record->so_luong ?? "";
-            $obj->nhap_du = $record->so_luong - ($record->lo_sx_pallet->so_luong ?? 0) > 0 ? "Có" : "Không";
+            $obj->khach_hang = $record->order->short_name ?? "";
+            $obj->mdh = $record->order->mdh ?? "";
+            $obj->mql = $record->order->mql ?? "";
+            $obj->length = $record->order->length ?? "";
+            $obj->height = $record->order->height ?? "";
+            $obj->width = $record->order->width ?? "";
+            $obj->kich_thuoc = $record->order->kich_thuoc ?? "";
+            $obj->sl_ton = $record->sl_ton;
+            $obj->so_ngay_ton = $record->so_ngay_ton;
+            $info_cong_doan = InfoCongDoan::where('lo_sx', $record->lo_sx)->where('step', 0)->orderBy('created_at', 'DESC')->first();
+            $obj->ngay_nhap = $record->created_at ? date('d/m/Y', strtotime($record->created_at)) : '';
+            $obj->gio_nhap = $record->created_at ? date('H:i', strtotime($record->created_at)) : '';
+            $obj->sl_nhap = $record->so_luong ?? 0;
+            $obj->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) : "Không";
             $obj->nguoi_nhap = $record->user->name ?? "";
-            $obj->ngay_xuat = $export ? date('d/m/Y', strtotime($export->created_at)) : "";
-            $obj->tg_xuat = $export ? date('H:i', strtotime($export->created_at)) : "";
-            $obj->sl_xuat = $export->so_luong ?? "";
+            $obj->ngay_xuat = isset($export->created_at) ? date('d/m/Y', strtotime($export->created_at)) : '';
+            $obj->gio_xuat = isset($export->created_at) ? date('H:i', strtotime($export->created_at)) : '';
+            $obj->sl_xuat = $export->so_luong ?? 0;
             $obj->nguoi_xuat = $export->user->name ?? "";
-            $obj->sl_ton = $record->so_luong - ($export->so_luong ?? 0);
-            $obj->so_ngay_ton = $obj->sl_ton > 0 ? abs(ceil((strtotime("now") - strtotime($record->created_at)) / 86400)) : 0;
             $obj->vi_tri = $record->locator_id;
             $obj->pallet_id = $record->pallet_id;
             $obj->lo_sx = $record->lo_sx;
@@ -8929,7 +8976,11 @@ class ApiController extends AdminController
             'L',
             'W',
             'H',
-            'L+H+W',
+            'Kích thước',
+            'Tồn kho' => [
+                'SL tồn',
+                'Số ngày tồn'
+            ],
             'Nhập kho' => [
                 'Ngày nhập',
                 'Thời gian nhập',
@@ -8942,10 +8993,6 @@ class ApiController extends AdminController
                 'Thời gian xuất',
                 'SL xuất',
                 'Người xuất'
-            ],
-            'Tồn kho' => [
-                'SL tồn',
-                'Số ngày tồn'
             ],
             'Vị trí',
             'Mã tem (pallet)',

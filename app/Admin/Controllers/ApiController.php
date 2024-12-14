@@ -3345,9 +3345,9 @@ class ApiController extends AdminController
             if (isset($request->dot)) {
                 $order_query->where('dot', $request->dot);
             }
-            if (isset($request->customer_id)) {
-                $tem_query->where('khach_hang', 'like', "$request->customer_id%");
-            }
+            // if (isset($request->customer_id)) {
+            //     $tem_query->where('khach_hang', 'like', "$request->customer_id%");
+            // }
             $orders = $order_query->pluck('id')->unique()->toArray();
             $tems = Tem::where('order_id', $orders)->pluck('lo_sx')->toArray();
             $plans = ProductionPlan::where('order_id', $orders)->pluck('lo_sx')->toArray();

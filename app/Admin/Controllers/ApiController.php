@@ -3349,7 +3349,7 @@ class ApiController extends AdminController
             //     $tem_query->where('khach_hang', 'like', "$request->customer_id%");
             // }
             $orders = $order_query->pluck('id')->unique()->toArray();
-            $tems = Tem::where('order_id', $orders)->pluck('lo_sx')->toArray();
+            $tems = Tem::whereIn('order_id', $orders)->pluck('lo_sx')->toArray();
             $plans = ProductionPlan::where('order_id', $orders)->pluck('lo_sx')->toArray();
             $lo_sx = array_merge($lo_sx, $plans, $tems);
             $query->whereIn('lo_sx', array_unique($lo_sx));

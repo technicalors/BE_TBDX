@@ -3314,12 +3314,12 @@ class ApiController extends AdminController
             $end = date('Y-m-d');
         }
         $machine_iot = Machine::where('is_iot', 1)->pluck('id')->toArray();
-        // $query->whereRaw("
-        //     CASE 
-        //         WHEN machine_id IN ('" . implode("','", $machine_iot) . "') THEN DATE(ngay_sx) BETWEEN ? AND ?
-        //         ELSE DATE(created_at) BETWEEN ? AND ?
-        //     END
-        // ", [$start, $end, $start, $end]);
+        $query->whereRaw("
+            CASE 
+                WHEN machine_id IN ('" . implode("','", $machine_iot) . "') THEN DATE(ngay_sx) BETWEEN ? AND ?
+                ELSE DATE(created_at) BETWEEN ? AND ?
+            END
+        ", [$start, $end, $start, $end]);
         $lo_sx = [];
         $plan_query = ProductionPlan::query();
         $tem_query = Tem::query();
@@ -3329,12 +3329,11 @@ class ApiController extends AdminController
                 $order_query->where('short_name', 'like', "$request->customer_id%");
             }
             if (isset($request->mdh)) {
-                $order_query->whereIn('mdh', $request->mdh ?? []);
-                // $order_query->where(function ($q) use ($request) {
-                //     foreach ($request->mdh ?? [] as $key => $mdh) {
-                //         $q->orWhere('mdh', 'like', "%$mdh%");
-                //     }
-                // });
+                $order_query->where(function ($q) use ($request) {
+                    foreach ($request->mdh ?? [] as $key => $mdh) {
+                        $q->orWhere('mdh', 'like', "%$mdh%");
+                    }
+                });
             }
             if (isset($request->mql)) {
                 $order_query->whereIn('mql', $request->mql ?? []);
@@ -3345,12 +3344,12 @@ class ApiController extends AdminController
             if (isset($request->dot)) {
                 $order_query->where('dot', $request->dot);
             }
-            // if (isset($request->customer_id)) {
-            //     $tem_query->where('khach_hang', 'like', "$request->customer_id%");
-            // }
+            if (isset($request->customer_id)) {
+                $tem_query->where('khach_hang', 'like', "$request->customer_id%");
+            }
             $orders = $order_query->pluck('id')->unique()->toArray();
             $tems = Tem::whereIn('order_id', $orders)->pluck('lo_sx')->toArray();
-            $plans = ProductionPlan::where('order_id', $orders)->pluck('lo_sx')->toArray();
+            $plans = ProductionPlan::whereIn('order_id', $orders)->pluck('lo_sx')->toArray();
             $lo_sx = array_merge($lo_sx, $plans, $tems);
             $query->whereIn('lo_sx', array_unique($lo_sx));
         }

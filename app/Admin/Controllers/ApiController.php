@@ -3316,7 +3316,7 @@ class ApiController extends AdminController
         $machine_iot = Machine::where('is_iot', 1)->pluck('id')->toArray();
         $query->whereRaw("
             CASE 
-                WHEN machine_id IN ('" . implode("','", $machine_iot) . "') THEN DATE(ngay_sx) BETWEEN ? AND ?
+                WHEN machine_id IN ('" . implode("','", $machine_iot) . "') THEN DATE(thoi_gian_bat_dau) BETWEEN ? AND ?
                 ELSE DATE(created_at) BETWEEN ? AND ?
             END
         ", [$start, $end, $start, $end]);

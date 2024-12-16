@@ -3386,7 +3386,7 @@ class ApiController extends AdminController
             $obj->sl_ok = $info_cong_doan->sl_dau_ra_hang_loat - $info_cong_doan->sl_ng_qc - $info_cong_doan->sl_ng_sx;
             $obj->sl_phe = $info_cong_doan->sl_ng_qc + $info_cong_doan->sl_ng_sx;
             $obj->ty_le_dau_ra_vao = $info_cong_doan->sl_dau_vao_hang_loat ? floor($info_cong_doan->sl_dau_ra_hang_loat / $info_cong_doan->sl_dau_vao_hang_loat * 100) : 0;
-            $obj->ngay_sx = $info_cong_doan->created_at ? date('d/m/Y', strtotime($info_cong_doan->created_at)) : "";
+            $obj->ngay_sx = $info_cong_doan->thoi_gian_bat_dau ? date('d/m/Y', strtotime($info_cong_doan->thoi_gian_bat_dau)) : "";
             $obj->thoi_gian_bat_dau_kh = $plan && $plan->thoi_gian_bat_dau_kh ? date('H:i:s', strtotime($plan->thoi_gian_bat_dau_kh)) : "";
             $obj->thoi_gian_ket_thuc_kh = $plan && $plan->thoi_gian_ket_thuc_kh ? date('H:i:s', strtotime($plan->thoi_gian_ket_thuc_kh)) : "";
             $obj->thoi_gian_bat_dau = $info_cong_doan->thoi_gian_bat_dau ? date('H:i:s', strtotime($info_cong_doan->thoi_gian_bat_dau)) : "";

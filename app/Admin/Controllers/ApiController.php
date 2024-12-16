@@ -3295,7 +3295,7 @@ class ApiController extends AdminController
 
     function queryProduceHistory(Request $request)
     {
-        $query = InfoCongDoan::orderBy('created_at')->where('sl_dau_ra_hang_loat', '>', 0);
+        $query = InfoCongDoan::orderBy('thoi_gian_bat_dau')->where('sl_dau_ra_hang_loat', '>', 0);
         if ($request->machine) {
             $query->whereIn('machine_id', $request->machine);
         }

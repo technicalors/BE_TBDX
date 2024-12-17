@@ -9083,6 +9083,7 @@ class ApiController extends AdminController
             $query->whereDate('ngay_xuat', date('Y-m-d', strtotime($request->ngay_xuat)));
         }
         unset($input['created_by'], $input['page'], $input['pageSize'], $input['xuong_giao'], $input['ngay_xuat']);
+        $input = array_filter($input);
         $order_test = [];
         if (count($input) > 0) {
             $order_query = Order::withTrashed();

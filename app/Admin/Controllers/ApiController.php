@@ -9100,8 +9100,8 @@ class ApiController extends AdminController
                 }
                 if (isset($request->mdh)) {
                     if (is_array($request->mdh)) {
-                        return $request->mdh;
                         $order_query->whereIn('mdh', $request->mdh);
+                        return $order_query->get();
                     } else {
                         $order_query->where('orders.mdh', 'like', "%$request->mdh%");
                     }

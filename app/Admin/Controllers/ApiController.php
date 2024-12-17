@@ -9100,7 +9100,7 @@ class ApiController extends AdminController
                 }
                 if (isset($request->mdh)) {
                     if (is_array($input['mdh'])) {
-                        $order_test = $order_query->get();
+                        $order_test = $order_query->first();
                         $order_query->whereIn('mdh', $input['mdh']);
                     } else {
                         $order_query->where('orders.mdh', $input['mdh']);

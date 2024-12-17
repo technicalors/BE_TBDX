@@ -8775,13 +8775,7 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        // $filtered_lo_sx = WarehouseFGLog::where('type', 1)->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])))->pluck('lo_sx')->unique()->toArray(); // Lấy danh sách `lo_sx` nằm trong khoảng thời gian
         $query = WarehouseFGLog::where('type', 1)->with('user', 'lo_sx_pallet', 'exportRecord.user')->orderBy('created_at')->withAggregate('order', 'mdh')->withAggregate('order', 'mql')->orderBy('order_mdh', 'ASC')->orderBy('order_mql', 'ASC');
-        // $query = WarehouseFGLog::select(
-        //     'warehouse_fg_logs.*',
-        //     DB::raw("IFNULL((SELECT MAX(created_at) FROM warehouse_fg_logs AS exports WHERE exports.lo_sx = warehouse_fg_logs.lo_sx AND exports.type = 2), CURRENT_DATE) as last_activity_date"),
-        //     DB::raw("DATEDIFF(CURRENT_DATE, warehouse_fg_logs.created_at) as stock_age")
-        // );
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }
@@ -8798,29 +8792,29 @@ class ApiController extends AdminController
             $query->where('lo_sx', 'like', "%" . $input['lo_sx'] . "%");
         }
         if (isset($input['khach_hang']) || isset($input['mdh']) || isset($input['mql']) || isset($input['kich_thuoc']) || isset($input['length']) || isset($input['width']) || isset($input['height'])) {
-            $query->whereHas('order', function ($q) use ($input) {
-                if (isset($input['khach_hang'])) {
-                    $q->where('short_name', 'like', "%" . $input['khach_hang'] . "%");
-                }
-                if (isset($input['mdh'])) {
-                    $q->where('mdh', 'like', "%" . $input['mdh'] . "%");
-                }
-                if (isset($input['mql'])) {
-                    $q->where('mql', $input['mql']);
-                }
-                if (isset($input['kich_thuoc'])) {
-                    $q->where('kich_thuoc', 'like', "%" . $input['kich_thuoc'] . "%");
-                }
-                if (isset($input['length'])) {
-                    $q->where('length', 'like', "%" . $input['length'] . "%");
-                }
-                if (isset($input['width'])) {
-                    $q->where('width', 'like', "%" . $input['width'] . "%");
-                }
-                if (isset($input['height'])) {
-                    $q->where('height', 'like', "%" . $input['height'] . "%");
-                }
-            });
+            $order_query = Order::query();
+            if (isset($input['khach_hang'])) {
+                $order_query->where('short_name', 'like', "%" . $input['khach_hang'] . "%");
+            }
+            if (isset($input['mdh'])) {
+                $order_query->where('mdh', 'like', "%" . $input['mdh'] . "%");
+            }
+            if (isset($input['mql'])) {
+                $order_query->where('mql', $input['mql']);
+            }
+            if (isset($input['kich_thuoc'])) {
+                $order_query->where('kich_thuoc', 'like', "%" . $input['kich_thuoc'] . "%");
+            }
+            if (isset($input['length'])) {
+                $order_query->where('length', 'like', "%" . $input['length'] . "%");
+            }
+            if (isset($input['width'])) {
+                $order_query->where('width', 'like', "%" . $input['width'] . "%");
+            }
+            if (isset($input['height'])) {
+                $order_query->where('height', 'like', "%" . $input['height'] . "%");
+            }
+            $query->whereIn('order_id', $order_query->pluck('id')->toArray());
         }
         return $query;
     }
@@ -8830,8 +8824,8 @@ class ApiController extends AdminController
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
         $query = $this->customQueryWarehouseFGLog($request);
-        $allData = $query->get()->map(function ($item){
-            if(!$item->exportRecord){
+        $allData = $query->get()->map(function ($item) {
+            if (!$item->exportRecord) {
                 $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
                 $item->sl_ton = $item->so_luong;
             }
@@ -8888,8 +8882,8 @@ class ApiController extends AdminController
     {
         $input = $request->all();
         $query = $this->customQueryWarehouseFGLog($request);
-        $allData = $query->get()->map(function ($item){
-            if(!$item->exportRecord){
+        $allData = $query->get()->map(function ($item) {
+            if (!$item->exportRecord) {
                 $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
                 $item->sl_ton = $item->so_luong;
             }
@@ -9175,6 +9169,16 @@ class ApiController extends AdminController
                 }
             });
         }
+        $query->whereHas('lsxpallets', function($q)use($request){
+            $q->selectRaw('SUM(so_luong) as sl_ton');
+            $q->having('sl_ton', '>', 0);
+            if (isset($request->sl_ton_min)) {
+                $q->having('sl_ton', '>=', $request->sl_ton_min);
+            }
+            if (isset($request->sl_ton_max)) {
+                $q->having('sl_ton', '<=', $request->sl_ton_max);
+            }
+        });
         $count = $query->count();
         $totalPage = $count;
         if (isset($request->page) && isset($request->pageSize)) {
@@ -9182,19 +9186,19 @@ class ApiController extends AdminController
             $pageSize = $request->pageSize;
             $query->offset($page * $pageSize)->limit($pageSize);
         }
-        $records = $query->with('order')->get()->sortBy('order_id', SORT_NATURAL);
+        $records = $query->with(['lsxpallets', 'order'])->get();
         $data = [];
         foreach ($records as $record) {
             $record->so_luong_xuat = $record->so_luong;
-            $record->sl_ton = (int)$record->lsxpallets()->sum('lsx_pallet.so_luong');
+            $record->sl_ton = (int)$record->lsxpallets->sum('so_luong');
             // if ($record->sl_ton <= 0) {
             //     continue;
             // }
-            if ($record->order) {
-                $data[] = array_merge($record->order->toArray(), $record->toArray());
-            } else {
-                $data[] = $record->toArray();
-            }
+            // if ($record->order) {
+            //     $data[] = array_merge($record->order->toArray(), $record->toArray());
+            // } else {
+            //     $data[] = $record->toArray();
+            // }
         }
         // $totalPage = count($data);
         // if (isset($request->page) && isset($request->pageSize)) {
@@ -9203,7 +9207,7 @@ class ApiController extends AdminController
         //     $data = collect($data)->skip($page * $pageSize)->take($pageSize)->toArray();
         // }
         $res = [
-            "data" => array_values($data),
+            "data" => array_values($records->toArray()),
             "totalPage" => $totalPage,
         ];
         return $this->success($res);

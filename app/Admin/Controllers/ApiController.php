@@ -9163,7 +9163,7 @@ class ApiController extends AdminController
                     $order_query->where('tmo', $request->tmo);
                 }
             $orders = $order_query->pluck('id')->toArray();
-            $order_test = $orders;
+            // $order_test = $orders;
             $query->whereIn('order_id', $orders);
         }
         $query->whereHas('lsxpallets', function($q)use($request){

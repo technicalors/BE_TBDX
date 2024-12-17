@@ -9084,82 +9084,83 @@ class ApiController extends AdminController
         }
         unset($input['created_by'], $input['page'], $input['pageSize'], $input['xuong_giao'], $input['ngay_xuat']);
         if (count($input) > 0) {
-            $query->whereHas('order', function ($q) use ($request) {
+            $order_query = Order::query();
                 if (isset($request->customer_id)) {
-                    $q->where('customer_id', 'like', "%" . $request->customer_id . "%");
+                    $order_query->where('customer_id', 'like', "%" . $request->customer_id . "%");
                 }
                 if (isset($request->short_name)) {
-                    $q->where('short_name', 'like', "%" . $request->short_name . "%");
+                    $order_query->where('short_name', 'like', "%" . $request->short_name . "%");
                 }
                 if (isset($request->ngay_dat_hang)) {
-                    $q->whereDate('ngay_dat_hang', date('Y-m-d', strtotime($request->ngay_dat_hang)));
+                    $order_query->whereDate('ngay_dat_hang', date('Y-m-d', strtotime($request->ngay_dat_hang)));
                 }
                 if (isset($request->start_date) && isset($request->end_date)) {
-                    $q->whereDate('ngay_dat_hang', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('ngay_dat_hang', '<=', date('Y-m-d', strtotime($request->end_date)));
+                    $order_query->whereDate('ngay_dat_hang', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('ngay_dat_hang', '<=', date('Y-m-d', strtotime($request->end_date)));
                 }
                 if (isset($request->mdh)) {
                     if (is_array($request->mdh)) {
-                        $q->whereIn('mdh', $request->mdh);
+                        $order_query->whereIn('mdh', $request->mdh);
                     } else {
-                        $q->where('orders.mdh', 'like', "%$request->mdh%");
+                        $order_query->where('orders.mdh', 'like', "%$request->mdh%");
                     }
                 }
                 if (isset($request->order)) {
-                    $q->where('order', 'like', "%$request->order%");
+                    $order_query->where('order', 'like', "%$request->order%");
                 }
                 if (isset($request->mql)) {
                     if (is_array($request->mql)) {
-                        $q->whereIn('mql', $request->mql);
+                        $order_query->whereIn('mql', $request->mql);
                     } else {
-                        $q->where('orders.mql', $request->mql);
+                        $order_query->where('orders.mql', $request->mql);
                     }
                 }
                 if (isset($request->kich_thuoc)) {
-                    $q->where('kich_thuoc', 'like', "%$request->kich_thuoc%");
+                    $order_query->where('kich_thuoc', 'like', "%$request->kich_thuoc%");
                 }
                 if (isset($request->length)) {
-                    $q->where('length', 'like', $request->length);
+                    $order_query->where('length', 'like', $request->length);
                 }
                 if (isset($request->width)) {
-                    $q->where('width', 'like', $request->width);
+                    $order_query->where('width', 'like', $request->width);
                 }
                 if (isset($request->height)) {
-                    $q->where('height', 'like', $request->height);
+                    $order_query->where('height', 'like', $request->height);
                 }
                 if (isset($request->po)) {
-                    $q->where('po', 'like', "%$request->po%");
+                    $order_query->where('po', 'like', "%$request->po%");
                 }
                 if (isset($request->style)) {
-                    $q->where('style', 'like', "%$request->style%");
+                    $order_query->where('style', 'like', "%$request->style%");
                 }
                 if (isset($request->style_no)) {
-                    $q->where('style_no', 'like', "%$request->style_no%");
+                    $order_query->where('style_no', 'like', "%$request->style_no%");
                 }
                 if (isset($request->color)) {
-                    $q->where('color', 'like', "%$request->color%");
+                    $order_query->where('color', 'like', "%$request->color%");
                 }
                 if (isset($request->item)) {
-                    $q->where('item', 'like', "%$request->item%");
+                    $order_query->where('item', 'like', "%$request->item%");
                 }
                 if (isset($request->rm)) {
-                    $q->where('rm', 'like', "%$request->rm%");
+                    $order_query->where('rm', 'like', "%$request->rm%");
                 }
                 if (isset($request->size)) {
-                    $q->where('size', 'like', "%$request->size%");
+                    $order_query->where('size', 'like', "%$request->size%");
                 }
                 if (isset($request->note_2)) {
-                    $q->where('note_2', 'like', "%$request->note_2%");
+                    $order_query->where('note_2', 'like', "%$request->note_2%");
                 }
                 if (isset($request->han_giao)) {
-                    $q->whereDate('han_giao', date('Y-m-d', strtotime($request->han_giao)));
+                    $order_query->whereDate('han_giao', date('Y-m-d', strtotime($request->han_giao)));
                 }
                 if (isset($request->dot)) {
-                    $q->where('dot', $request->dot);
+                    $order_query->where('dot', $request->dot);
                 }
                 if (isset($request->tmo)) {
-                    $q->where('tmo', $request->tmo);
+                    $order_query->where('tmo', $request->tmo);
                 }
-            });
+            $orders = $order_query->pluck('id')->toArray();
+            $query->whereIn('order_id', $orders);
         }
         $query->whereHas('lsxpallets', function($q)use($request){
             $q->selectRaw('SUM(so_luong) as sl_ton');

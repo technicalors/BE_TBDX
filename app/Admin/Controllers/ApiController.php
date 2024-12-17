@@ -4712,10 +4712,12 @@ class ApiController extends AdminController
         $fg_exports = $query->orderBy('created_at', 'DESC')->get();
         $data = [];
         $lsx_array = [];
+        $test = [];
         if (count($fg_exports) > 0) {
             foreach ($fg_exports as $key => $fg_export) {
-                $lsx_pallets = $fg_export->lsxpallets()->get();
+                $lsx_pallets = $fg_export->lsxpallets;
                 $so_luong_da_xuat = WarehouseFGLog::where('delivery_note_id', $fg_export->delivery_note_id)->where('order_id', $fg_export->order_id)->where('type', 2)->sum('so_luong');
+                // $test[] = [$fg_export->id, $lsx_pallets, $so_luong_da_xuat];
                 $sum_sl = 0;
                 $arr = [];
                 foreach ($lsx_pallets as $lsx_pallet) {

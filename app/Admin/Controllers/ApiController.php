@@ -9099,11 +9099,7 @@ class ApiController extends AdminController
                 }
                 if (isset($request->mdh)) {
                     if (is_array($request->mdh)) {
-                        $q->where(function ($custom_query) use ($request) {
-                            foreach ($request->mdh as $mdh) {
-                                $custom_query->orWhere('orders.mdh', 'like', "%$mdh%");
-                            }
-                        });
+                        $q->whereIn('mdh', $request->mdh);
                     } else {
                         $q->where('orders.mdh', 'like', "%$request->mdh%");
                     }
@@ -9113,11 +9109,7 @@ class ApiController extends AdminController
                 }
                 if (isset($request->mql)) {
                     if (is_array($request->mql)) {
-                        $q->where(function ($custom_query) use ($request) {
-                            foreach ($request->mql as $mql) {
-                                $custom_query->orWhere('orders.mql', $mql);
-                            }
-                        });
+                        $q->whereIn('mql', $request->mql);
                     } else {
                         $q->where('orders.mql', $request->mql);
                     }

@@ -9085,7 +9085,7 @@ class ApiController extends AdminController
         unset($input['created_by'], $input['page'], $input['pageSize'], $input['xuong_giao'], $input['ngay_xuat']);
         $order_test = [];
         if (count($input) > 0) {
-            $order_query = Order::query();
+            $order_query = Order::withTrashed();
                 if (isset($request->customer_id)) {
                     $order_query->where('customer_id', 'like', "%" . $request->customer_id . "%");
                 }
@@ -9098,9 +9098,8 @@ class ApiController extends AdminController
                 if (isset($request->start_date) && isset($request->end_date)) {
                     $order_query->whereDate('ngay_dat_hang', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('ngay_dat_hang', '<=', date('Y-m-d', strtotime($request->end_date)));
                 }
-                if (isset($request->mdh)) {
+                if (isset($input['mdh'])) {
                     if (is_array($input['mdh'])) {
-                        $order_test = $order_query->first();
                         $order_query->whereIn('mdh', $input['mdh']);
                     } else {
                         $order_query->where('orders.mdh', $input['mdh']);

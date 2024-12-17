@@ -9194,11 +9194,11 @@ class ApiController extends AdminController
             // if ($record->sl_ton <= 0) {
             //     continue;
             // }
-            // if ($record->order) {
-            //     $data[] = array_merge($record->order->toArray(), $record->toArray());
-            // } else {
-            //     $data[] = $record->toArray();
-            // }
+            if ($record->order) {
+                $data[] = array_merge($record->order->toArray(), $record->toArray());
+            } else {
+                $data[] = $record->toArray();
+            }
         }
         // $totalPage = count($data);
         // if (isset($request->page) && isset($request->pageSize)) {
@@ -9207,7 +9207,7 @@ class ApiController extends AdminController
         //     $data = collect($data)->skip($page * $pageSize)->take($pageSize)->toArray();
         // }
         $res = [
-            "data" => array_values($records->toArray()),
+            "data" => array_values($data),
             "totalPage" => $totalPage,
         ];
         return $this->success($res);

@@ -9083,6 +9083,7 @@ class ApiController extends AdminController
             $query->whereDate('ngay_xuat', date('Y-m-d', strtotime($request->ngay_xuat)));
         }
         unset($input['created_by'], $input['page'], $input['pageSize'], $input['xuong_giao'], $input['ngay_xuat']);
+        $order_test = [];
         if (count($input) > 0) {
             $order_query = Order::query();
                 if (isset($request->customer_id)) {
@@ -9160,6 +9161,7 @@ class ApiController extends AdminController
                     $order_query->where('tmo', $request->tmo);
                 }
             $orders = $order_query->pluck('id')->toArray();
+            $order_test = $orders;
             $query->whereIn('order_id', $orders);
         }
         $query->whereHas('lsxpallets', function($q)use($request){
@@ -9202,6 +9204,7 @@ class ApiController extends AdminController
         $res = [
             "data" => array_values($data),
             "totalPage" => $totalPage,
+            'order'=>$order_test,
         ];
         return $this->success($res);
     }

@@ -9098,11 +9098,10 @@ class ApiController extends AdminController
                 if (isset($request->start_date) && isset($request->end_date)) {
                     $order_query->whereDate('ngay_dat_hang', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('ngay_dat_hang', '<=', date('Y-m-d', strtotime($request->end_date)));
                 }
-                $order_test = $input['mdh'];
                 if (isset($request->mdh)) {
                     if (is_array($input['mdh'])) {
                         $order_query->whereIn('mdh', $input['mdh']);
-                        $order_test = $input['mdh'];
+                        $order_test = $order_query->get();
                     } else {
                         $order_query->where('orders.mdh', $input['mdh']);
                     }

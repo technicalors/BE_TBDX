@@ -215,10 +215,9 @@ class KPIController extends AdminController
         $machineXaLot = Machine::where('line_id', 33)->get()->pluck('id')->toArray();
         $thung = InfoCongDoan::whereIn('machine_id', $machineDan)->get()->pluck('lo_sx')->unique()->toArray();
         $lot = InfoCongDoan::whereIn('machine_id', $machineXaLot)->get()->pluck('lo_sx')->unique()->toArray();
-        $export = DB::table('warehouse_fg_logs')->where('type', 2)->pluck('lo_sx')->toArray();
+        
         // return $export;
-        $inventories = DB::table('warehouse_fg_logs')
-            ->select('so_luong', 'lo_sx')
+        $inventories = WarehouseFGLog::select('so_luong', 'lo_sx')
             ->selectRaw("
                 CASE
                     WHEN lo_sx IN ('" . implode("','", $thung) . "') THEN 'Thùng'
@@ -234,7 +233,7 @@ class KPIController extends AdminController
                 DATEDIFF(NOW(), created_at) AS days_since_latest
             ")
             ->where('type', 1)
-            ->whereNotIn('lo_sx', $export)
+            ->doesntHave('exportRecord')
             ->get() // Loại bỏ các `lo_sx` đã xuất
             ->groupBy(['lotType', function ($item) {
                 return $item->time_range;

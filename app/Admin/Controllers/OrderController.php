@@ -625,6 +625,7 @@ class OrderController extends AdminController
         $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $customer_array = Customer::pluck('id')->toArray();
+        $short_customer_array = CustomerShort::pluck('short_name')->toArray();
         $data = [];
         try {
             DB::beginTransaction();
@@ -641,8 +642,9 @@ class OrderController extends AdminController
                     }
                     if(!in_array($row['D'], $customer_array)){
                         return $this->failure('', 'Không tìm thấy mã khách hàng ở dòng số '. $key);
-                        // Customer::updateOrCreate(['id'=>$row['D']], ['name'=>$row['C'], 'namp_input'=>$row['C']]);
-                        // CustomerShort::updateOrCreate(['customer_id'=>$row['D'], 'short_name'=>$row['C']]);
+                    }
+                    if(!in_array($row['C'], $short_customer_array)){
+                        return $this->failure('', 'Không tìm thấy tên rút gọn khách hàng ở dòng số '. $key);
                     }
                     // $row['F'] = $this->formarMDH($row['F']);
                     $row = array_map('trim', $row);

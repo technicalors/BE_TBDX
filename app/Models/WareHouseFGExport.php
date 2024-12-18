@@ -23,7 +23,7 @@ class WareHouseFGExport extends Model
     // }
     public function lsxpallets()
     {
-        return $this->hasMany(LSXPallet::class, ['mdh', 'mql'], ['mdh', 'mql']);
+        return $this->hasMany(LSXPallet::class, 'order_id', 'order_id');
     }
     public function delivery_note()
     {

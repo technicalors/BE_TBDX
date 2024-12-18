@@ -4719,16 +4719,14 @@ class ApiController extends AdminController
                 $so_luong_da_xuat = WarehouseFGLog::where('delivery_note_id', $fg_export->delivery_note_id)->where('order_id', $fg_export->order_id)->where('type', 2)->sum('so_luong');
                 // $test[] = [$fg_export->id, $lsx_pallets, $so_luong_da_xuat];
                 $sum_sl = 0;
-                $arr = [];
+                $sl_can_xuat = $fg_export->so_luong - $so_luong_da_xuat;
                 foreach ($lsx_pallets as $lsx_pallet) {
                     if ($lsx_pallet->locator_fg_map) {
-                        $arr[] = $lsx_pallet;
-                        if ($sum_sl < $fg_export->so_luong - $so_luong_da_xuat) {
+                        if ($sum_sl < $sl_can_xuat) {
                             if (in_array($lsx_pallet->lo_sx, $lsx_array)) {
                                 continue;
-                            } else {
-                                $lsx_array[] = $lsx_pallet->lo_sx;
                             }
+                            $lsx_array[] = $lsx_pallet->lo_sx;
                             $khach_hang = $lsx_pallet->customer_id ?? "";
                             $data[$lsx_pallet->pallet_id]['pallet_id'] = $lsx_pallet->pallet_id;
                             $data[$lsx_pallet->pallet_id]['locator_id'] = $lsx_pallet->locator_fg_map->locator_id;
@@ -4738,10 +4736,11 @@ class ApiController extends AdminController
                             $data[$lsx_pallet->pallet_id]['delivery_note_id'] = $fg_export->delivery_note_id;
                             if (!isset($data[$lsx_pallet->pallet_id]['lo_sx'])) $data[$lsx_pallet->pallet_id]['lo_sx'] = [];
                             $data[$lsx_pallet->pallet_id]['lo_sx'][] = ['lo_sx' => $lsx_pallet->lo_sx, 'so_luong' => $lsx_pallet->so_luong, 'mql' => $lsx_pallet->mql, 'mdh' => $lsx_pallet->mdh, 'khach_hang' => $khach_hang];
+                            $sum_sl += $lsx_pallet->so_luong;
                         } else {
                             continue;
                         }
-                        $sum_sl += $lsx_pallet->so_luong;
+                        
                     }
                 }
             }

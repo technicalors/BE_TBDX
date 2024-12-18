@@ -143,9 +143,9 @@ class CustomerController extends AdminController
         try {
             DB::beginTransaction();
             $input = $request->all();
-            $customer = Customer::create(['id'=>$input['customer_id'], 'name'=>$input['name']]);
+            $customer = Customer::updateOrCreate(['id'=>$input['customer_id']], ['name'=>$input['name']]);
             if ($customer) {
-                $short_name = CustomerShort::create(['customer_id'=>$customer->id, 'short_name'=>$input['short_name']]);
+                $short_name = CustomerShort::updateOrCreate(['customer_id'=>$customer->id, 'short_name'=>$input['short_name']]);
             }
             DB::commit();
         } catch (\Throwable $th) {

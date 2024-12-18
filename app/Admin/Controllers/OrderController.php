@@ -640,8 +640,9 @@ class OrderController extends AdminController
                         return $this->failure([], 'Hàng số ' . $key . ': Thiếu thông mã khách hàng');
                     }
                     if(!in_array($row['D'], $customer_array)){
-                        Customer::updateOrCreate(['id'=>$row['D']], ['name'=>$row['C'], 'namp_input'=>$row['C']]);
-                        CustomerShort::updateOrCreate(['customer_id'=>$row['D'], 'short_name'=>$row['C']]);
+                        return $this->failure('', 'Không tìm thấy mã khách hàng ở dòng số '. $key);
+                        // Customer::updateOrCreate(['id'=>$row['D']], ['name'=>$row['C'], 'namp_input'=>$row['C']]);
+                        // CustomerShort::updateOrCreate(['customer_id'=>$row['D'], 'short_name'=>$row['C']]);
                     }
                     // $row['F'] = $this->formarMDH($row['F']);
                     $row = array_map('trim', $row);

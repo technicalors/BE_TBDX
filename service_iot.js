@@ -10,8 +10,17 @@ const USER_CREDENTIALS = {
     username: 'messystem@gmail.com',
     password: 'mesors@2023'
 };
-const DEVICES =  ['2262b3d0-85db-11ee-8392-a51389126dc6', '34055200-85db-11ee-8392-a51389126dc6', '0a6afda0-85db-11ee-8392-a51389126dc6', 'ffd778a0-85da-11ee-8392-a51389126dc6', 'e9aba8d0-85da-11ee-8392-a51389126dc6',
-    'd9397550-ad38-11ef-a8bd-45ae64f28680','ed675240-ad38-11ef-a8bd-45ae64f28680','f5957000-ad38-11ef-a8bd-45ae64f28680','69f8f0e0-ad3c-11ef-a8bd-45ae64f28680','72f81a40-ad3c-11ef-a8bd-45ae64f28680'
+const DEVICES =  [
+    '2262b3d0-85db-11ee-8392-a51389126dc6', //Da06
+    '34055200-85db-11ee-8392-a51389126dc6', //Da05
+    '0a6afda0-85db-11ee-8392-a51389126dc6', //Pr06
+    'ffd778a0-85da-11ee-8392-a51389126dc6', //Pr15
+    'e9aba8d0-85da-11ee-8392-a51389126dc6', //So01
+    'd9397550-ad38-11ef-a8bd-45ae64f28680', //Pr11
+    'ed675240-ad38-11ef-a8bd-45ae64f28680', //Pr12
+    'f5957000-ad38-11ef-a8bd-45ae64f28680', //Pr16
+    '69f8f0e0-ad3c-11ef-a8bd-45ae64f28680', //CH02
+    '72f81a40-ad3c-11ef-a8bd-45ae64f28680'  //CH03
 ];
 const RETRY_INTERVALS = {
     fetchError: 2000, // in ms

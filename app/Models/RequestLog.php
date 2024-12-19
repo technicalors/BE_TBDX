@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class RequestLog extends Model
 {
     protected $fillable = [
-        // 'ip_address',
+        'ip_address',
         'uri',
         'method',
         'controller_action',

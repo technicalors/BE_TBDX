@@ -50,7 +50,8 @@ class LogRequest
             'response' => $response->getContent()
         ];
         $res = $response->getContent();
-        if(!(isset($res['success']) && $res['success'] == true)){
+        $data = json_decode($res, true); // Chuyển chuỗi JSON thành mảng
+        if (!is_array($data) || !(isset($data['success']) && $data['success'] == true)) {
             try {
                 RequestLog::query()->create($logData);
                 $user = CustomUser::find(auth()->user()->id ?? "");

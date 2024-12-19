@@ -63,8 +63,7 @@ async function fetchTelemetryData(device, token) {
             return fetchTelemetryData(device, newToken);
         }
         
-        const { Pre_Counter, Set_Counter, Error_Counter, Machine_Status } = response.data;
-        
+        const { Pre_Counter, Set_Counter, Error_Counter, Machine_Status, Out_Counter } = response.data;
         const data = {
             device_id: device,
             Pre_Counter: Pre_Counter ? (Pre_Counter[0]?.value ?? 0) : 0,
@@ -72,6 +71,9 @@ async function fetchTelemetryData(device, token) {
             Error_Counter: Error_Counter ? (Error_Counter[0]?.value ?? 0) : 0,
             Machine_Status: Machine_Status ? (Machine_Status[0]?.value ?? 0) : 0,
         };
+        if(device === 'f5957000-ad38-11ef-a8bd-45ae64f28680'){//Pr16 use Out_counter instead of Pre_Counter
+            data.Pre_Counter = Out_Counter ? (Out_Counter[0]?.value ?? 0) : 0;
+        }
 
         const status = {
             device_id: device,

@@ -49,24 +49,27 @@ class LogRequest
             'requested_by' => optional(auth()->user())->id,
             'response' => $response->getContent()
         ];
-        try {
-            RequestLog::query()->create($logData);
-            $user = CustomUser::find(auth()->user()->id ?? "");
-            if($user){
-                $now = Carbon::now();
-                $diff = $user->last_use_at ? $now->diffInSeconds($user->last_use_at) : 0;
-                if(!$user->login_times_in_day){
-                    $user->login_times_in_day = 1;
+        $res = $response->getContent();
+        if(!(isset($res['success']) && $res['success'] == true)){
+            try {
+                RequestLog::query()->create($logData);
+                $user = CustomUser::find(auth()->user()->id ?? "");
+                if($user){
+                    $now = Carbon::now();
+                    $diff = $user->last_use_at ? $now->diffInSeconds($user->last_use_at) : 0;
+                    if(!$user->login_times_in_day){
+                        $user->login_times_in_day = 1;
+                    }
+                    $user->update([
+                        'usage_time_in_day'=>$user->usage_time_in_day + $diff, 
+                        'last_use_at' => $now, 
+                        'login_times_in_day'=>!$user->login_times_in_day ? 1 : $user->login_times_in_day
+                    ]);
                 }
-                $user->update([
-                    'usage_time_in_day'=>$user->usage_time_in_day + $diff, 
-                    'last_use_at' => $now, 
-                    'login_times_in_day'=>!$user->login_times_in_day ? 1 : $user->login_times_in_day
-                ]);
+                
+            } catch (Exception $e) {
+                Log::error('Failed to log request at ' . now()->toDateTimeString() . ' with error: ' . $e->getMessage());
             }
-            
-        } catch (Exception $e) {
-            Log::error('Failed to log request at ' . now()->toDateTimeString() . ' with error: ' . $e->getMessage());
         }
         return $response;
     }

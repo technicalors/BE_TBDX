@@ -425,9 +425,19 @@ class ApiController extends AdminController
 
     public function pausePlan(Request $request)
     {
-        $infos = InfoCongDoan::whereIn('id', ($request->info_ids ?? []))->update(['status' => -1]);
-        if ($infos <= 0) {
+        $infos = InfoCongDoan::whereIn('id', ($request->info_ids ?? []));
+        if ($infos->count() <= 0) {
             return $this->failure('', 'Không có bản ghi được cập nhật');
+        }
+        $infos->update(['status' => -1]);
+        $tracking = Tracking::where('machine_id', $request->machine_id)->first();
+        if($tracking && in_array($tracking->lo_sx, $infos->pluck('lo_sx')->toArray())){
+            $tracking->update([
+                'lo_sx' => null,
+                'so_ra' => 0,
+                'thu_tu_uu_tien' => null,
+                'sl_kh' => 0
+            ]);
         }
         if ($request->machine_id !== 'So01') {
             InfoCongDoanPriority::whereIn('info_cong_doan_id', ($request->info_ids ?? []))->delete();
@@ -439,7 +449,7 @@ class ApiController extends AdminController
 
     public function resumePlan(Request $request)
     {
-        $infos = InfoCongDoan::whereIn('id', ($request->info_ids ?? []))->orderBy('thu_tu_uu_tien')->get();
+        $infos = InfoCongDoan::whereIn('id', array_reverse($request->info_ids ?? []))->orderBy('thu_tu_uu_tien')->get();
         if (count($infos) <= 0) {
             return $this->failure('', 'Không có bản ghi được cập nhật');
         }
@@ -460,7 +470,7 @@ class ApiController extends AdminController
                     return $this->failure('', 'Máy đang chạy đơn khác, hãy thử lại sau');
                 }
                 foreach ($infos as $key => $info) {
-                    $info->update(['status' => 0, 'ngay_sx' => date('Y-m-d')]);
+                    $info->update(['status' => $key === (count($infos) - 1) ? 1 : 0, 'ngay_sx' => date('Y-m-d')]);
                     if ($key === 0) {
                         $tracking->update([
                             'lo_sx' => $info->lo_sx,
@@ -694,7 +704,7 @@ class ApiController extends AdminController
             if ($tracking->lo_sx) {
                 $info_lo_sx = InfoCongDoan::with('infoCongDoanPriority', 'order')->where('lo_sx', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->where('status', 1)->first();
                 if ($info_lo_sx) {
-                    if (($tracking->pre_counter + ($tracking->error_counter ?? 0)) > ($request['Pre_Counter'] + ($request['Error_Counter'] ?? 0)) && $tracking->pre_counter > 0 || ($request['Pre_Counter'] > $tracking->sl_kh && $tracking->sl_kh != $request['Set_Counter'])) {
+                    if (($tracking->pre_counter + ($tracking->error_counter ?? 0)) > ($request['Pre_Counter'] + ($request['Error_Counter'] ?? 0)) && $tracking->pre_counter > 0) {
                         $info_lo_sx->update([
                             'status' => $info_lo_sx->phan_dinh !== 0 ? 3 : 2,
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
@@ -1906,7 +1916,7 @@ class ApiController extends AdminController
                 'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
                 'ngay_sx' => date('Y-m-d'),
                 'nhan_vien_sx' => $request->user()->id ?? null,
-                'status' => 0,
+                'status' => 1,
                 'order_id' => $tem->order_id ?? null
             ]);
             DB::commit();

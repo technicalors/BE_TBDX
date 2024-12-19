@@ -103,7 +103,7 @@ async function postData(data) {
         const response = await axios.post(POST_URL, data, { timeout: 5000 });
         console.log('Data posted successfully:', { ...data, ...response.data });
     } catch (error) {
-        console.error('Error posting data:', error);
+        console.error('Error posting data:', error.message);
     }
 }
 

@@ -27,6 +27,9 @@ class UserLineMachineController extends AdminController
     public function getMachineAssignment(Request $request){
         $input = $request->all();
         $query = CustomUser::orderBy('name');
+        if (!isset($request->all_user)) {
+            $query->whereNull('deleted_at');
+        }
         if(isset($input['username'])){
             $query->where('username', 'like', "%".$input['username']."%");
         }

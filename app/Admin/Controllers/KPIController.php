@@ -138,20 +138,23 @@ class KPIController extends AdminController
         $machines = Machine::where('is_iot', 1)->pluck('id')->toArray();
         foreach ($period as $date) {
             $label = $date->format('d/m');
-            $machine_param_logs = MachineParameterLogs::whereIn('machine_id', $machines)
-                ->where('info->Machine_Status', '!=', '0.0')
-                ->whereNotNull('info')
-                ->whereDate('created_at', $date->format('Y-m-d'))
-                ->select(
-                    'machine_id',
-                    DB::raw('DATE(created_at) as log_date'), // Tách ngày
-                    DB::raw('MIN(created_at) as start_time'), // Log đầu tiên trong ngày
-                    DB::raw('MAX(created_at) as end_time'),   // Log cuối cùng trong ngày
-                    DB::raw('TIMESTAMPDIFF(SECOND, MIN(created_at), MAX(created_at)) as working_seconds') // Thời gian làm việc
-                )
-                ->groupBy('machine_id', 'log_date')
-                ->get();
-            // return $machine_param_logs;
+            // $machine_param_logs = MachineParameterLogs::whereIn('machine_id', $machines)
+            //     ->where('info->Machine_Status', '!=', '0.0')
+            //     ->whereNotNull('info')
+            //     ->whereDate('created_at', $date->format('Y-m-d'))
+            //     ->select(
+            //         'machine_id',
+            //         DB::raw('DATE(created_at) as log_date'), // Tách ngày
+            //         DB::raw('MIN(created_at) as start_time'), // Log đầu tiên trong ngày
+            //         DB::raw('MAX(created_at) as end_time'),   // Log cuối cùng trong ngày
+            //         DB::raw('TIMESTAMPDIFF(SECOND, MIN(created_at), MAX(created_at)) as working_seconds') // Thời gian làm việc
+            //     )
+            //     ->groupBy('machine_id', 'log_date')
+            //     ->get();
+            $total_run_time = 24 * 3600 * count($machines);
+            if($date->format('Y-m-d') == date('Y-m-d')) {
+                $total_run_time = (time() - strtotime(date('Y-m-d 00:00:00'))) * count($machines);
+            }
             $machine_logs = MachineLog::selectRaw("
                     machine_id,
                     CASE 
@@ -166,9 +169,9 @@ class KPIController extends AdminController
                 ->whereDate('start_time', $date->format('Y-m-d'))
                 ->get();
             // Tính tổng thời gian dừng
-            $thoi_gian_dung = $machine_logs->sum('total_time') / count($machines);
+            $thoi_gian_dung = $machine_logs->sum('total_time');
             // Tính thời gian làm việc từ 7:30 sáng đến hiện tại
-            $thoi_gian_lam_viec = min(24 * 3600 * count($machines), $machine_param_logs->sum('working_seconds'));
+            $thoi_gian_lam_viec = min(24 * 3600 * count($machines), $total_run_time);
             // return $thoi_gian_dung;
             // Tính thời gian chạy bằng thời gian làm việc - thời gian dừng
             $thoi_gian_chay = max(0, $thoi_gian_lam_viec - $thoi_gian_dung); // Đảm bảo không âm
@@ -307,9 +310,9 @@ class KPIController extends AdminController
             'categories' => [], // Trục hoành (ngày)
             'ty_le_ng' => [],  // Số lượng tất cả công đoạn
         ];
+        $machines = Machine::whereIn('line_id', [32, 33])->get();
         foreach ($period as $date) {
             $label = $date->format('d/m');
-            $machines = Machine::whereIn('line_id', [32, 33])->get();
             $result = InfoCongDoan::whereDate('thoi_gian_bat_dau', $date->format('Y-m-d'))
                 ->whereIn('machine_id', $machines->pluck('id')->toArray())
                 ->selectRaw("

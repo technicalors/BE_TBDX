@@ -704,7 +704,9 @@ class ApiController extends AdminController
             if ($tracking->lo_sx) {
                 $info_lo_sx = InfoCongDoan::with('infoCongDoanPriority', 'order')->where('lo_sx', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->where('status', 1)->first();
                 if ($info_lo_sx) {
-                    if (($tracking->pre_counter + ($tracking->error_counter ?? 0)) > ($request['Pre_Counter'] + ($request['Error_Counter'] ?? 0)) && $tracking->pre_counter > 0) {
+                    $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
+                    $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
+                    if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity  || ($tracking->pre_counter > 0 && ($request['Pre_Counter'] / $tracking->pre_counter) > 1.5))) {
                         $info_lo_sx->update([
                             'status' => $info_lo_sx->phan_dinh !== 0 ? 3 : 2,
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
@@ -5144,6 +5146,7 @@ class ApiController extends AdminController
                 $inp['so_luong'] = $lsx->so_luong;
                 $inp['created_by'] = $request->user()->id;
                 $inp['order_id'] = $lsx->order_id;
+                $inp['nhap_du'] = $this->calculateNhapDu($lsx->so_luong, $lsx->order_id);
                 WarehouseFGLog::create($inp);
             }
             DB::commit();
@@ -5155,6 +5158,17 @@ class ApiController extends AdminController
         return $this->success('Nhập kho thành công');
     }
 
+    public function calculateNhapDu($so_luong, $order_id)
+    {
+        $order = Order::find($order_id);
+        if ($order) {
+            $so_luong_dh = $order->sl;
+            $so_luong_nhap = WarehouseFGLog::where('order_id', $order_id)->where('type', 1)->sum('so_luong');
+            $so_luong_nhap_du = $so_luong_dh - $so_luong_nhap - $so_luong;
+            return $so_luong_nhap_du;
+        }
+        return 0;
+    }
 
     public function createWarehouseFGLogs(Request $request)
     {
@@ -8824,7 +8838,7 @@ class ApiController extends AdminController
             }
             $orders = $order_query->pluck('id')->toArray();
             if(count($orders) > 0){
-                $query->whereIn('order_id', $order_query);
+                $query->whereIn('order_id', $orders);
             }
         }
         return $query;

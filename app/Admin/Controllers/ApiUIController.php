@@ -5049,7 +5049,7 @@ class ApiUIController extends AdminController
     {
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 0);
-        $palletIds = WarehouseFGLog::whereMonth('created_at', date("m"))->where('type', 1)->pluck('pallet_id');
+        $palletIds = WarehouseFGLog::where('type', 1)->pluck('pallet_id');
         $palletIds->chunk(100)->each(function ($chunkedPalletIds) {
             $logs = WarehouseFGLog::with('order')->where('type', 1)
                 ->whereIn('pallet_id', $chunkedPalletIds)
@@ -5065,6 +5065,7 @@ class ApiUIController extends AdminController
                     [
                         'so_luong' => $totalQuantity,
                         'number_of_lot' => $uniqueLSX,
+                        'created_at' => count($groupedLogs) > 0 ? $groupedLogs[0]->created_at ?? now() : now(),
                         'updated_at' => now(),
                     ]
                 );

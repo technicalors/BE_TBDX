@@ -1919,7 +1919,6 @@ class ApiController extends AdminController
                 'status' => 1,
                 'order_id' => $tem->order_id ?? null
             ]);
-            InfoCongDoan::where('status', 1)->where('machine_id', $request->machine_id)->where('lo_sx', '!=', $request->lo_sx)->update(['status' => 0]);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -8792,16 +8791,13 @@ class ApiController extends AdminController
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }
         if (isset($input['locator_id'])) {
-            $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
-        }
-        if (isset($input['locator_id'])) {
-            $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
+            $query->where('locator_id', $input['locator_id']);
         }
         if (isset($input['pallet_id'])) {
-            $query->where('pallet_id', 'like', '%' . $input['pallet_id'] . '%');
+            $query->where('pallet_id', $input['pallet_id']);
         }
         if (isset($input['lo_sx'])) {
-            $query->where('lo_sx', 'like', "%" . $input['lo_sx'] . "%");
+            $query->where('lo_sx', 'like',$input['lo_sx']);
         }
         if (isset($input['khach_hang']) || isset($input['mdh']) || isset($input['mql']) || isset($input['kich_thuoc']) || isset($input['length']) || isset($input['width']) || isset($input['height'])) {
             $order_query = Order::query();

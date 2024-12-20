@@ -3336,7 +3336,7 @@ class ApiController extends AdminController
         $plan_query = ProductionPlan::query();
         $tem_query = Tem::query();
         if (isset($request->customer_id) || isset($request->mdh) || isset($request->mql) || isset($request->quy_cach) || isset($request->dot)) {
-            $order_query = Order::query();
+            $order_query = Order::withTrashed();
             if (isset($request->customer_id)) {
                 $order_query->where('short_name', 'like', "$request->customer_id%");
             }
@@ -8800,12 +8800,12 @@ class ApiController extends AdminController
             $query->where('lo_sx', 'like',$input['lo_sx']);
         }
         if (isset($input['khach_hang']) || isset($input['mdh']) || isset($input['mql']) || isset($input['kich_thuoc']) || isset($input['length']) || isset($input['width']) || isset($input['height'])) {
-            $order_query = Order::query();
+            $order_query = Order::withTrashed();
             if (isset($input['khach_hang'])) {
                 $order_query->where('short_name', $input['khach_hang']);
             }
             if (isset($input['mdh'])) {
-                $order_query->where('mdh', $input['mdh']);
+                $order_query->where('mdh', 'like', $input['mdh']."%");
             }
             if (isset($input['mql'])) {
                 $order_query->where('mql', $input['mql']);
@@ -8822,6 +8822,7 @@ class ApiController extends AdminController
             if (isset($input['height'])) {
                 $order_query->where('height', $input['height']);
             }
+            return $order_query->pluck('id')->toArray();
             $orders = $order_query->pluck('id')->toArray();
             if(count($orders) > 0){
                 $query->whereIn('order_id', $orders);
@@ -8835,6 +8836,7 @@ class ApiController extends AdminController
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
         $query = $this->customQueryWarehouseFGLog($request);
+        return $query;
         $allData = $query->get()->map(function ($item) {
             if (!$item->exportRecord) {
                 $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());

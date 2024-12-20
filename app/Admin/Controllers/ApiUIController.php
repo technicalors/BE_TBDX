@@ -5047,5 +5047,13 @@ class ApiUIController extends AdminController
     }
     public function wtf()
     {
+        $logs = WarehouseFGLog::whereNull('order_id')->orWhere('order_id', '')->get();
+        foreach ($logs as $key => $value) {
+            $tem = Tem::where('lo_sx', $value->lo_sx)->with('order')->first();
+            if($tem && $tem->order){
+                $value->update(['order_id'=>$tem->order->id]);
+            }
+        }
+        return $logs->count();
     }
 }

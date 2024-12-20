@@ -704,7 +704,9 @@ class ApiController extends AdminController
             if ($tracking->lo_sx) {
                 $info_lo_sx = InfoCongDoan::with('infoCongDoanPriority', 'order')->where('lo_sx', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->where('status', 1)->first();
                 if ($info_lo_sx) {
-                    if (($tracking->pre_counter + ($tracking->error_counter ?? 0)) > ($request['Pre_Counter'] + ($request['Error_Counter'] ?? 0)) && $tracking->pre_counter > 0) {
+                    $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
+                    $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
+                    if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity  || ($tracking->pre_counter > 0 && ($request['Pre_Counter'] / $tracking->pre_counter) > 1.5))) {
                         $info_lo_sx->update([
                             'status' => $info_lo_sx->phan_dinh !== 0 ? 3 : 2,
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
@@ -5144,6 +5146,7 @@ class ApiController extends AdminController
                 $inp['so_luong'] = $lsx->so_luong;
                 $inp['created_by'] = $request->user()->id;
                 $inp['order_id'] = $lsx->order_id;
+                $inp['nhap_du'] = $this->calculateNhapDu($lsx->so_luong, $lsx->order_id);
                 WarehouseFGLog::create($inp);
             }
             DB::commit();
@@ -5155,6 +5158,17 @@ class ApiController extends AdminController
         return $this->success('Nhập kho thành công');
     }
 
+    public function calculateNhapDu($so_luong, $order_id)
+    {
+        $order = Order::find($order_id);
+        if ($order) {
+            $so_luong_dh = $order->sl;
+            $so_luong_nhap = WarehouseFGLog::where('order_id', $order_id)->where('type', 1)->sum('so_luong');
+            $so_luong_nhap_du = $so_luong_dh - $so_luong_nhap - $so_luong;
+            return $so_luong_nhap_du;
+        }
+        return 0;
+    }
 
     public function createWarehouseFGLogs(Request $request)
     {
@@ -8805,27 +8819,30 @@ class ApiController extends AdminController
         if (isset($input['khach_hang']) || isset($input['mdh']) || isset($input['mql']) || isset($input['kich_thuoc']) || isset($input['length']) || isset($input['width']) || isset($input['height'])) {
             $order_query = Order::query();
             if (isset($input['khach_hang'])) {
-                $order_query->where('short_name', 'like', "%" . $input['khach_hang'] . "%");
+                $order_query->where('short_name', $input['khach_hang']);
             }
             if (isset($input['mdh'])) {
-                $order_query->where('mdh', 'like', "%" . $input['mdh'] . "%");
+                $order_query->where('mdh', $input['mdh']);
             }
             if (isset($input['mql'])) {
                 $order_query->where('mql', $input['mql']);
             }
             if (isset($input['kich_thuoc'])) {
-                $order_query->where('kich_thuoc', 'like', "%" . $input['kich_thuoc'] . "%");
+                $order_query->where('kich_thuoc', $input['kich_thuoc']);
             }
             if (isset($input['length'])) {
-                $order_query->where('length', 'like', "%" . $input['length'] . "%");
+                $order_query->where('length', $input['length']);
             }
             if (isset($input['width'])) {
-                $order_query->where('width', 'like', "%" . $input['width'] . "%");
+                $order_query->where('width', $input['width']);
             }
             if (isset($input['height'])) {
-                $order_query->where('height', 'like', "%" . $input['height'] . "%");
+                $order_query->where('height', $input['height']);
             }
-            $query->whereIn('order_id', $order_query->pluck('id')->toArray());
+            $orders = $order_query->pluck('id')->toArray();
+            if(count($orders) > 0){
+                $query->whereIn('order_id', $orders);
+            }
         }
         return $query;
     }
@@ -8873,8 +8890,7 @@ class ApiController extends AdminController
             $record->height = $record->order->height ?? "";
             $record->width = $record->order->width ?? "";
             $record->kich_thuoc = $record->order->kich_thuoc ?? "";
-            $info_cong_doan = InfoCongDoan::where('lo_sx', $record->lo_sx)->where('step', 0)->orderBy('created_at', 'DESC')->first();
-            $record->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) : "Không";
+            $record->nhap_du = $record->nhap_du < 0 ? abs($record->nhap_du) : "Không";
             $record->tg_nhap = $record->created_at;
             $record->tg_xuat = $export->created_at ?? "";
             $record->sl_nhap = $record->so_luong ?? "";
@@ -8893,7 +8909,7 @@ class ApiController extends AdminController
     {
         $input = $request->all();
         $query = $this->customQueryWarehouseFGLog($request);
-        $allData = $query->get()->map(function ($item) {
+        $allData = $query->with('order')->get()->map(function ($item) {
             if (!$item->exportRecord) {
                 $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
                 $item->sl_ton = $item->so_luong;
@@ -8926,16 +8942,15 @@ class ApiController extends AdminController
             $obj->mdh = $record->order->mdh ?? "";
             $obj->mql = $record->order->mql ?? "";
             $obj->length = $record->order->length ?? "";
-            $obj->height = $record->order->height ?? "";
             $obj->width = $record->order->width ?? "";
+            $obj->height = $record->order->height ?? "";
             $obj->kich_thuoc = $record->order->kich_thuoc ?? "";
             $obj->sl_ton = $record->sl_ton;
             $obj->so_ngay_ton = $record->so_ngay_ton;
-            $info_cong_doan = InfoCongDoan::where('lo_sx', $record->lo_sx)->where('step', 0)->orderBy('created_at', 'DESC')->first();
             $obj->ngay_nhap = $record->created_at ? date('d/m/Y', strtotime($record->created_at)) : '';
             $obj->gio_nhap = $record->created_at ? date('H:i', strtotime($record->created_at)) : '';
             $obj->sl_nhap = $record->so_luong ?? 0;
-            $obj->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) : "Không";
+            $obj->nhap_du = $record->nhap_du < 0 ? abs($record->nhap_du) : "Không";
             $obj->nguoi_nhap = $record->user->name ?? "";
             $obj->ngay_xuat = isset($export->created_at) ? date('d/m/Y', strtotime($export->created_at)) : '';
             $obj->gio_xuat = isset($export->created_at) ? date('H:i', strtotime($export->created_at)) : '';

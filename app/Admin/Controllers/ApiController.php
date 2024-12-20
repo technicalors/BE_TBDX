@@ -8822,7 +8822,6 @@ class ApiController extends AdminController
             if (isset($input['height'])) {
                 $order_query->where('height', $input['height']);
             }
-            return $order_query->pluck('id')->toArray();
             $orders = $order_query->pluck('id')->toArray();
             if(count($orders) > 0){
                 $query->whereIn('order_id', $orders);
@@ -8836,7 +8835,6 @@ class ApiController extends AdminController
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
         $query = $this->customQueryWarehouseFGLog($request);
-        return $query;
         $allData = $query->get()->map(function ($item) {
             if (!$item->exportRecord) {
                 $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());

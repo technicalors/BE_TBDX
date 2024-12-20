@@ -2,7 +2,6 @@
 
 namespace App\Admin\Controllers;
 
-use App\Jobs\ProcessWarehouseData;
 use App\Models\Cell;
 use App\Models\Customer;
 use App\Models\CustomerShort;
@@ -5048,7 +5047,45 @@ class ApiUIController extends AdminController
     }
     public function wtf()
     {
-        ProcessWarehouseData::dispatch();
-        return response()->json(['message' => 'Job has been dispatched!']);
+        ini_set('memory_limit', '1024M');
+        ini_set('max_execution_time', 0);
+        $palletIds = WarehouseFGLog::where('type', 1)->distinct()->pluck('pallet_id')->skip(0)->take(10000);
+        $palletIds->chunk(100)->each(function ($chunkedPalletIds) {
+            $logs = WarehouseFGLog::with('order')->where('type', 1)
+                ->whereIn('pallet_id', $chunkedPalletIds)
+                ->get();
+        
+            foreach ($logs->groupBy('pallet_id') as $palletId => $groupedLogs) {
+                // Tính toán và xử lý như trên
+                $totalQuantity = $groupedLogs->sum('so_luong');
+                $uniqueLSX = $groupedLogs->unique('lo_sx')->count();
+        
+                $pallet = Pallet::updateOrCreate(
+                    ['id' => $palletId],
+                    [
+                        'so_luong' => $totalQuantity,
+                        'number_of_lot' => $uniqueLSX,
+                        'updated_at' => now(),
+                    ]
+                );
+        
+                foreach ($groupedLogs as $log) {
+                    if(empty($log->order)){
+                        continue;
+                    }
+                    LSXPallet::updateOrCreate(
+                        ['pallet_id' => $palletId, 'lo_sx' => $log->lo_sx],
+                        [
+                            'so_luong' => $log->so_luong,
+                            'mdh' => $log->order->mdh ?? null,
+                            'mql' => $log->order->mql ?? null,
+                            'customer_id' => $log->order->customer_id ?? null,
+                            'order_id' => $log->order_id,
+                        ]
+                    );
+                }
+            }
+        });
+        return 'done';
     }
 }

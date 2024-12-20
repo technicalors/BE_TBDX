@@ -8925,8 +8925,8 @@ class ApiController extends AdminController
             $obj->mdh = $record->order->mdh ?? "";
             $obj->mql = $record->order->mql ?? "";
             $obj->length = $record->order->length ?? "";
-            $obj->height = $record->order->height ?? "";
             $obj->width = $record->order->width ?? "";
+            $obj->height = $record->order->height ?? "";
             $obj->kich_thuoc = $record->order->kich_thuoc ?? "";
             $obj->sl_ton = $record->sl_ton;
             $obj->so_ngay_ton = $record->so_ngay_ton;

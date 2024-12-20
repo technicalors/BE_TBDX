@@ -8791,13 +8791,16 @@ class ApiController extends AdminController
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }
         if (isset($input['locator_id'])) {
-            $query->where('locator_id', $input['locator_id']);
+            $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
+        }
+        if (isset($input['locator_id'])) {
+            $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
         }
         if (isset($input['pallet_id'])) {
-            $query->where('pallet_id', $input['pallet_id']);
+            $query->where('pallet_id', 'like', '%' . $input['pallet_id'] . '%');
         }
         if (isset($input['lo_sx'])) {
-            $query->where('lo_sx', 'like',$input['lo_sx']);
+            $query->where('lo_sx', 'like', "%" . $input['lo_sx'] . "%");
         }
         if (isset($input['khach_hang']) || isset($input['mdh']) || isset($input['mql']) || isset($input['kich_thuoc']) || isset($input['length']) || isset($input['width']) || isset($input['height'])) {
             $order_query = Order::query();
@@ -8811,16 +8814,16 @@ class ApiController extends AdminController
                 $order_query->where('mql', $input['mql']);
             }
             if (isset($input['kich_thuoc'])) {
-                $order_query->where('kich_thuoc', 'like',$input['kich_thuoc']);
+                $order_query->where('kich_thuoc', 'like', "%" . $input['kich_thuoc'] . "%");
             }
             if (isset($input['length'])) {
-                $order_query->where('length', $input['length']);
+                $order_query->where('length', 'like', "%" . $input['length'] . "%");
             }
             if (isset($input['width'])) {
-                $order_query->where('width', $input['width']);
+                $order_query->where('width', 'like', "%" . $input['width'] . "%");
             }
             if (isset($input['height'])) {
-                $order_query->where('height',$input['height']);
+                $order_query->where('height', 'like', "%" . $input['height'] . "%");
             }
             $query->whereIn('order_id', $order_query->pluck('id')->toArray());
         }

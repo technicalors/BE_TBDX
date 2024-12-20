@@ -8784,51 +8784,88 @@ class ApiController extends AdminController
     }
 
     function customQueryWarehouseFGLog($request)
-    {
-        $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with('user', 'lo_sx_pallet', 'exportRecord.user')->orderBy('created_at')->withAggregate('order', 'mdh')->withAggregate('order', 'mql')->orderBy('order_mdh', 'ASC')->orderBy('order_mql', 'ASC');
-        if (isset($input['start_date']) && isset($input['end_date'])) {
-            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
-        }
-        if (isset($input['locator_id'])) {
-            $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
-        }
-        if (isset($input['locator_id'])) {
-            $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
-        }
-        if (isset($input['pallet_id'])) {
-            $query->where('pallet_id', 'like', '%' . $input['pallet_id'] . '%');
-        }
-        if (isset($input['lo_sx'])) {
-            $query->where('lo_sx', 'like', "%" . $input['lo_sx'] . "%");
-        }
-        if (isset($input['khach_hang']) || isset($input['mdh']) || isset($input['mql']) || isset($input['kich_thuoc']) || isset($input['length']) || isset($input['width']) || isset($input['height'])) {
-            $order_query = Order::query();
-            if (isset($input['khach_hang'])) {
-                $order_query->where('short_name', 'like', "%" . $input['khach_hang'] . "%");
-            }
-            if (isset($input['mdh'])) {
-                $order_query->where('mdh', 'like', "%" . $input['mdh'] . "%");
-            }
-            if (isset($input['mql'])) {
-                $order_query->where('mql', $input['mql']);
-            }
-            if (isset($input['kich_thuoc'])) {
-                $order_query->where('kich_thuoc', 'like', "%" . $input['kich_thuoc'] . "%");
-            }
-            if (isset($input['length'])) {
-                $order_query->where('length', 'like', "%" . $input['length'] . "%");
-            }
-            if (isset($input['width'])) {
-                $order_query->where('width', 'like', "%" . $input['width'] . "%");
-            }
-            if (isset($input['height'])) {
-                $order_query->where('height', 'like', "%" . $input['height'] . "%");
-            }
-            $query->whereIn('order_id', $order_query->pluck('id')->toArray());
-        }
-        return $query;
+{
+    $input = $request->all();
+
+    // Initialize the base query with necessary relationships
+    $query = WarehouseFGLog::where('type', 1)
+        ->with([
+            'user', // Specify columns if needed
+            'lo_sx_pallet', // Replace with actual columns
+            'exportRecord.user', // Nested relationship
+            'order' // Only select necessary columns from Order
+        ]);
+
+    // Apply date range filtering if both start_date and end_date are provided
+    if (!empty($input['start_date']) && !empty($input['end_date'])) {
+        $query->whereBetween('created_at', [
+            date('Y-m-d', strtotime($input['start_date'])),
+            date('Y-m-d', strtotime($input['end_date']))
+        ]);
     }
+
+    // Apply locator_id filter if provided
+    if (!empty($input['locator_id'])) {
+        $query->where('locator_id', $input['locator_id']);
+    }
+
+    // Apply pallet_id filter if provided
+    if (!empty($input['pallet_id'])) {
+        $query->where('pallet_id', $input['pallet_id']);
+    }
+
+    // Apply lo_sx filter with wildcard matching if provided
+    if (!empty($input['lo_sx'])) {
+        $query->where('lo_sx', 'like', '%' . $input['lo_sx'] . '%');
+    }
+
+    // Apply filters related to the Order model using whereHas
+    $query->when(
+        isset($input['khach_hang']) ||
+        isset($input['mdh']) ||
+        isset($input['mql']) ||
+        isset($input['kich_thuoc']) ||
+        isset($input['length']) ||
+        isset($input['width']) ||
+        isset($input['height']),
+        function ($q) use ($input) {
+            $q->whereHas('order', function ($orderQuery) use ($input) {
+                if (!empty($input['khach_hang'])) {
+                    $orderQuery->where('short_name', 'like', '%' . $input['khach_hang'] . '%');
+                }
+                if (!empty($input['mdh'])) {
+                    $orderQuery->where('mdh', 'like', '%' . $input['mdh'] . '%');
+                }
+                if (!empty($input['mql'])) {
+                    $orderQuery->where('mql', $input['mql']);
+                }
+                if (!empty($input['kich_thuoc'])) {
+                    $orderQuery->where('kich_thuoc', 'like', '%' . $input['kich_thuoc'] . '%');
+                }
+                if (!empty($input['length'])) {
+                    $orderQuery->where('length', $input['length']);
+                }
+                if (!empty($input['width'])) {
+                    $orderQuery->where('width', $input['width']);
+                }
+                if (!empty($input['height'])) {
+                    $orderQuery->where('height', $input['height']);
+                }
+            });
+        }
+    );
+
+    // Apply ordering
+    // To order by related Order's columns, we can join the orders table
+    // Alternatively, use a subquery or join to include Order's fields for ordering
+    $query->leftJoin('orders', 'warehouse_fg_logs.order_id', '=', 'orders.id')
+        ->orderBy('warehouse_fg_logs.created_at', 'asc')
+        ->orderBy('orders.mdh', 'asc')
+        ->orderBy('orders.mql', 'asc')
+        ->select('warehouse_fg_logs.*'); // Ensure selecting WarehouseFGLog columns
+
+    return $query;
+}
     public function warehouseFGLog(Request $request)
     {
         $input = $request->all();

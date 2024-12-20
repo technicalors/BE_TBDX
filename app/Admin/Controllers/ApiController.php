@@ -8887,7 +8887,7 @@ class ApiController extends AdminController
             $record->height = $record->order->height ?? "";
             $record->width = $record->order->width ?? "";
             $record->kich_thuoc = $record->order->kich_thuoc ?? "";
-            $record->nhap_du = (($record->so_luong ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($record->so_luong ?? 0) - ($record->order->sl ?? 0)) : "Không";
+            $record->nhap_du = $record->nhap_du < 0 ? abs($record->nhap_du) : "Không";
             $record->tg_nhap = $record->created_at;
             $record->tg_xuat = $export->created_at ?? "";
             $record->sl_nhap = $record->so_luong ?? "";
@@ -8947,7 +8947,7 @@ class ApiController extends AdminController
             $obj->ngay_nhap = $record->created_at ? date('d/m/Y', strtotime($record->created_at)) : '';
             $obj->gio_nhap = $record->created_at ? date('H:i', strtotime($record->created_at)) : '';
             $obj->sl_nhap = $record->so_luong ?? 0;
-            $obj->nhap_du = (($record->so_luong ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($record->so_luong ?? 0) - ($record->order->sl ?? 0)) : "Không";
+            $obj->nhap_du = $record->nhap_du < 0 ? abs($record->nhap_du) : "Không";
             $obj->nguoi_nhap = $record->user->name ?? "";
             $obj->ngay_xuat = isset($export->created_at) ? date('d/m/Y', strtotime($export->created_at)) : '';
             $obj->gio_xuat = isset($export->created_at) ? date('H:i', strtotime($export->created_at)) : '';

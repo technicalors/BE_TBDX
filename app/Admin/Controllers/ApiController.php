@@ -8826,7 +8826,6 @@ class ApiController extends AdminController
             if(count($orders) > 0){
                 $query->whereIn('order_id', $order_query);
             }
-            
         }
         return $query;
     }
@@ -8874,8 +8873,7 @@ class ApiController extends AdminController
             $record->height = $record->order->height ?? "";
             $record->width = $record->order->width ?? "";
             $record->kich_thuoc = $record->order->kich_thuoc ?? "";
-            $info_cong_doan = InfoCongDoan::where('lo_sx', $record->lo_sx)->where('step', 0)->orderBy('created_at', 'DESC')->first();
-            $record->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) : "Không";
+            $record->nhap_du = (($record->so_luong ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($record->so_luong ?? 0) - ($record->order->sl ?? 0)) : "Không";
             $record->tg_nhap = $record->created_at;
             $record->tg_xuat = $export->created_at ?? "";
             $record->sl_nhap = $record->so_luong ?? "";
@@ -8894,7 +8892,7 @@ class ApiController extends AdminController
     {
         $input = $request->all();
         $query = $this->customQueryWarehouseFGLog($request);
-        $allData = $query->get()->map(function ($item) {
+        $allData = $query->with('order')->get()->map(function ($item) {
             if (!$item->exportRecord) {
                 $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
                 $item->sl_ton = $item->so_luong;
@@ -8932,11 +8930,10 @@ class ApiController extends AdminController
             $obj->kich_thuoc = $record->order->kich_thuoc ?? "";
             $obj->sl_ton = $record->sl_ton;
             $obj->so_ngay_ton = $record->so_ngay_ton;
-            $info_cong_doan = InfoCongDoan::where('lo_sx', $record->lo_sx)->where('step', 0)->orderBy('created_at', 'DESC')->first();
             $obj->ngay_nhap = $record->created_at ? date('d/m/Y', strtotime($record->created_at)) : '';
             $obj->gio_nhap = $record->created_at ? date('H:i', strtotime($record->created_at)) : '';
             $obj->sl_nhap = $record->so_luong ?? 0;
-            $obj->nhap_du = (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($info_cong_doan->sl_dau_ra_hang_loat ?? 0) - ($record->order->sl ?? 0)) : "Không";
+            $obj->nhap_du = (($record->so_luong ?? 0) - ($record->order->sl ?? 0)) > 0 ? (($record->so_luong ?? 0) - ($record->order->sl ?? 0)) : "Không";
             $obj->nguoi_nhap = $record->user->name ?? "";
             $obj->ngay_xuat = isset($export->created_at) ? date('d/m/Y', strtotime($export->created_at)) : '';
             $obj->gio_xuat = isset($export->created_at) ? date('H:i', strtotime($export->created_at)) : '';

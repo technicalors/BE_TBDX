@@ -8786,7 +8786,7 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with('user', 'exportRecord.user')->orderBy('created_at')->withAggregate('order', 'mdh')->withAggregate('order', 'mql')->orderBy('order_mdh', 'ASC')->orderBy('order_mql', 'ASC');
+        $query = WarehouseFGLog::where('type', 1)->with('user', 'lo_sx_pallet', 'exportRecord.user')->orderBy('created_at')->withAggregate('order', 'mdh')->withAggregate('order', 'mql')->orderBy('order_mdh', 'ASC')->orderBy('order_mql', 'ASC');
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }
@@ -8805,25 +8805,25 @@ class ApiController extends AdminController
         if (isset($input['khach_hang']) || isset($input['mdh']) || isset($input['mql']) || isset($input['kich_thuoc']) || isset($input['length']) || isset($input['width']) || isset($input['height'])) {
             $order_query = Order::query();
             if (isset($input['khach_hang'])) {
-                $order_query->where('short_name', 'like', $input['khach_hang'] . "%");
+                $order_query->where('short_name', 'like', "%" . $input['khach_hang'] . "%");
             }
             if (isset($input['mdh'])) {
-                $order_query->where('mdh', 'like', $input['mdh'] . "%");
+                $order_query->where('mdh', 'like', "%" . $input['mdh'] . "%");
             }
             if (isset($input['mql'])) {
                 $order_query->where('mql', $input['mql']);
             }
             if (isset($input['kich_thuoc'])) {
-                $order_query->where('kich_thuoc', 'like', $input['kich_thuoc'] . "%");
+                $order_query->where('kich_thuoc', 'like', "%" . $input['kich_thuoc'] . "%");
             }
             if (isset($input['length'])) {
-                $order_query->where('length', 'like', $input['length'] . "%");
+                $order_query->where('length', 'like', "%" . $input['length'] . "%");
             }
             if (isset($input['width'])) {
-                $order_query->where('width', 'like', $input['width'] . "%");
+                $order_query->where('width', 'like', "%" . $input['width'] . "%");
             }
             if (isset($input['height'])) {
-                $order_query->where('height', 'like', $input['height'] . "%");
+                $order_query->where('height', 'like', "%" . $input['height'] . "%");
             }
             $query->whereIn('order_id', $order_query->pluck('id')->toArray());
         }

@@ -3671,7 +3671,7 @@ class ApiMobileController extends AdminController
     {
         $input = $request->all();
         $plan = ProductionPlan::find($input['id']);
-        $list = ProductionPlan::orderBy('thu_tu_uu_tien')->orderBy('created_at', 'DESC')->where('machine_id', $plan->machine_id)->whereDate('ngay_sx', $plan->ngay_sx)->get();
+        $list = ProductionPlan::with('order')->orderBy('thu_tu_uu_tien')->orderBy('created_at', 'DESC')->where('machine_id', $plan->machine_id)->whereDate('ngay_sx', $plan->ngay_sx)->get();
         $current = $plan->thu_tu_uu_tien;
         $target = (int)$input['thu_tu_uu_tien'];
         try {
@@ -3691,7 +3691,14 @@ class ApiMobileController extends AdminController
                         $data->thu_tu_uu_tien += 1;
                         $data->save();
                         $lo_sx_log = LSXLog::where('lo_sx', $data->lo_sx)->update(['thu_tu_uu_tien' => $data->thu_tu_uu_tien]);
-                        $data->infoCongDoan()->update(['thu_tu_uu_tien' => $data->thu_tu_uu_tien]);
+                        $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
+                        $data->infoCongDoan()->update([
+                            'ngay_sx' => $data->ngay_sx,
+                            'dinh_muc' => $data->sl_kh,
+                            'thu_tu_uu_tien' => $data->thu_tu_uu_tien,
+                            'so_ra' => $data->order->so_ra,
+                            'so_dao' => isset($data->order->so_ra) ? ceil($data->sl_kh * ($formula->he_so ?? 1) / $data->order->so_ra) : ($data->order->so_dao ?? 0),
+                        ]);
                     }
                 } else {
                     foreach ($list as $data) {
@@ -3707,7 +3714,14 @@ class ApiMobileController extends AdminController
                         $data->thu_tu_uu_tien -= 1;
                         $data->save();
                         $lo_sx_log = LSXLog::where('lo_sx', $data->lo_sx)->update(['thu_tu_uu_tien' => $data->thu_tu_uu_tien]);
-                        $data->infoCongDoan()->update(['thu_tu_uu_tien' => $data->thu_tu_uu_tien]);
+                        $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
+                        $data->infoCongDoan()->update([
+                            'ngay_sx' => $data->ngay_sx,
+                            'dinh_muc' => $data->sl_kh,
+                            'thu_tu_uu_tien' => $data->thu_tu_uu_tien,
+                            'so_ra' => $data->order->so_ra,
+                            'so_dao' => isset($data->order->so_ra) ? ceil($data->sl_kh * ($formula->he_so ?? 1) / $data->order->so_ra) : ($data->order->so_dao ?? 0),
+                        ]);
                     }
                 }
             }

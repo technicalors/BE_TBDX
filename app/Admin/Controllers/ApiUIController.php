@@ -5082,6 +5082,7 @@ class ApiUIController extends AdminController
                             'mql' => $log->order->mql ?? null,
                             'customer_id' => $log->order->customer_id ?? null,
                             'order_id' => $log->order_id,
+                            'created_at' => $log->created_at,
                         ]
                     );
                 }

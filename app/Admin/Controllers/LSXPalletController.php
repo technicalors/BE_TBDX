@@ -29,22 +29,14 @@ class LSXPalletController extends AdminController
         }
         if(isset($request->mdh)){
             if (is_array($request->mdh)) {
-                $query->where(function ($q) use ($request) {
-                    foreach ($request->mdh as $key => $mdh) {
-                        $q->orWhere('mdh', 'like', "%$mdh%");
-                    }
-                });
+                $query->whereIn('mdh', $request->mdh);
             } else {
-                $query->where('mdh', 'like', "%$request->mdh%");
+                $query->where('mdh', $request->mdh);
             }
         }
         if(isset($request->mql)){
             if (is_array($request->mql)) {
-                $query->where(function ($q) use ($request) {
-                    foreach ($request->mql as $key => $mql) {
-                        $q->orWhere('mql', $mql);
-                    }
-                });
+                $query->whereIn('mql', $request->mql);
             } else {
                 $query->where('mql', $request->mql);
             }
@@ -55,10 +47,7 @@ class LSXPalletController extends AdminController
         if(isset($request->pallet_id)){
             $query->where('pallet_id', 'like', "%$request->pallet_id%");
         }
-        if(isset($request->lo_sx)){
-            $query->where('lo_sx', 'like', "%$request->lo_sx%");
-        }
-        if(isset($request->locator_id) || (isset($request->status) && $request->status == 1)){
+        if(isset($request->locator_id)){
             $query->whereHas('locator_fg_map', function($q)use($request){
                 $q->where('locator_id', 'like', "%".$request->locator_id."%");
             });

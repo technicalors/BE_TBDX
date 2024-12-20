@@ -4789,9 +4789,9 @@ class ApiController extends AdminController
             DB::beginTransaction();
             foreach ($input['lo_sx'] as $lo) {
                 $lsx_pallet = LSXPallet::where('pallet_id', $input['pallet_id'])->where('lo_sx', $lo['lo_sx'])->first();
-                if ($lsx_pallet) {
-                    $lsx_pallet->update(['so_luong' => $lsx_pallet->so_luong - $lo['so_luong']]);
-                }
+                // if ($lsx_pallet) {
+                //     $lsx_pallet->update(['so_luong' => $lsx_pallet->so_luong - $lo['so_luong']]);
+                // }
                 $inp['created_by'] = $request->user()->id;
                 $inp['locator_id'] = $vi_tri;
                 $inp['so_luong'] = $lo['so_luong'];
@@ -4807,14 +4807,7 @@ class ApiController extends AdminController
                     WarehouseFGLog::create($inp);
                 }
             }
-            LSXPallet::where('so_luong', '<=', 0)->delete();
-            $check = LSXPallet::where('pallet_id', $input['pallet_id'])->where('so_luong', '>', 0)->get();
-            if (count($check) <= 0) {
-                LocatorFGMap::where('pallet_id', $input['pallet_id'])->delete();
-                Pallet::where('id', $input['pallet_id'])->update(['deleted_at' => date('Y-m-d H:i:s'), 'number_of_lot' => 0]);
-            } else {
-                Pallet::where('id', $input['pallet_id'])->update(['so_luong' => $check->sum('so_luong'), 'number_of_lot' => count($check)]);
-            }
+            LocatorFGMap::where('pallet_id', $input['pallet_id'])->delete();
             DB::commit();
             return $this->success([], 'Xuất kho thành công');
         } catch (\Throwable $e) {
@@ -5011,9 +5004,9 @@ class ApiController extends AdminController
                 return $this->failure('', 'Số lượng xuất không được lớn hơn số lượng nhập');
             }
             $lsx_pallet = LSXPallet::where('pallet_id', $input['pallet_id'])->where('lo_sx', $input['lo_sx'])->first();
-            if ($lsx_pallet) {
-                $lsx_pallet->update(['so_luong' => $lsx_pallet->so_luong - $input['so_luong']]);
-            }
+            // if ($lsx_pallet) {
+            //     $lsx_pallet->update(['so_luong' => $lsx_pallet->so_luong - $input['so_luong']]);
+            // }
             $inp['created_by'] = $request->user()->id;
             $inp['created_at'] = isset($input['tg_xuat']) ? date('Y-m-d H:i:s', strtotime($input['tg_xuat'])) : date('Y-m-d H:i:s');
             $inp['locator_id'] = $input['locator_id'];
@@ -5024,14 +5017,7 @@ class ApiController extends AdminController
             $inp['order_id'] = $input['order_id'];
             $inp['delivery_note_id'] = $input['delivery_note_id'] ?? null;
             WarehouseFGLog::updateOrCreate(['id' => $input['export_id' ?? ""]], $inp);
-            LSXPallet::where('so_luong', '<=', 0)->delete();
-            $check = LSXPallet::where('pallet_id', $input['pallet_id'])->where('so_luong', '>', 0)->get();
-            if (count($check) <= 0) {
-                LocatorFGMap::where('pallet_id', $input['pallet_id'])->delete();
-                Pallet::where('id', $input['pallet_id'])->update(['deleted_at' => date('Y-m-d H:i:s'), 'number_of_lot' => 0]);
-            } else {
-                Pallet::where('id', $input['pallet_id'])->update(['so_luong' => $check->sum('so_luong'), 'number_of_lot' => count($check)]);
-            }
+            LocatorFGMap::where('pallet_id', $input['pallet_id'])->delete();
             DB::commit();
             return $this->success([], 'Xuất kho thành công');
         } catch (\Throwable $e) {

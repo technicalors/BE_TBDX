@@ -5047,13 +5047,43 @@ class ApiUIController extends AdminController
     }
     public function wtf()
     {
-        $logs = WarehouseFGLog::whereNull('order_id')->orWhere('order_id', '')->get();
-        foreach ($logs as $key => $value) {
-            $tem = Tem::where('lo_sx', $value->lo_sx)->with('order')->first();
-            if($tem && $tem->order){
-                $value->update(['order_id'=>$tem->order->id]);
+        $palletIds = WarehouseFGLog::where('type', 1)->distinct()->pluck('pallet_id');
+        $palletIds->chunk(100)->each(function ($chunkedPalletIds) {
+            $logs = WarehouseFGLog::with('order')->where('type', 1)
+                ->whereIn('pallet_id', $chunkedPalletIds)
+                ->get();
+        
+            foreach ($logs->groupBy('pallet_id') as $palletId => $groupedLogs) {
+                // Tính toán và xử lý như trên
+                $totalQuantity = $groupedLogs->sum('so_luong');
+                $uniqueLSX = $groupedLogs->unique('lo_sx')->count();
+        
+                $pallet = Pallet::updateOrCreate(
+                    ['id' => $palletId],
+                    [
+                        'so_luong' => $totalQuantity,
+                        'number_of_lot' => $uniqueLSX,
+                        'updated_at' => now(),
+                    ]
+                );
+        
+                foreach ($groupedLogs as $log) {
+                    if(empty($log->order)){
+                        continue;
+                    }
+                    LSXPallet::updateOrCreate(
+                        ['pallet_id' => $palletId, 'lo_sx' => $log->lo_sx],
+                        [
+                            'so_luong' => $log->so_luong,
+                            'mdh' => $log->order->mdh ?? null,
+                            'mql' => $log->order->mql ?? null,
+                            'customer_id' => $log->order->customer_id ?? null,
+                            'order_id' => $log->order_id,
+                        ]
+                    );
+                }
             }
-        }
-        return $logs->count();
+        });
+        return 'done';
     }
 }

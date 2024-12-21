@@ -141,7 +141,7 @@ async function processData(device, token) {
             console.log(`Duplicate data for device ${device}, not sending.`);
         }
 
-        await postMachineParams(params);
+        // await postMachineParams(params);
 
         if (!data) return;
         const prev = previousData[device];

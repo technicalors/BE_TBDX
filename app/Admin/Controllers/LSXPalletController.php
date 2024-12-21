@@ -67,7 +67,7 @@ class LSXPalletController extends AdminController
         if(isset($request->page) || isset($request->pageSize)){
             $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
         }
-        $records = $query->with('order', 'locator_fg_map')->get();
+        $records = $query->with('order', 'locator_fg_map', 'warehouseFGLog')->get();
         foreach ($records as $key => $record) {
             $record->mdh = $record->order->mdh ?? "";
             $record->mql = $record->order->mql ?? "";
@@ -76,7 +76,7 @@ class LSXPalletController extends AdminController
             $record->height = $record->order->height ?? "";
             $record->kich_thuoc = $record->order->kich_thuoc ?? "";
             $record->locator_id = $record->locator_fg_map->locator_id ?? "";
-            $record->status = $record->locator_id ? 'Đã nhập kho' : 'Chưa nhập kho';
+            $record->status = $record->warehouseFGLog ? 'Đã nhập kho' : 'Chưa nhập kho';
         }
         return $this->success(['data'=>$records, 'totalPage'=>$count]);
     }

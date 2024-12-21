@@ -99,8 +99,11 @@ async function fetchTelemetryData(device, token) {
 // Function to send data to the POST endpoint
 async function postData(data) {
     try {
+        if(data.device_id === 'f5957000-ad38-11ef-a8bd-45ae64f28680'){
+            console.log('Data posted successfully:', { ...data });
+        }
         const response = await axios.post(POST_URL, data, { timeout: 5000 });
-        console.log('Data posted successfully:', { ...data, ...response.data });
+        // console.log('Data posted successfully:', { ...data, ...response.data });
     } catch (error) {
         console.error('Error posting data:', error.message);
     }
@@ -110,7 +113,7 @@ async function postData(data) {
 async function postMachineStatus(data) {
     try {
         const response = await axios.post(POST_MACHINE_STATUS_URL, data, { timeout: 5000 });
-        console.log('Status posted successfully:', { ...data, ...response.data });
+        // console.log('Status posted successfully:', { ...data, ...response.data });
     } catch (error) {
         console.error('Error posting status:', error.message);
     }

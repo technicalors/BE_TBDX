@@ -1027,7 +1027,7 @@ class ApiController extends AdminController
         } else {
             //Tìm lô đang chạy
             $broadcast = [];
-            $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->where('status', 0)->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
+            $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->where('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
             if ($next_batch) {
                 if (($request['Pre_Counter'] - $tracking->pre_counter)  >= $info_cong_doan_in->dinh_muc) {
                     $info_cong_doan_in->update([

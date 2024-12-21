@@ -1921,6 +1921,7 @@ class ApiController extends AdminController
                 'status' => 1,
                 'order_id' => $tem->order_id ?? null
             ]);
+            InfoCongDoan::where('lo_sx', '!=', $request->lo_sx)->where('machine_id', $request->machine_id)->where('status', 1)->update(['status' => 0]);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();

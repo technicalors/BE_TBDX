@@ -4745,7 +4745,7 @@ class ApiController extends AdminController
     {
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
-        $query = WareHouseFGExport::with('delivery_note.creator', 'order')->orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
+        $query = WareHouseFGExport::with('delivery_note.creator','delivery_note.exporters', 'order')->orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
         if (isset($request->start_date) && isset($request->end_date)) {
             $query->whereDate('ngay_xuat', '>=', date('Y-m-d 00:00:00', strtotime($request->start_date)))->whereDate('ngay_xuat', '<=', date('Y-m-d 23:59:59', strtotime($request->end_date)));
         }

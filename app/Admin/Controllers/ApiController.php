@@ -615,85 +615,6 @@ class ApiController extends AdminController
 
     public function CorrugatingProduction($request, $tracking)
     {
-        //Kiểm tra tracking. Nếu tracking có chạy và có giá trị của lô thì tiếp tục ngược lại thì không
-        if ($tracking->is_running == 0 || !$tracking->lo_sx) {
-            $tracking->update(['is_running' => 0]);
-            return;
-        }
-        $tracking_params = [
-            'pre_counter' => $request['Pre_Counter'],
-            'error_counter' => $request['Error_Counter'],
-            'set_counter' => $request['Set_Counter']
-        ];
-        //Tìm kiếm lô đang chạy
-        $info_lo_sx = InfoCongDoan::with('infoCongDoanPriority', 'order')->where('lo_sx', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->first();
-        if ($info_lo_sx) {
-            // Điều kiện hoàn thành lô sản xuất
-            if ($info_lo_sx->status > 1 || ($request['Pre_Counter'] >= $tracking->sl_kh) || (((($tracking->pre_counter + ($tracking->error_counter ?? 0)) - ($request['Pre_Counter'] + ($request['Error_Counter'] ?? 0))) > 0) && $tracking->pre_counter > 0)) {
-                $info_lo_sx->update([
-                    'sl_dau_ra_hang_loat' => $tracking->dinh_muc,
-                    'status' => $info_lo_sx->phan_dinh !== 0 ? 3 : 2,
-                    'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
-                ]);
-                $next = InfoCongDoanPriority::where('info_cong_doan_id', '!=', $info_lo_sx->id)->where('priority', '>', $info_lo_sx->infoCongDoanPriority->priority ?? 0)->orderBy('priority')->first();
-                $next_batch = InfoCongDoan::where('id', ($next->info_cong_doan_id ?? null))->whereDate('ngay_sx', '<=', date('Y-m-d'))->first();
-                if ($next_batch) {
-                    $next_batch->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s')]);
-                }
-                // Cập nhật lại tracking
-                $tracking->update([
-                    'lo_sx' => $next_batch->lo_sx ?? null,
-                    'sl_kh' => $next_batch ? ceil($next_batch->dinh_muc / $next_batch->so_ra) : 0,
-                    'so_ra' => $next_batch->so_ra ?? 1,
-                    'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien ?? 0,
-                    'pre_counter' => 0,
-                    'error_counter' => 0,
-                    'set_counter' => 0,
-                ]);
-                // Xóa thứ tự ưu tiên và phát sóng cập nhật
-                InfoCongDoanPriority::where('info_cong_doan_id', $info_lo_sx->id)->delete();
-                $this->reorderInfoCongDoan();
-                $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
-                return;
-            } else {
-                $info_lo_sx->update([
-                    'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $tracking->so_ra,
-                    'sl_ng_sx' => isset($request['Error_Counter']) ? ($request['Error_Counter'] * $tracking->so_ra) : $info_lo_sx->sl_ng_sx,
-                    'dinh_muc' => isset($request['Set_Counter']) ? (max($request['Set_Counter'], $tracking->sl_kh) * $tracking->so_ra) : $info_lo_sx->dinh_muc,
-                    'status' => 1
-                ]);
-                $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra);
-                $tracking->update($tracking_params);
-                return;
-            }
-        } else {
-            $new_info = InfoCongDoan::create([
-                'lo_sx' => $tracking->lo_sx,
-                'machine_id' => $tracking->machine_id,
-                'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $tracking->so_ra,
-                'dinh_muc' => max($request['Set_Counter'], $tracking->sl_kh) * $tracking->so_ra,
-                'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
-                'status' => 1,
-                'so_ra' => $tracking->so_ra,
-                'thu_tu_uu_tien' => $tracking->thu_tu_uu_tien
-            ]);
-            $tracking->update([
-                'lo_sx' => $new_info->lo_sx ?? null,
-                'sl_kh' => $new_info ? ceil($new_info->dinh_muc / $new_info->so_ra) : 0,
-                'so_ra' => $new_info->so_ra ?? 1,
-                'thu_tu_uu_tien' => $new_info->thu_tu_uu_tien ?? 0,
-                'pre_counter' => 0,
-                'error_counter' => 0,
-                'set_counter' => 0,
-            ]);
-            $this->broadcastProductionUpdate($new_info, $tracking->so_ra, true);
-            $tracking->update($tracking_params);
-            return;
-        }
-    }
-
-    public function CorrugatingProduction2($request, $tracking)
-    {
         //Kiểm tra tracking. Nếu tracking có chạy thì tiếp tục ngược lại thì không
         if ($tracking->is_running == 0) {
             return;
@@ -1027,7 +948,7 @@ class ApiController extends AdminController
         } else {
             //Tìm lô đang chạy
             $broadcast = [];
-            $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->where('status', 0)->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
+            $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->where('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
             if ($next_batch) {
                 if (($request['Pre_Counter'] - $tracking->pre_counter)  >= $info_cong_doan_in->dinh_muc) {
                     $info_cong_doan_in->update([
@@ -1171,7 +1092,7 @@ class ApiController extends AdminController
         $tracking = Tracking::where('machine_id', $machine->id)->first();
         switch ($line->id) {
             case Line::LINE_SONG:
-                return $this->CorrugatingProduction2($request, $tracking, $machine);
+                return $this->CorrugatingProduction($request, $tracking, $machine);
                 break;
             case Line::LINE_IN:
                 return $this->TemPrintProduction($request, $tracking, $machine);
@@ -1921,6 +1842,7 @@ class ApiController extends AdminController
                 'status' => 1,
                 'order_id' => $tem->order_id ?? null
             ]);
+            InfoCongDoan::where('lo_sx', '!=', $request->lo_sx)->where('machine_id', $request->machine_id)->where('status', 1)->update(['status' => 0]);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -4727,7 +4649,9 @@ class ApiController extends AdminController
         $test = [];
         if (count($fg_exports) > 0) {
             foreach ($fg_exports as $key => $fg_export) {
-                $lsx_pallets = $fg_export->lsxpallets()->doesntHave('warehouseFGLog')->get();
+                $lsx_pallets = $fg_export->lsxpallets()->whereDoesntHave('warehouseFGLog', function($log_query){
+                    $log_query->where('type', 2);
+                })->get();
                 $so_luong_da_xuat = WarehouseFGLog::where('delivery_note_id', $fg_export->delivery_note_id)->where('order_id', $fg_export->order_id)->where('type', 2)->sum('so_luong');
                 // $test[] = [$fg_export->id, $lsx_pallets, $so_luong_da_xuat];
                 $sum_sl = 0;
@@ -8786,7 +8710,7 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with('user', 'lo_sx_pallet', 'exportRecord.user')->orderBy('created_at')->withAggregate('order', 'mdh')->withAggregate('order', 'mql')->orderBy('order_mdh', 'ASC')->orderBy('order_mql', 'ASC');
+        $query = WarehouseFGLog::where('type', 1)->with('user', 'exportRecord.user')->orderBy('created_at');
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }
@@ -8838,14 +8762,13 @@ class ApiController extends AdminController
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
         $query = $this->customQueryWarehouseFGLog($request);
-        $allData = $query->get()->map(function ($item) {
+        $allData = $query->get()->sortBy('order_id', SORT_NATURAL)->map(function ($item) {
             if (!$item->exportRecord) {
                 $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
                 $item->sl_ton = $item->so_luong;
             }
             return $item;
-        });
-        $allData = $allData->filter(function ($item) use ($input) {
+        })->filter(function ($item) use ($input) {
             $passes = true;
             if (isset($input['sl_ton_max']) && $item->sl_ton > $input['sl_ton_max']) {
                 $passes = false;

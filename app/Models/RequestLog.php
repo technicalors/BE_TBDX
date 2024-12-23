@@ -16,7 +16,7 @@ class RequestLog extends Model
         'payload',
         'response_status',
         'duration',
-        // 'memory',
+        'memory',
         'requested_by',
         'response'
     ];

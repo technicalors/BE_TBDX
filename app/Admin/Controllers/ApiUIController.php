@@ -684,13 +684,12 @@ class ApiUIController extends AdminController
             $info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->where(function ($q) {
                 $q->whereDate('ngay_sx', date('Y-m-d'))->orWhereDate('thoi_gian_bat_dau', date('Y-m-d'));
             });
-            $info_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->whereDate('thoi_gian_bat_dau', date('Y-m-d'));
-            $infos = (clone $info_query)->get();
-            $sl_hien_tai = (clone $info_query)->where('status', '>=', 1)->sum('sl_dau_ra_hang_loat');
+            $infos = $info_plan_query->get();
+            $sl_hien_tai = $infos->sum('sl_dau_ra_hang_loat');
             $ke_hoach_ca = 0;
             switch ((string)$line_id) {
                 case '30':
-                    $ke_hoach_ca = $info_plan_query->sum('dinh_muc');
+                    $ke_hoach_ca = $infos->sum('dinh_muc');
                     // $sl_muc_tieu = (int)(($ke_hoach_ca / 8) * (int)((strtotime(date('Y-m-d H:i:s')) - strtotime(date('Y-m-d 07:30:00'))) / 3600));
                     $sl_muc_tieu = $ke_hoach_ca;
                     break;
@@ -5049,45 +5048,18 @@ class ApiUIController extends AdminController
     {
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 0);
-        $palletIds = WarehouseFGLog::where('type', 1)->pluck('pallet_id');
-        $palletIds->chunk(100)->each(function ($chunkedPalletIds) {
-            $logs = WarehouseFGLog::with('order')->where('type', 1)
-                ->whereIn('pallet_id', $chunkedPalletIds)
-                ->get();
-        
-            foreach ($logs->groupBy('pallet_id') as $palletId => $groupedLogs) {
-                // Tính toán và xử lý như trên
-                $totalQuantity = $groupedLogs->sum('so_luong');
-                $uniqueLSX = $groupedLogs->unique('lo_sx')->count();
-        
-                $pallet = Pallet::updateOrCreate(
-                    ['id' => $palletId],
-                    [
-                        'so_luong' => $totalQuantity,
-                        'number_of_lot' => $uniqueLSX,
-                        'created_at' => count($groupedLogs) > 0 ? $groupedLogs[0]->created_at ?? now() : now(),
-                        'updated_at' => now(),
-                    ]
-                );
-        
-                foreach ($groupedLogs as $log) {
-                    if(empty($log->order)){
-                        continue;
-                    }
-                    LSXPallet::updateOrCreate(
-                        ['pallet_id' => $palletId, 'lo_sx' => $log->lo_sx],
-                        [
-                            'so_luong' => $log->so_luong,
-                            'mdh' => $log->order->mdh ?? null,
-                            'mql' => $log->order->mql ?? null,
-                            'customer_id' => $log->order->customer_id ?? null,
-                            'order_id' => $log->order_id,
-                            'created_at' => $log->created_at,
-                        ]
-                    );
+        $warehouse = WarehouseFGLog::with(['exportRecord'])->where('type', 1)->chunk(5000, function ($logs) {
+            foreach ($logs as $log) {
+                $export = $log->exportRecord();
+                if(!empty($export)){
+                    $sl = $log->so_luong - $export->sum('so_luong');
+                    $log->update(['is_exported' => 1, 'in_stock' => $sl > 0 ? $sl : 0]);
+                }else{
+                    $log->update(['is_exported' => 0, 'in_stock' => $log->so_luong]);
                 }
             }
         });
-        return 'done';
+        //return take time
+        return 'ok';
     }
 }

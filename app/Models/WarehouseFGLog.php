@@ -15,7 +15,7 @@ class WarehouseFGLog extends Model
     use HasFactory;
     public $incrementing = false;
     protected $table = "warehouse_fg_logs";
-    protected $fillable = ['id', 'locator_id', "pallet_id", "lo_sx", "so_luong", "type", "created_by", 'order_id', 'delivery_note_id', 'created_at', 'nhap_du'];
+    protected $fillable = ['id', 'locator_id', "pallet_id", "lo_sx", "so_luong", "type", "created_by", 'order_id', 'delivery_note_id', 'created_at', 'nhap_du', 'is_exported', 'in_stock'];
 
     public function lsx()
     {

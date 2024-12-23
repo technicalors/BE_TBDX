@@ -555,7 +555,7 @@ class ApiController extends AdminController
                 if ($info_lo_sx) {
                     $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
                     $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
-                    if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity) {
+                    if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity )) {
                         $info_lo_sx->update([
                             'status' => $info_lo_sx->phan_dinh !== 0 ? 3 : 2,
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),

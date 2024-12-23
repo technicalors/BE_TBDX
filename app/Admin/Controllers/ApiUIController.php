@@ -5046,8 +5046,6 @@ class ApiUIController extends AdminController
     }
     public function wtf()
     {
-        ini_set('memory_limit', '1024M');
-        ini_set('max_execution_time', 0);
         // $infos = InfoCongDoan::with('plan')->whereIn('machine_id', ['Pr06', 'So01', 'Pr15', 'Pr12', 'Pr11', 'Pr16', 'Da06', 'Da05', 'CH02', 'CH03'])->whereNull('order_id')->chunk(1000, function ($infos) {
         $infos = InfoCongDoan::with('tem')->where('machine_id', '!=', 'So01')->whereNull('order_id')->chunk(1000, function ($infos) {
             $updates = [];

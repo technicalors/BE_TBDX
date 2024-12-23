@@ -541,78 +541,6 @@ class ApiController extends AdminController
         return date('Y-m-d H:i:s.') . gettimeofday()["usec"];
     }
 
-    public function broadcastAndUpdateData($broadcast, $info_cong_doan = [], $tracking, $tracking_params = [])
-    {
-
-        broadcast(new ProductionUpdated($broadcast))->toOthers();
-        foreach ($info_cong_doan as $key => $data) {
-            $conditions = [
-                'lo_sx' => $data['lo_sx'],
-                'machine_id' => $data['machine_id'],
-            ];
-            // Xác định các cột cập nhật
-            $updateData = array_filter($data, function ($key) {
-                return in_array($key, [
-                    'status',
-                    'dinh_muc',
-                    'sl_dau_ra_hang_loat',
-                    'sl_ng_sx',
-                    'thoi_gian_bat_dau',
-                    'thoi_gian_ket_thuc'
-                ]);
-            }, ARRAY_FILTER_USE_KEY);
-            // Cập nhật hoặc tạo mới bản ghi
-            InfoCongDoan::updateOrCreate($conditions, $updateData);
-        }
-        $tracking->update($tracking_params);
-    }
-
-    public function fillNextCorrugatingPlan($tracking, $request)
-    {
-        $info_cong_doan_params = [];
-        $tracking_params = [
-            'lo_sx' => null,
-            'sl_kh' => null,
-            'so_ra' => 0,
-            'thu_tu_uu_tien' => null,
-            'pre_counter' => $request['Pre_Counter'],
-            'error_counter' => $request['Error_Counter'],
-        ];
-        //Tìm các kế hoạch lô sản xuất tiếp theo
-        $plans = ProductionPlan::with('order')
-            ->where('ngay_sx', date('Y-m-d'))
-            ->where('machine_id', $tracking->machine_id)
-            ->where('thu_tu_uu_tien', '>=', $tracking->thu_tu_uu_tien)
-            ->orderBy('thu_tu_uu_tien', 'ASC')
-            ->orderBy('created_at', 'DESC')
-            ->get()
-            ->skipUntil(function ($value, $key) use ($tracking) {
-                return $value->lo_sx == $tracking->lo_sx;
-            })
-            ->slice(1);
-        foreach ($plans as $plan) {
-            $so_ra = $plan->order->so_ra ?? 1;
-            $info_cong_doan_params[] = [
-                'dinh_muc' => $plan->sl_kh,
-                'sl_dau_ra_hang_loat' => $plan->sl_kh > $request['Pre_Counter'] ? ($request['Pre_Counter'] * $so_ra) : $plan->sl_kh,
-                'lo_sx' => $plan->lo_sx,
-                'status' => $plan->sl_kh > ($request['Pre_Counter'] * $so_ra) ? 1 : 2,
-                'machine_id' => $tracking->machine_id,
-                'thoi_gian_bat_dau' => Carbon::now(),
-                'thoi_gian_ket_thuc' => $plan->sl_kh > ($request['Pre_Counter'] * $so_ra) ? null : Carbon::now(),
-            ];
-            $tracking_params['lo_sx'] = $plan->lo_sx;
-            $tracking_params['sl_kh'] = $plan->sl_kh;
-            $tracking_params['so_ra'] = $so_ra;
-            $tracking_params['thu_tu_uu_tien'] = $plan->thu_tu_uu_tien;
-            if ($plan->sl_kh > ($request['Pre_Counter'] * $so_ra)) {
-                break;
-            }
-        };
-        $tracking->update($tracking_params);
-        return $info_cong_doan_params;
-    }
-
     public function CorrugatingProduction($request, $tracking)
     {
         //Kiểm tra tracking. Nếu tracking có chạy thì tiếp tục ngược lại thì không
@@ -627,7 +555,7 @@ class ApiController extends AdminController
                 if ($info_lo_sx) {
                     $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
                     $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
-                    if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity  || ($tracking->pre_counter > 0 && ($request['Pre_Counter'] / $tracking->pre_counter) > 1.5))) {
+                    if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity)) {
                         $info_lo_sx->update([
                             'status' => $info_lo_sx->phan_dinh !== 0 ? 3 : 2,
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
@@ -732,207 +660,6 @@ class ApiController extends AdminController
         $info_lo_sx['sl_dau_ra_hang_loat'] = $so_ra ? $info_lo_sx['sl_dau_ra_hang_loat'] / $so_ra : 0;
         $info_lo_sx['sl_ng_sx'] = $so_ra ? $info_lo_sx['sl_ng_sx'] / $so_ra : 0;
         broadcast(new ProductionUpdated(['info_cong_doan' => $info_lo_sx, 'reload' => $reload]))->toOthers();
-    }
-
-    public function fillNextPlan($tracking, $request)
-    {
-        $input_info = [];
-        $tracking_params = [
-            'lo_sx' => null,
-            'sl_kh' => null,
-            'thu_tu_uu_tien' => null,
-            'pre_counter' => $request['Pre_Counter'],
-            'error_counter' => $request['Error_Counter'],
-            'is_running' => 0
-        ];
-        $date = date('Y-m-d H:i:s');
-        $in_plans = ProductionPlan::where('machine_id', $tracking->machine_id)
-            ->whereDate('ngay_sx', date('Y-m-d'))
-            ->orderBy('thu_tu_uu_tien', 'ASC')
-            ->orderBy('created_at', 'DESC')
-            ->where('lo_sx', '<>', $tracking->lo_sx)->where('thu_tu_uu_tien', '>=', $tracking->thu_tu_uu_tien)
-            ->get();
-        foreach ($in_plans as $plan) {
-            $input_info[] = [
-                'lo_sx' => $plan->lo_sx,
-                'dinh_muc' => $plan->sl_kh,
-                'thoi_gian_bat_dau' => $date,
-                'thoi_gian_ket_thuc' => ($plan->sl_kh <= $request['Pre_Counter']) ? $date : null,
-                'machine_id' => $tracking->machine_id,
-                'sl_dau_ra_hang_loat' => ($plan->sl_kh <= $request['Pre_Counter']) ? $plan->sl_kh : $request['Pre_Counter'],
-                'status' => ($plan->sl_kh <= $request['Pre_Counter']) ? 2 : 1
-            ];
-            $tracking_params['lo_sx'] = $plan->lo_sx;
-            $tracking_params['sl_kh'] = $plan->sl_kh;
-            $tracking_params['thu_tu_uu_tien'] = $plan->thu_tu_uu_tien;
-            $tracking_params['is_running'] = 1;
-            if ($plan->sl_kh > $request['Pre_Counter']) {
-                break;
-            }
-        }
-        $tracking->update($tracking_params);
-        return $input_info;
-    }
-
-    public function PrintProduction($request, $tracking, $machine)
-    {
-        if (!$tracking->lo_sx || $tracking->is_running === 0) {
-            return;
-        }
-        //Tìm lô đang chạy
-        $broadcast = [];
-        $result = [];
-        $tracking_params = [
-            'pre_counter' => $request['Pre_Counter'],
-            'error_counter' => $request['Error_Counter']
-        ];
-        $info_cong_doan_in = InfoCongDoan::where('machine_id', $machine->id)->where('lo_sx', $tracking->lo_sx)->first();
-        if ($info_cong_doan_in) {
-            $current_input = [
-                'lo_sx' => $tracking->lo_sx,
-                'machine_id' => $tracking->machine_id,
-                'status' => $info_cong_doan_in->status,
-                'sl_dau_ra_hang_loat' => $info_cong_doan_in->sl_dau_ra_hang_loat
-            ];
-            if (isset($request['Error_Counter']) && is_numeric($request['Error_Counter'])) {
-                $current_input['sl_ng_sx'] = $request['Error_Counter'];
-            }
-            //Trường hợp Pre_Counter vượt quá định mức hoặc chuyển lô, hoàn thành các lô có định mức nhỏ hơn Pre_Counter
-            if (($request['Pre_Counter'] > $info_cong_doan_in->dinh_muc) || ($tracking->pre_counter - $request['Pre_Counter'] >= 10)) {
-                $current_input['status'] = 2;
-                $current_input['thoi_gian_ket_thuc'] = date('Y-m-d H:i:s');
-                $current_input['sl_dau_ra_hang_loat'] = $info_cong_doan_in->dinh_muc;
-                $result = $this->fillNextPlan($tracking, $request);
-            }
-            //Trường hợp Pre_Counter = định mức, kết thúc lô hiện tại
-            elseif (($request['Pre_Counter'] == $info_cong_doan_in->dinh_muc)) {
-                $current_input['status'] = 2;
-                $current_input['sl_dau_ra_hang_loat'] = $request['Pre_Counter'];
-                $current_input['thoi_gian_ket_thuc'] = date('Y-m-d H:i:s');
-                $next_in_plan = ProductionPlan::where('machine_id', $tracking->machine_id)
-                    ->whereDate('ngay_sx', date('Y-m-d'))
-                    ->orderBy('thu_tu_uu_tien', 'ASC')
-                    ->where('lo_sx', '<>', $tracking->lo_sx)->where('thu_tu_uu_tien', '>=', $tracking->thu_tu_uu_tien)
-                    ->first();
-                if ($next_in_plan) {
-                    $tracking_params['lo_sx'] = $next_in_plan->lo_sx;
-                    $tracking_params['sl_kh'] = $next_in_plan->sl_kh;
-                    $tracking_params['thu_tu_uu_tien'] = $next_in_plan->thu_tu_uu_tien;
-                } else {
-                    $tracking_params['lo_sx'] = null;
-                    $tracking_params['sl_kh'] = 0;
-                    $tracking_params['thu_tu_uu_tien'] = 0;
-                    $tracking_params['is_running'] = 0;
-                }
-            }
-            //Trường hợp tính sản lượng bình thường
-            else {
-                $current_input['sl_dau_ra_hang_loat'] = $request['Pre_Counter'];
-            }
-            $broadcast = [$current_input, ...$result];
-        } else {
-            //Trường hợp không có info cong doan
-            $input_info = [
-                'lo_sx' => $tracking->lo_sx,
-                'dinh_muc' => $tracking->sl_kh,
-                'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
-                'thoi_gian_ket_thuc' => ($tracking->sl_kh <= $request['Pre_Counter']) ? date('Y-m-d H:i:s') : null,
-                'machine_id' => $tracking->machine_id,
-                'sl_dau_ra_hang_loat' => ($tracking->sl_kh <= $request['Pre_Counter']) ? $tracking->sl_kh : $request['Pre_Counter'],
-                'status' => ($tracking->sl_kh <= $request['Pre_Counter']) ? 2 : 1
-            ];
-            $broadcast = [$input_info];
-        }
-        $this->broadcastAndUpdateData($broadcast, $broadcast, $tracking, $tracking_params);
-        return $broadcast;
-    }
-
-    public function GluingProduction($request, $tracking, $machine)
-    {
-        if (!$tracking->lo_sx || $tracking->is_running === 0 || $request['Pre_Counter'] == 0 || $request['Pre_Counter'] < $tracking->pre_counter) {
-            return;
-        }
-        $broadcast = [];
-        $tracking_params = [
-            'pre_counter' => $request['Pre_Counter'],
-        ];
-        $info_lo_sx = InfoCongDoan::where('lo_sx', $tracking->lo_sx)
-            ->where('machine_id', $machine->id)
-            ->first();
-        if ($info_lo_sx) {
-            $info_input = [
-                'lo_sx' => $info_lo_sx->lo_sx,
-                'machine_id' => $info_lo_sx->machine_id,
-                'sl_dau_ra_hang_loat' => $request['Pre_Counter'],
-                'sl_kh' => $tracking->sl_kh
-            ];
-            $info_lo_sx->sl_dau_ra_hang_loat = $request['Pre_Counter'];
-            if ($request['Pre_Counter'] >= $info_lo_sx->dinh_muc) {
-                $info_input['status'] = 2;
-                $info_input['thoi_gian_ket_thuc'] = date('Y-m-d H:i:s');
-                $tracking_params['lo_sx'] = null;
-                $tracking_params['sl_kh'] = null;
-                $tracking_params['thu_tu_uu_tien'] = null;
-            }
-            $broadcast = [$info_input];
-        } else {
-            $info_input = [
-                'lo_sx' => $tracking->lo_sx,
-                'machine_id' => $tracking->machine_id,
-                'sl_dau_ra_hang_loat' => $request['Pre_Counter'],
-                'status' => 1,
-                'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
-                'dinh_muc' => $tracking->sl_kh,
-                'sl_kh' => $tracking->sl_kh,
-                'parent_id' => $tracking->parent_id,
-            ];
-            $broadcast = [$info_input];
-        }
-        $this->broadcastAndUpdateData($broadcast, $broadcast, $tracking, $tracking_params);
-    }
-
-    function findNextBatchProduction($request, $tracking)
-    {
-        $next_batch = InfoCongDoan::whereDate('created_at', date('Y-m-d'))->where('status', 1)->where('lo_sx', '<>', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at');
-        $info_cong_doan_items = [];
-        $counter = $request['Pre_Counter'] - $tracking['pre_counter'];
-        foreach ($next_batch as $key => $batch) {
-            if ($batch->dinh_muc < $counter) {
-                $info_cong_doan_items[] = [
-                    'lo_sx' => $batch->lo_sx,
-                    'machine_id' => $tracking->machine_id,
-                    'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
-                    'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
-                    'sl_dau_ra_hang_loat' => $batch->dinh_muc,
-                    'status' => 2
-                ];
-                $counter = $counter - $batch->dinh_muc;
-            } else {
-                $info_cong_doan_items[] = [
-                    'lo_sx' => $batch->lo_sx,
-                    'machine_id' => $tracking->machine_id,
-                    'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
-                    'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
-                    'sl_dau_ra_hang_loat' => $counter,
-                    'status' => 1,
-                    'dinh_muc' => $batch->dinh_muc
-                ];
-                break;
-            }
-        }
-        $tracking_params = [];
-        $tracking_params['pre_counter'] = $request['Pre_Counter'] ?? 0;
-        if (isset($request['Error_Counter']) && is_numeric($request['Error_Counter'])) {
-            $tracking_params['error_counter'] = $request['Error_Counter'];
-        }
-        if (isset($info_cong_doan_items[count($info_cong_doan_items) - 1]) && $info_cong_doan_items[count($info_cong_doan_items) - 1]['status'] === 1) {
-            $tracking_params['lo_sx'] = $info_cong_doan_items[count($info_cong_doan_items) - 1]['lo_sx'];
-            $tracking_params['sl_kh'] = $info_cong_doan_items[count($info_cong_doan_items) - 1]['dinh_muc'] ?? 0;
-        } else {
-            $tracking_params['lo_sx'] = null;
-            $tracking_params['sl_kh'] = 0;
-        }
-        return [$tracking_params, $info_cong_doan_items];
     }
 
     public function TemPrintProduction($request, $tracking, $machine)
@@ -1106,180 +833,6 @@ class ApiController extends AdminController
         return $this->success($this->takeTime());
     }
 
-    public function websocketTest(Request $request)
-    {
-        if (!isset($request['device_id'])) return 'Không có mã máy';
-        $machine = Machine::with('line')->where('device_id', $request['device_id'])->first();
-        $line = $machine->line;
-        $tracking = Tracking::where('machine_id', $machine->id)->first();
-        switch ($line->id) {
-            case Line::LINE_SONG:
-                if ($tracking->status != 0 && $tracking->lo_sx) {
-                    $plan = ProductionPlan::with('order')->where('machine_id', $machine->id)->where('lo_sx', $tracking->lo_sx)->first();
-                    if (!$plan) {
-                        $tracking->lo_sx = null;
-                        $tracking->save();
-                        return $this->success($this->takeTime(), 'Không có plan');
-                    }
-                    $info_lo_sx = InfoCongDoan::where('lo_sx', $tracking->lo_sx)->where('machine_id', $machine->id)->where('status', 1)->first();
-                    if ($info_lo_sx) {
-                        if (((($info_lo_sx->sl_dau_ra_hang_loat / ($plan->order->so_ra ?? 1)) - $request['Pre_Counter']) >= 10)) {
-                            // return $this->success([$info_lo_sx->sl_dau_ra_hang_loat / ($plan->order->so_ra ?? 1) , $request['Pre_Counter']]);
-                            $info_lo_sx->sl_dau_ra_hang_loat = $info_lo_sx->dinh_muc;
-                            $info_lo_sx->status = 2;
-                            if ($info_lo_sx->phan_dinh !== 0) {
-                                $info_lo_sx->status = 3;
-                            }
-                            $info_lo_sx->save();
-                            $plan = ProductionPlan::with('order')->where('ngay_sx', date('Y-m-d'))->where('machine_id', $machine->id)->where('lo_sx', '<>', $plan->lo_sx)->where('thu_tu_uu_tien', '>=', $plan->thu_tu_uu_tien)->orderBy('thu_tu_uu_tien')->first();
-                            $tracking->lo_sx = $plan->lo_sx ?? null;
-                            $tracking->save();
-                            return $this->success($this->takeTime(), 'Chuyển lô');
-                        }
-                        $order = $plan->order;
-                        if (isset($request['Error_Counter']) && is_numeric($request['Error_Counter'])) {
-                            $info_lo_sx->sl_ng_sx = $request['Error_Counter'] * $order->so_ra;
-                        }
-                        $info_lo_sx->sl_dau_ra_hang_loat = ($request['Pre_Counter'] * $order->so_ra);
-                        $info_lo_sx->thoi_gian_ket_thuc = date('Y-m-d H:i:s');
-                        if (isset($request['Set_Counter']) && is_numeric($request['Set_Counter']) && ($request['Set_Counter'] * $order->so_ra >= $info_lo_sx->dinh_muc)) {
-                            $info_lo_sx->dinh_muc = $request['Set_Counter'] * $order->so_ra;
-                        }
-                        $info_lo_sx->save();
-                        return $this->success($this->takeTime(), 'Cập nhật sản lượng');
-                    } else {
-                        $check_exist = InfoCongDoan::where('lo_sx', $tracking->lo_sx)->where('machine_id', $machine->id)->where('status', '<>', 1)->first();
-                        if (!$check_exist) {
-                            $info_lo_sx = new InfoCongDoan;
-                            $info_lo_sx->lo_sx = $tracking->lo_sx;
-                            $info_lo_sx->thoi_gian_bat_dau = date('Y-m-d H:i:s');
-                            $info_lo_sx->machine_id = $machine->id;
-                            $info_lo_sx->status = 1;
-                            $info_lo_sx->dinh_muc = $plan->sl_kh;
-                            if ($plan->sl_kh <= 10) {
-                                $info_lo_sx->status = 2;
-                                $info_lo_sx->thoi_gian_ket_thuc = date('Y-m-d H:i:s');
-                                $info_lo_sx->sl_dau_ra_hang_loat = $info_lo_sx->dinh_muc;
-                                $plan = ProductionPlan::with('order')->where('ngay_sx', date('Y-m-d'))->where('machine_id', $machine->id)->where('lo_sx', '<>', $plan->lo_sx)->where('thu_tu_uu_tien', '>=', $plan->thu_tu_uu_tien)->orderBy('thu_tu_uu_tien')->first();
-                                $tracking->lo_sx = $plan->lo_sx ?? null;
-                                $tracking->save();
-                            }
-                            $info_lo_sx->save();
-                            return $this->success($this->takeTime(), 'Tạo Info mới');
-                        }
-                    }
-                }
-                break;
-            case Line::LINE_IN:
-                if (!$tracking->lo_sx) {
-                    return $this->success($this->takeTime(), 'Không có lô sx trong tracking');
-                }
-                $plan_song = ProductionPlan::where('machine_id', 'So01')->where('lo_sx', $tracking->lo_sx)->orderBy('thu_tu_uu_tien')->first();
-                $group_orders = GroupPlanOrder::where('plan_id', $plan_song->id)->pluck('order_id')->toArray();
-                $plans = ProductionPlan::where('machine_id', $machine->id)->whereIn('order_id', $group_orders)->get();
-                $lo_sx_da_chay = InfoCongDoan::where('machine_id', $machine->id)->whereIn('lo_sx', $plans->pluck('lo_sx')->toArray())->where('status', '>', 1)->get();
-                $lo_in = ProductionPlan::where('machine_id', $machine->id)
-                    ->whereIn('order_id', $group_orders)
-                    ->whereHas('l_s_x_log', function ($q) {
-                        $q->where('mapping', 1);
-                    })
-                    ->where(function ($query) {
-                        $query->whereHas('info_losx', function ($q) {
-                            $q->where('status', '<=', 1);
-                        })
-                            ->orWhereDoesntHave('info_losx');
-                    })
-                    ->orderBy('thu_tu_uu_tien')->first();
-                if ($lo_in) {
-                    $info_lo_sx = InfoCongDoan::where('lo_sx', $lo_in->lo_sx)->where('machine_id', $machine->id)->first();
-                    $order = $lo_in->order;
-                    if (!$info_lo_sx) {
-                        $info_lo_sx = new InfoCongDoan;
-                        $info_lo_sx->lo_sx = $lo_in->lo_sx;
-                        $info_lo_sx->thoi_gian_bat_dau = date('Y-m-d H:i:s');
-                        $info_lo_sx->machine_id = $machine->id;
-                        $info_lo_sx->status = 1;
-                        $info_lo_sx->dinh_muc = $lo_in->sl_kh;
-                    }
-                    if ($request['Pre_Counter']) {
-                        $info_lo_sx->sl_dau_ra_hang_loat = $request['Pre_Counter'] - $lo_sx_da_chay->sum('sl_dau_ra_hang_loat');
-                    }
-                    if (isset($request['Error_Counter']) && is_numeric($request['Error_Counter'])) {
-                        $info_lo_sx->sl_ng_sx = $request['Error_Counter'] - $lo_sx_da_chay->sum('sl_ng_sx');
-                    }
-                    if ($info_lo_sx->sl_dau_ra_hang_loat >= $info_lo_sx->dinh_muc) {
-                        $next_lo_in = ProductionPlan::where('machine_id', $machine->id)
-                            ->whereIn('order_id', $group_orders)
-                            ->where('lo_sx', '<>', $info_lo_sx->lo_sx)
-                            ->whereHas('l_s_x_log', function ($q) {
-                                $q->where('mapping', 1);
-                            })
-                            ->where(function ($query) {
-                                $query->whereHas('info_losx', function ($q) {
-                                    $q->where('status', '<=', 1);
-                                })
-                                    ->orWhereDoesntHave('info_losx');
-                            })
-                            ->orderBy('thu_tu_uu_tien')->first();
-                        if ($next_lo_in) {
-                            $next_info_in = new InfoCongDoan;
-                            $next_info_in->lo_sx = $next_lo_in->lo_sx;
-                            $next_info_in->sl_dau_ra_hang_loat = $info_lo_sx->sl_dau_ra_hang_loat - $info_lo_sx->dinh_muc;
-                            $next_info_in->thoi_gian_bat_dau = date('Y-m-d H:i:s');
-                            $next_info_in->machine_id = $machine->id;
-                            $next_info_in->status = 1;
-                            $next_info_in->dinh_muc = $next_lo_in->sl_kh;
-                            $next_info_in->save();
-                        }
-                        $info_lo_sx->sl_dau_ra_hang_loat = $info_lo_sx->dinh_muc;
-                        $info_lo_sx->status = 2;
-                        $info_lo_sx->thoi_gian_ket_thuc = date('Y-m-d H:i:s');
-                    }
-                    if ($info_lo_sx->sl_dau_ra_hang_loat > 0 && $request['Pre_Counter'] === 0) {
-                        $info_lo_sx->status = 2;
-                        $info_lo_sx->thoi_gian_ket_thuc = date('Y-m-d H:i:s');
-                    }
-                    $info_lo_sx->save();
-                    return $this->success($this->takeTime(), 'Đang chạy dữ liệu IOT');
-                }
-                break;
-            case Line::LINE_DAN:
-                if (!$tracking->lo_sx) {
-                    return $this->success($this->takeTime(), 'Khôg có lô trong tracking');
-                } else {
-                    $info_lo_sx = InfoCongDoan::where('lo_sx', $tracking->lo_sx)
-                        ->where('machine_id', $machine->id)
-                        ->where('status', 1)
-                        ->first();
-                    if ($info_lo_sx) {
-                        $info_lo_sx->sl_dau_ra_hang_loat = $request['Pre_Counter'];
-                        if (isset($request['Error_Counter']) && is_numeric($request['Error_Counter'])) {
-                            $info_lo_sx->sl_ng_sx = $request['Error_Counter'];
-                        }
-                        if ($request['Pre_Counter'] >= $info_lo_sx->dinh_muc) {
-                            $info_lo_sx->sl_dau_ra_hang_loat = $info_lo_sx->dinh_muc;
-                            $info_lo_sx->status = 2;
-                            $info_lo_sx->thoi_gian_ket_thuc = date('Y-m-d H:i:s');
-                        }
-                        if ($request['Pre_Counter'] === 0 && $info_lo_sx->dinh_muc > 0) {
-                            $info_lo_sx->status = 2;
-                            $info_lo_sx->thoi_gian_ket_thuc = date('Y-m-d H:i:s');
-                        }
-                        $info_lo_sx->save();
-                        return $this->success($this->takeTime(), 'Chuyển lô');
-                    } else {
-                        $tracking->lo_sx = null;
-                        $tracking->save();
-                        return $this->success($this->takeTime(), 'Chuyển lô');
-                    }
-                }
-                break;
-            default:
-                break;
-        }
-        return $this->success($this->takeTime(), 'Không có dữ liệu');
-    }
-
     public function websocketMachineStatus(Request $request)
     {
         if (!isset($request['device_id'])) return $this->failure('Không có mã máy');;
@@ -1424,30 +977,9 @@ class ApiController extends AdminController
                 break;
             case Line::LINE_IN:
                 return $this->infoList($request);
-                $plans = ProductionPlan::with('info_losx.user', 'order')
-                    ->where('machine_id', $request->machine_id)
-                    ->orderBy('thu_tu_uu_tien', 'ASC')
-                    ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
-                    ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
-                    ->select('id', 'ngay_sx', 'lo_sx', 'order_id', 'thoi_gian_bat_dau', 'thoi_gian_ket_thuc', 'thu_tu_uu_tien', 'machine_id', 'sl_kh', 'so_m_toi')
-                    ->get()
-                    ->sort(function ($a, $b) {
-                        return $this->sortList($a, $b);
-                    });
-                $data = $this->printerList($plans);
                 break;
             case Line::LINE_DAN:
                 return $this->infoList($request);
-                $info_lo_sx_list = InfoCongDoan::with(['parent.plan.order', 'parent.tem.order','user'])
-                    ->where('machine_id', $request->machine_id)
-                    ->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))
-                    ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)))
-                    ->orderBy('created_at', 'DESC')
-                    ->get()
-                    ->sort(function ($a, $b) {
-                        return $this->sortList($a, $b);
-                    });
-                $data = $this->gluingList($info_lo_sx_list);
                 break;
             default:
                 break;
@@ -1502,7 +1034,7 @@ class ApiController extends AdminController
 
     public function infoList(Request $request)
     {
-        $info_lo_sx = InfoCongDoan::with('order', 'user', 'plan.order', 'tem.order')
+        $info_lo_sx = InfoCongDoan::with('order', 'user')
             ->where('status', '>=', 0)
             ->where('machine_id', $request->machine_id)
             ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
@@ -1515,12 +1047,6 @@ class ApiController extends AdminController
         // return $info_lo_sx;
         foreach ($info_lo_sx as $info) {
             $order = $info->order;
-            if (!$order && ($info->plan->order ?? false)) {
-                $order = $info->plan->order;
-            }
-            if (!$order && ($info->tem->order ?? false)) {
-                $order = $info->tem->order;
-            }
             $info->san_luong = $info->sl_dau_ra_hang_loat ?? 0;
             $info->sl_ok = $info ? $info->sl_dau_ra_hang_loat - $info->sl_ng_sx - $info->sl_ng_qc : 0;
             $info->san_luong_kh = $info->dinh_muc ?? 0;
@@ -8710,7 +8236,7 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with('user', 'exportRecord.user')->orderBy('created_at');
+        $query = WarehouseFGLog::where('type', 1)->with(['user', 'exportRecord.user'])->orderBy('created_at');
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }

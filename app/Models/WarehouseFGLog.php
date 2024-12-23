@@ -66,6 +66,6 @@ class WarehouseFGLog extends Model
     // Quan hệ để lấy bản ghi xuất (export) liên quan đến bản ghi nhập (import)
     public function exportRecord()
     {
-        return $this->hasMany(WarehouseFGLog::class, 'lo_sx', 'lo_sx')->where('type', 2); // Bản ghi xuất
+        return $this->hasOne(WarehouseFGLog::class, 'lo_sx', 'lo_sx')->where('type', 2); // Bản ghi xuất
     }
 }

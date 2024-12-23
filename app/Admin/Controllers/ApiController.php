@@ -1424,30 +1424,9 @@ class ApiController extends AdminController
                 break;
             case Line::LINE_IN:
                 return $this->infoList($request);
-                $plans = ProductionPlan::with('info_losx.user', 'order')
-                    ->where('machine_id', $request->machine_id)
-                    ->orderBy('thu_tu_uu_tien', 'ASC')
-                    ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
-                    ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
-                    ->select('id', 'ngay_sx', 'lo_sx', 'order_id', 'thoi_gian_bat_dau', 'thoi_gian_ket_thuc', 'thu_tu_uu_tien', 'machine_id', 'sl_kh', 'so_m_toi')
-                    ->get()
-                    ->sort(function ($a, $b) {
-                        return $this->sortList($a, $b);
-                    });
-                $data = $this->printerList($plans);
                 break;
             case Line::LINE_DAN:
                 return $this->infoList($request);
-                $info_lo_sx_list = InfoCongDoan::with(['parent.plan.order', 'parent.tem.order','user'])
-                    ->where('machine_id', $request->machine_id)
-                    ->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))
-                    ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)))
-                    ->orderBy('created_at', 'DESC')
-                    ->get()
-                    ->sort(function ($a, $b) {
-                        return $this->sortList($a, $b);
-                    });
-                $data = $this->gluingList($info_lo_sx_list);
                 break;
             default:
                 break;
@@ -1502,7 +1481,7 @@ class ApiController extends AdminController
 
     public function infoList(Request $request)
     {
-        $info_lo_sx = InfoCongDoan::with('order', 'user', 'plan.order', 'tem.order')
+        $info_lo_sx = InfoCongDoan::with('order', 'user')
             ->where('status', '>=', 0)
             ->where('machine_id', $request->machine_id)
             ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
@@ -1515,12 +1494,6 @@ class ApiController extends AdminController
         // return $info_lo_sx;
         foreach ($info_lo_sx as $info) {
             $order = $info->order;
-            if (!$order && ($info->plan->order ?? false)) {
-                $order = $info->plan->order;
-            }
-            if (!$order && ($info->tem->order ?? false)) {
-                $order = $info->tem->order;
-            }
             $info->san_luong = $info->sl_dau_ra_hang_loat ?? 0;
             $info->sl_ok = $info ? $info->sl_dau_ra_hang_loat - $info->sl_ng_sx - $info->sl_ng_qc : 0;
             $info->san_luong_kh = $info->dinh_muc ?? 0;

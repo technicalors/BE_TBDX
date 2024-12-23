@@ -5048,15 +5048,24 @@ class ApiUIController extends AdminController
     {
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 0);
-        $warehouse = WarehouseFGLog::with(['exportRecord'])->where('type', 1)->chunk(5000, function ($logs) {
-            foreach ($logs as $log) {
-                $export = $log->exportRecord();
-                if(!empty($export)){
-                    $sl = $log->so_luong - $export->sum('so_luong');
-                    $log->update(['is_exported' => 1, 'in_stock' => $sl > 0 ? $sl : 0]);
-                }else{
-                    $log->update(['is_exported' => 0, 'in_stock' => $log->so_luong]);
+        // $infos = InfoCongDoan::with('plan')->whereIn('machine_id', ['Pr06', 'So01', 'Pr15', 'Pr12', 'Pr11', 'Pr16', 'Da06', 'Da05', 'CH02', 'CH03'])->whereNull('order_id')->chunk(1000, function ($infos) {
+        $infos = InfoCongDoan::with('tem')->where('machine_id', '!=', 'So01')->whereNull('order_id')->chunk(1000, function ($infos) {
+            $updates = [];
+    
+            foreach ($infos as $info) {
+                if ($info->plan) {
+                    $updates[] = [
+                        'id' => $info->id,
+                        'order_id' => $info->plan->order_id
+                    ];
                 }
+            }
+    
+            // Batch update
+            foreach ($updates as $update) {
+                DB::table('info_cong_doan')
+                    ->where('id', $update['id'])
+                    ->update(['order_id' => $update['order_id']]);
             }
         });
         //return take time

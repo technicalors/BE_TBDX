@@ -8789,7 +8789,7 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with('user', 'exportRecord.user')->orderBy('created_at')->withAggregate('order', 'mdh')->withAggregate('order', 'mql')->orderBy('order_mdh', 'ASC')->orderBy('order_mql', 'ASC');
+        $query = WarehouseFGLog::where('type', 1)->with('user', 'exportRecord.user')->orderBy('created_at');
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }
@@ -8841,14 +8841,13 @@ class ApiController extends AdminController
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
         $query = $this->customQueryWarehouseFGLog($request);
-        $allData = $query->get()->map(function ($item) {
+        $allData = $query->get()->sortBy('order_id', SORT_NATURAL)->map(function ($item) {
             if (!$item->exportRecord) {
                 $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
                 $item->sl_ton = $item->so_luong;
             }
             return $item;
-        });
-        $allData = $allData->filter(function ($item) use ($input) {
+        })->filter(function ($item) use ($input) {
             $passes = true;
             if (isset($input['sl_ton_max']) && $item->sl_ton > $input['sl_ton_max']) {
                 $passes = false;

@@ -15,7 +15,7 @@ class WarehouseFGLog extends Model
     use HasFactory;
     public $incrementing = false;
     protected $table = "warehouse_fg_logs";
-    protected $fillable = ['id', 'locator_id', "pallet_id", "lo_sx", "so_luong", "type", "created_by", 'order_id', 'delivery_note_id', 'created_at', 'nhap_du'];
+    protected $fillable = ['id', 'locator_id', "pallet_id", "lo_sx", "so_luong", "type", "created_by", 'order_id', 'delivery_note_id', 'created_at', 'nhap_du', 'is_exported', 'in_stock'];
 
     public function lsx()
     {
@@ -66,6 +66,6 @@ class WarehouseFGLog extends Model
     // Quan hệ để lấy bản ghi xuất (export) liên quan đến bản ghi nhập (import)
     public function exportRecord()
     {
-        return $this->hasOne(WarehouseFGLog::class, 'lo_sx', 'lo_sx')->where('type', 2); // Bản ghi xuất
+        return $this->hasMany(WarehouseFGLog::class, 'lo_sx', 'lo_sx')->where('type', 2); // Bản ghi xuất
     }
 }

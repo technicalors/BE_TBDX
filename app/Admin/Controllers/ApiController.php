@@ -4142,7 +4142,7 @@ class ApiController extends AdminController
             $obj->so_luong = $log->pallet->so_luong ?? '';
             $obj->khach_hang = $log->order->short_name ?? "";
             $obj->locator_id = $log->locator_id;
-            $obj->mdh = $record->order->mdh ?? '';
+            $obj->mdh = $log->order->mdh ?? '';
             $obj->thoi_gian_nhap = date('d/m/Y H:i', strtotime($log->created_at));
             $data[] = $obj;
         }

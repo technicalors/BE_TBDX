@@ -1412,7 +1412,7 @@ class ApiController extends AdminController
                     ->whereIn('status', [0, 1])
                     ->whereDate('ngay_sx', '<=', date('Y-m-d'))
                     ->where('machine_id', $request->machine_id)
-                    ->with('plan', 'order.buyer');
+                    ->with('plan', 'order.buyer','infoCongDoanPriority');
                 if (count($info_priority)) {
                     $unfinished_query->orderByRaw('FIELD(id, ' . implode(',', ($info_priority ?? [])) . ')');
                 } else {
@@ -1424,7 +1424,7 @@ class ApiController extends AdminController
                 break;
             case Line::LINE_IN:
                 return $this->infoList($request);
-                $plans = ProductionPlan::with('info_losx', 'order')
+                $plans = ProductionPlan::with('info_losx.user', 'order')
                     ->where('machine_id', $request->machine_id)
                     ->orderBy('thu_tu_uu_tien', 'ASC')
                     ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
@@ -1438,7 +1438,7 @@ class ApiController extends AdminController
                 break;
             case Line::LINE_DAN:
                 return $this->infoList($request);
-                $info_lo_sx_list = InfoCongDoan::with(['parent.plan.order', 'parent.tem.order'])
+                $info_lo_sx_list = InfoCongDoan::with(['parent.plan.order', 'parent.tem.order','user'])
                     ->where('machine_id', $request->machine_id)
                     ->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))
                     ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)))

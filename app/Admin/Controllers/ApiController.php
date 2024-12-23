@@ -615,85 +615,6 @@ class ApiController extends AdminController
 
     public function CorrugatingProduction($request, $tracking)
     {
-        //Kiểm tra tracking. Nếu tracking có chạy và có giá trị của lô thì tiếp tục ngược lại thì không
-        if ($tracking->is_running == 0 || !$tracking->lo_sx) {
-            $tracking->update(['is_running' => 0]);
-            return;
-        }
-        $tracking_params = [
-            'pre_counter' => $request['Pre_Counter'],
-            'error_counter' => $request['Error_Counter'],
-            'set_counter' => $request['Set_Counter']
-        ];
-        //Tìm kiếm lô đang chạy
-        $info_lo_sx = InfoCongDoan::with('infoCongDoanPriority', 'order')->where('lo_sx', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->first();
-        if ($info_lo_sx) {
-            // Điều kiện hoàn thành lô sản xuất
-            if ($info_lo_sx->status > 1 || ($request['Pre_Counter'] >= $tracking->sl_kh) || (((($tracking->pre_counter + ($tracking->error_counter ?? 0)) - ($request['Pre_Counter'] + ($request['Error_Counter'] ?? 0))) > 0) && $tracking->pre_counter > 0)) {
-                $info_lo_sx->update([
-                    'sl_dau_ra_hang_loat' => $tracking->dinh_muc,
-                    'status' => $info_lo_sx->phan_dinh !== 0 ? 3 : 2,
-                    'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
-                ]);
-                $next = InfoCongDoanPriority::where('info_cong_doan_id', '!=', $info_lo_sx->id)->where('priority', '>', $info_lo_sx->infoCongDoanPriority->priority ?? 0)->orderBy('priority')->first();
-                $next_batch = InfoCongDoan::where('id', ($next->info_cong_doan_id ?? null))->whereDate('ngay_sx', '<=', date('Y-m-d'))->first();
-                if ($next_batch) {
-                    $next_batch->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s')]);
-                }
-                // Cập nhật lại tracking
-                $tracking->update([
-                    'lo_sx' => $next_batch->lo_sx ?? null,
-                    'sl_kh' => $next_batch ? ceil($next_batch->dinh_muc / $next_batch->so_ra) : 0,
-                    'so_ra' => $next_batch->so_ra ?? 1,
-                    'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien ?? 0,
-                    'pre_counter' => 0,
-                    'error_counter' => 0,
-                    'set_counter' => 0,
-                ]);
-                // Xóa thứ tự ưu tiên và phát sóng cập nhật
-                InfoCongDoanPriority::where('info_cong_doan_id', $info_lo_sx->id)->delete();
-                $this->reorderInfoCongDoan();
-                $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
-                return;
-            } else {
-                $info_lo_sx->update([
-                    'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $tracking->so_ra,
-                    'sl_ng_sx' => isset($request['Error_Counter']) ? ($request['Error_Counter'] * $tracking->so_ra) : $info_lo_sx->sl_ng_sx,
-                    'dinh_muc' => isset($request['Set_Counter']) ? (max($request['Set_Counter'], $tracking->sl_kh) * $tracking->so_ra) : $info_lo_sx->dinh_muc,
-                    'status' => 1
-                ]);
-                $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra);
-                $tracking->update($tracking_params);
-                return;
-            }
-        } else {
-            $new_info = InfoCongDoan::create([
-                'lo_sx' => $tracking->lo_sx,
-                'machine_id' => $tracking->machine_id,
-                'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $tracking->so_ra,
-                'dinh_muc' => max($request['Set_Counter'], $tracking->sl_kh) * $tracking->so_ra,
-                'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
-                'status' => 1,
-                'so_ra' => $tracking->so_ra,
-                'thu_tu_uu_tien' => $tracking->thu_tu_uu_tien
-            ]);
-            $tracking->update([
-                'lo_sx' => $new_info->lo_sx ?? null,
-                'sl_kh' => $new_info ? ceil($new_info->dinh_muc / $new_info->so_ra) : 0,
-                'so_ra' => $new_info->so_ra ?? 1,
-                'thu_tu_uu_tien' => $new_info->thu_tu_uu_tien ?? 0,
-                'pre_counter' => 0,
-                'error_counter' => 0,
-                'set_counter' => 0,
-            ]);
-            $this->broadcastProductionUpdate($new_info, $tracking->so_ra, true);
-            $tracking->update($tracking_params);
-            return;
-        }
-    }
-
-    public function CorrugatingProduction2($request, $tracking)
-    {
         //Kiểm tra tracking. Nếu tracking có chạy thì tiếp tục ngược lại thì không
         if ($tracking->is_running == 0) {
             return;
@@ -1171,7 +1092,7 @@ class ApiController extends AdminController
         $tracking = Tracking::where('machine_id', $machine->id)->first();
         switch ($line->id) {
             case Line::LINE_SONG:
-                return $this->CorrugatingProduction2($request, $tracking, $machine);
+                return $this->CorrugatingProduction($request, $tracking, $machine);
                 break;
             case Line::LINE_IN:
                 return $this->TemPrintProduction($request, $tracking, $machine);

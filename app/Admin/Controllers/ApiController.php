@@ -9006,7 +9006,7 @@ class ApiController extends AdminController
     {
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
-        $query = WareHouseFGExport::whereNull('delivery_note_id')->whereNotNull('warehouse_fg_export.order_id');
+        $query = WareHouseFGExport::whereNull('delivery_note_id')->whereNotNull('order_id');
         if (isset($request->created_by)) {
             $query->where('created_by', $request->created_by);
         }

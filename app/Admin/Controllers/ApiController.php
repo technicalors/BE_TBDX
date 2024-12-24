@@ -8133,7 +8133,7 @@ class ApiController extends AdminController
             $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $obj->so_kg_dau = $record->material->so_kg_dau ?? "0";
             $obj->so_kg_nhap = $record->so_kg_nhap ?? "0";
-            $obj->so_kg_xuat = $obj->so_kg_nhap - $so_con_lai;
+            $obj->so_kg_xuat = $obj->so_kg_nhap - ($record->material->so_kg ?? 0);
             $obj->so_kg_cuoi = $record->material->so_kg ?? 0;
             $obj->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
             $obj->so_cuon = $record->material->so_kg == $record->material->so_kg_dau ? 1 : 0;

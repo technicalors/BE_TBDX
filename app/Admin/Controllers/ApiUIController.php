@@ -4997,22 +4997,14 @@ class ApiUIController extends AdminController
     public function updateInfoCongDoanPriority()
     {
         $infos = InfoCongDoan::with('plan')->where('ngay_sx', '>=', date('Y-m-d'))->where('machine_id', 'So01')->whereIn('status', [0, 1])->orderBy('ngay_sx')->orderBy('thu_tu_uu_tien')->orderBy('updated_at')->get();
-        try {
-            DB::beginTransaction();
-            InfoCongDoanPriority::truncate();
-            $index = 1;
-            foreach ($infos as $key => $info) {
-                InfoCongDoanPriority::create([
-                    'info_cong_doan_id' => $info->id,
-                    'priority' => $index,
-                ]);
-                $index++;
-            }
-            DB::commit();
-        } catch (\Throwable $th) {
-            //throw $th;
-            DB::rollBack();
-            throw $th;
+        InfoCongDoanPriority::truncate();
+        $index = 1;
+        foreach ($infos as $key => $info) {
+            InfoCongDoanPriority::create([
+                'info_cong_doan_id' => $info->id,
+                'priority' => $index,
+            ]);
+            $index++;
         }
         return 'reordered';
     }
@@ -5049,35 +5041,35 @@ class ApiUIController extends AdminController
     {
         $group_ids = [];
         $duplicates = DB::table('warehouse_fg_logs')
-        ->select(
-            'locator_id',
-            'pallet_id',
-            'lo_sx',
-            'so_luong',
-            'type',
-            'created_by',
-            'order_id',
-            'delivery_note_id',
-            'created_at',
-            'nhap_du',
-            DB::raw('COUNT(*) AS duplicate_count'),
-            DB::raw("GROUP_CONCAT(id ORDER BY id SEPARATOR ',') AS grouped_ids")
-        )
-        ->groupBy(
-            'locator_id',
-            'pallet_id',
-            'lo_sx',
-            'so_luong',
-            'type',
-            'created_by',
-            'order_id',
-            'delivery_note_id',
-            'nhap_du'
-        )
-        ->having('duplicate_count', '>', 1)
-        ->get()->each(function ($item) use (&$group_ids) {
-            $group_ids[] = array_slice(explode(',', $item->grouped_ids), 1);
-        });
+            ->select(
+                'locator_id',
+                'pallet_id',
+                'lo_sx',
+                'so_luong',
+                'type',
+                'created_by',
+                'order_id',
+                'delivery_note_id',
+                'created_at',
+                'nhap_du',
+                DB::raw('COUNT(*) AS duplicate_count'),
+                DB::raw("GROUP_CONCAT(id ORDER BY id SEPARATOR ',') AS grouped_ids")
+            )
+            ->groupBy(
+                'locator_id',
+                'pallet_id',
+                'lo_sx',
+                'so_luong',
+                'type',
+                'created_by',
+                'order_id',
+                'delivery_note_id',
+                'nhap_du'
+            )
+            ->having('duplicate_count', '>', 1)
+            ->get()->each(function ($item) use (&$group_ids) {
+                $group_ids[] = array_slice(explode(',', $item->grouped_ids), 1);
+            });
         WarehouseFGLog::whereIn('id', array_merge(...$group_ids))->delete();
         return 'ok';
     }

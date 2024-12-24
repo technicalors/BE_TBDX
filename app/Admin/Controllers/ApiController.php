@@ -6412,6 +6412,7 @@ class ApiController extends AdminController
         $input = $request->all();
         $ordering = 0;
         try {
+            DB::beginTransaction();
             foreach ($input['data'] as $plan_input) {
                 $plan_input['ngay_sx'] = date('Y-m-d', strtotime($plan_input['thoi_gian_bat_dau']));
                 $check = ProductionPlan::where('lo_sx', $plan_input['lo_sx'])->where('machine_id', $plan_input['machine_id'])->first();
@@ -6454,12 +6455,13 @@ class ApiController extends AdminController
                 }
             }
             $this->apiUIController->updateInfoCongDoanPriority();
+            DB::commit();
+            return $this->success('', "Tạo KHSX thành công");
         } catch (\Throwable $th) {
+            DB::rollBack();
             ErrorLog::saveError($request, $th);
-            throw $th;
             return $this->failure($th, "Tạo KHSX không thành công");
         }
-        return $this->success('', "Tạo KHSX thành công");
     }
 
     public function createLayouts(Request $request)

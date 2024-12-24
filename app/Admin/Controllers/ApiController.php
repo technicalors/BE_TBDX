@@ -6412,7 +6412,6 @@ class ApiController extends AdminController
         $input = $request->all();
         $ordering = 0;
         try {
-            DB::beginTransaction();
             foreach ($input['data'] as $plan_input) {
                 $plan_input['ngay_sx'] = date('Y-m-d', strtotime($plan_input['thoi_gian_bat_dau']));
                 $check = ProductionPlan::where('lo_sx', $plan_input['lo_sx'])->where('machine_id', $plan_input['machine_id'])->first();
@@ -6454,14 +6453,13 @@ class ApiController extends AdminController
                     }
                 }
             }
-            DB::commit();
             $this->apiUIController->updateInfoCongDoanPriority();
-            return $this->success('', "Tạo KHSX thành công");
         } catch (\Throwable $th) {
-            DB::rollBack();
             ErrorLog::saveError($request, $th);
+            throw $th;
             return $this->failure($th, "Tạo KHSX không thành công");
         }
+        return $this->success('', "Tạo KHSX thành công");
     }
 
     public function createLayouts(Request $request)
@@ -8236,7 +8234,7 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with(['user', 'exportRecord.user'])->orderBy('created_at');
+        $query = WarehouseFGLog::where('type', 1)->with(['user'])->orderBy('created_at');
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }

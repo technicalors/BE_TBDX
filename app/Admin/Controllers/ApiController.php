@@ -8110,7 +8110,7 @@ class ApiController extends AdminController
     public function exportWarehouseMLTLog(Request $request)
     {
         $query = $this->customQueryWarehouseMLTLog($request);
-        $records = $query->with('material', 'warehouse_mlt_import')->get();
+        $records = $query->with('material', 'warehouse_mlt_import','locatorMlt.warehouse_mlt')->get();
         $data = [];
         foreach ($records as $key => $record) {
             // if ($record->tg_xuat) {

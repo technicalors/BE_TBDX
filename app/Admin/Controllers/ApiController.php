@@ -4169,15 +4169,18 @@ class ApiController extends AdminController
                 ->pluck('delivery_note_id');
             $query->whereIn('delivery_note_id', $deliveryNotes);
         }
-        $fg_exports = $query->orderBy('created_at', 'DESC')->get();
+        $fg_exports = $query->orderBy('created_at', 'DESC')->whereHas('lsxpallets', function($subQuery){
+            $subQuery->whereDoesntHave('warehouseFGLog', function($log_query){
+                $log_query->where('type', 2);
+            });
+        })->with('lsxpallets')->get();
+        return $fg_exports;
         $data = [];
         $lsx_array = [];
         $test = [];
         if (count($fg_exports) > 0) {
             foreach ($fg_exports as $key => $fg_export) {
-                $lsx_pallets = $fg_export->lsxpallets()->whereDoesntHave('warehouseFGLog', function($log_query){
-                    $log_query->where('type', 2);
-                })->get();
+                $lsx_pallets = $fg_export->lsxpallets;
                 $so_luong_da_xuat = WarehouseFGLog::where('delivery_note_id', $fg_export->delivery_note_id)->where('order_id', $fg_export->order_id)->where('type', 2)->sum('so_luong');
                 // $test[] = [$fg_export->id, $lsx_pallets, $so_luong_da_xuat];
                 $sum_sl = 0;
@@ -6454,10 +6457,11 @@ class ApiController extends AdminController
                     }
                 }
             }
-            $this->apiUIController->updateInfoCongDoanPriority();
             DB::commit();
+            $this->apiUIController->updateInfoCongDoanPriority();
             return $this->success('', "Tạo KHSX thành công");
         } catch (\Throwable $th) {
+            throw $th;
             DB::rollBack();
             ErrorLog::saveError($request, $th);
             return $this->failure($th, "Tạo KHSX không thành công");

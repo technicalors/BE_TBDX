@@ -4136,13 +4136,13 @@ class ApiController extends AdminController
         $logs = WarehouseFGLog::with('pallet', 'order')->whereDate('created_at', date('Y-m-d'))->where('type', 1)->groupBy('pallet_id')->get();
         $data = [];
         foreach ($logs as $key => $log) {
-            $record = LSXPallet::where('pallet_id', $log->pallet_id)->first();
+            // $record = LSXPallet::where('pallet_id', $log->pallet_id)->first();
             $obj = new stdClass();
             $obj->pallet_id = $log->pallet_id;
             $obj->so_luong = $log->pallet->so_luong ?? '';
-            $obj->khach_hang = $record->customer_id ?? $log->order->short_name ?? "";
+            $obj->khach_hang = $log->order->short_name ?? "";
             $obj->locator_id = $log->locator_id;
-            $obj->mdh = $record->mdh ?? '';
+            $obj->mdh = $log->order->mdh ?? '';
             $obj->thoi_gian_nhap = date('d/m/Y H:i', strtotime($log->created_at));
             $data[] = $obj;
         }

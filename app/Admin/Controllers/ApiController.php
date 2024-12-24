@@ -8081,12 +8081,12 @@ class ApiController extends AdminController
         $query->offset($page * $pageSize)->limit($pageSize ?? 20);
         $records = $query->get();
         foreach ($records as $key => $record) {
-            if ($record->tg_xuat) {
-                $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
-            } else {
-                $nextImportLog = null;
-            }
-            $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
+            // if ($record->tg_xuat) {
+            //     $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
+            // } else {
+            //     $nextImportLog = null;
+            // }
+            // $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $record->ten_ncc = ($record->material && $record->material->supplier) ? $record->material->supplier->name : '';
             $record->loai_giay = $record->material->loai_giay ?? '';
             $record->fsc = ($record->material && $record->material->fsc) ? 'X' : '';
@@ -8097,8 +8097,8 @@ class ApiController extends AdminController
             $record->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $record->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
             $record->so_kg_dau = $record->material->so_kg_dau ?? "0";
-            $record->so_kg_xuat = $record->so_kg_nhap - $so_con_lai;
             $record->so_kg_cuoi = $record->material->so_kg ?? 0;
+            $record->so_kg_xuat = $record->so_kg_nhap -  $record->so_kg_cuoi;
             $record->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
             $record->so_cuon = ($record->material && $record->material->so_kg == $record->material->so_kg_dau) ? 1 : 0;
             $record->khu_vuc = str_contains($record->locator_id, 'C') ? ('Khu' . (int)str_replace('C', '', $record->locator_id)) : "";

@@ -159,7 +159,7 @@ async function processData(device, token) {
         }
 
         // (Nếu cần gửi tất cả params)
-        // await postMachineParams(params);
+        await postMachineParams(params);
 
         // Kiểm tra duplicate data
         if (data) {

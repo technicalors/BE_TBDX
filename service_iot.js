@@ -161,7 +161,7 @@ async function processData(device, token) {
 
         // (Nếu cần gửi tất cả params)
         const now = Date.now();
-        if (now - lastParamsSentTime >= 30000) {
+        if (now - lastParamsSentTime >= 60000) {
             await postMachineParams(params);
             lastParamsSentTime = now;
         }

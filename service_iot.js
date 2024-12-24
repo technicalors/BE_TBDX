@@ -145,6 +145,7 @@ async function postMachineParams(data) {
 }
 
 // ====== 5) Hàm xử lý data cho 1 device (fetch + check duplicate + post) ======
+let lastParamsSentTime = 0;
 async function processData(device, token) {
     try {
         const { data, status, params } = await fetchTelemetryData(device, token);
@@ -159,7 +160,11 @@ async function processData(device, token) {
         }
 
         // (Nếu cần gửi tất cả params)
-        await postMachineParams(params);
+        const now = Date.now();
+        if (now - lastParamsSentTime >= 30000) {
+            await postMachineParams(params);
+            lastParamsSentTime = now;
+        }
 
         // Kiểm tra duplicate data
         if (data) {

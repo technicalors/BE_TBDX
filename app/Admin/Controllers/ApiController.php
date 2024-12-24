@@ -4174,7 +4174,6 @@ class ApiController extends AdminController
                 $log_query->where('type', 2);
             });
         })->with('lsxpallets')->get();
-        return $fg_exports;
         $data = [];
         $lsx_array = [];
         $test = [];

@@ -5039,38 +5039,67 @@ class ApiUIController extends AdminController
     }
     public function wtf()
     {
-        $group_ids = [];
-        $duplicates = DB::table('warehouse_fg_logs')
-            ->select(
-                'locator_id',
-                'pallet_id',
-                'lo_sx',
-                'so_luong',
-                'type',
-                'created_by',
-                'order_id',
-                'delivery_note_id',
-                'created_at',
-                'nhap_du',
-                DB::raw('COUNT(*) AS duplicate_count'),
-                DB::raw("GROUP_CONCAT(id ORDER BY id SEPARATOR ',') AS grouped_ids")
-            )
-            ->groupBy(
-                'locator_id',
-                'pallet_id',
-                'lo_sx',
-                'so_luong',
-                'type',
-                'created_by',
-                'order_id',
-                'delivery_note_id',
-                'nhap_du'
-            )
-            ->having('duplicate_count', '>', 1)
-            ->get()->each(function ($item) use (&$group_ids) {
-                $group_ids[] = array_slice(explode(',', $item->grouped_ids), 1);
-            });
-        WarehouseFGLog::whereIn('id', array_merge(...$group_ids))->delete();
+        // return LSXPallet::with(['warehouseFGLog'=>function($sub){
+        //     $sub->where('type', 2);
+        // }])->limit(10000)->get();
+        $lsx_pallets = LSXPallet::with(['warehouseFGLog'])->chunk(10000, function ($lsx_pallet) {
+            $group = [];
+            foreach ($lsx_pallet as $value) {
+                $exported = $value->warehouseFGLog->filter(function ($value) {
+                    return $value->type === 2;
+                });
+                Log::debug($exported);
+                $sl = $value->so_luong - array_sum($exported->pluck('so_luong')->toArray());
+                if ($sl >= 0) {
+                    $group[] = [
+                        'id' => $value->id,
+                        'remain_quantity' => $sl > 0 ? $sl : 0
+                    ];
+                }
+            }
+            LSXPallet::upsert($group, ['id'], ['remain_quantity']);
+        });
+        return 'ok';
+    }
+
+    public function deleteDuplicate()
+    {
+        // $infos = InfoCongDoan::with('plan')->whereIn('machine_id', ['Pr06', 'So01', 'Pr15', 'Pr12', 'Pr11', 'Pr16', 'Da06', 'Da05', 'CH02', 'CH03'])->whereNull('order_id')->chunk(1000, function ($infos) {
+        {
+            $group_ids = [];
+            $duplicates = DB::table('warehouse_fg_logs')
+                ->select(
+                    'locator_id',
+                    'pallet_id',
+                    'lo_sx',
+                    'so_luong',
+                    'type',
+                    'created_by',
+                    'order_id',
+                    'delivery_note_id',
+                    'created_at',
+                    'nhap_du',
+                    DB::raw('COUNT(*) AS duplicate_count'),
+                    DB::raw("GROUP_CONCAT(id ORDER BY id SEPARATOR ',') AS grouped_ids")
+                )
+                ->groupBy(
+                    'locator_id',
+                    'pallet_id',
+                    'lo_sx',
+                    'so_luong',
+                    'type',
+                    'created_by',
+                    'order_id',
+                    'delivery_note_id',
+                    'nhap_du'
+                )
+                ->having('duplicate_count', '>', 1)
+                ->get()->each(function ($item) use (&$group_ids) {
+                    $group_ids[] = array_slice(explode(',', $item->grouped_ids), 1);
+                });
+            WarehouseFGLog::whereIn('id', array_merge(...$group_ids))->delete();
+            return 'ok';
+        }
         return 'ok';
     }
 }

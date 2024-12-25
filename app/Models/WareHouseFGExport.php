@@ -32,4 +32,8 @@ class WareHouseFGExport extends Model
     public function creator(){
         return $this->hasOne(CustomUser::class, 'id', 'created_by');
     }
+    public function warehouse_fg_log()
+    {
+        return $this->hasMany(WarehouseFGLog::class, ['order_id', 'delivery_note_id'], ['order_id', 'delivery_note_id']);
+    }
 }

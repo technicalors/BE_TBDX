@@ -740,4 +740,5 @@ Route::group([
     $router->get('getTableSystemUsageRate', [MESUsageRateController::class, 'getTableSystemUsageRate']);
     $router->get('cronjob', [MESUsageRateController::class, 'cronjob']);
     $router->get('retriveData', [MESUsageRateController::class, 'retriveData']);
+    $router->get('deleteDuplicate', [ApiUIController::class, 'deleteDuplicate']);
 });

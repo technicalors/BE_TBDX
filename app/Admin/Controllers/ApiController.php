@@ -4151,8 +4151,20 @@ class ApiController extends AdminController
 
     public function getLogExportWarehouseFG(Request $request)
     {
-        $user_id = $request->user()->id;
-        $query = WareHouseFGExport::query();
+        $delivery_query = DeliveryNote::orderBy('created_at', 'DESC');
+        if (isset($request->start_date) && isset($request->end_date)) {
+            $delivery_query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)));
+        }
+        // if (isset($request->delivery_note_id)) {
+        //     $delivery_query->where('id', $request->delivery_note_id);
+        // }
+        $delivery_query->whereHas('exporters', function ($q) use ($request) {
+            if($request->user()->username !== 'admin'){
+                $q->where('admin_user_id', $request->user()->id);
+            }
+        });
+        $delivery_notes = $delivery_query->get();
+        $query = WareHouseFGExport::whereIn('delivery_note_id', $delivery_notes->pluck('id')->toArray());
         if (isset($request->start_date) && isset($request->end_date)) {
             $query->whereDate('ngay_xuat', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('ngay_xuat', '<=', date('Y-m-d', strtotime($request->end_date)));
         } else {
@@ -4161,56 +4173,54 @@ class ApiController extends AdminController
         if (isset($request->delivery_note_id)) {
             $query->where('delivery_note_id', $request->delivery_note_id);
         }
-        if ($request->user()->username === 'admin') {
-            $query->whereNotNull('delivery_note_id');
-        } else {
-            $deliveryNotes = DB::table('admin_user_delivery_note')
-                ->where('admin_user_id', $user_id) // Thay 1 bằng ID của note bạn muốn tìm
-                ->pluck('delivery_note_id');
-            $query->whereIn('delivery_note_id', $deliveryNotes);
-        }
         $fg_exports = $query->orderBy('created_at', 'DESC')->whereHas('lsxpallets', function($subQuery){
-            $subQuery->whereDoesntHave('warehouseFGLog', function($log_query){
-                $log_query->where('type', 2);
-            });
-        })->with('lsxpallets')->get();
+            $subQuery->where('remain_quantity', '>', 0);
+        })->with(['lsxpallets.locator_fg_map', 'warehouse_fg_log'=>function ($subQuery) {
+            $subQuery->where('type', 2);
+        }])->get();
+        // return $fg_exports;
         $data = [];
         $lsx_array = [];
         $test = [];
         if (count($fg_exports) > 0) {
             foreach ($fg_exports as $key => $fg_export) {
                 $lsx_pallets = $fg_export->lsxpallets;
-                $so_luong_da_xuat = WarehouseFGLog::where('delivery_note_id', $fg_export->delivery_note_id)->where('order_id', $fg_export->order_id)->where('type', 2)->sum('so_luong');
+                $so_luong_da_xuat = $fg_export->warehouse_fg_log->sum('so_luong');
                 // $test[] = [$fg_export->id, $lsx_pallets, $so_luong_da_xuat];
                 $sum_sl = 0;
                 $sl_can_xuat = $fg_export->so_luong - $so_luong_da_xuat;
                 foreach ($lsx_pallets as $lsx_pallet) {
-                    if ($lsx_pallet->locator_fg_map) {
-                        if ($sum_sl < $sl_can_xuat) {
-                            if (in_array($lsx_pallet->lo_sx, $lsx_array)) {
-                                continue;
-                            }
-                            $lsx_array[] = $lsx_pallet->lo_sx;
-                            $khach_hang = $lsx_pallet->customer_id ?? "";
-                            $data[$lsx_pallet->pallet_id]['pallet_id'] = $lsx_pallet->pallet_id;
-                            $data[$lsx_pallet->pallet_id]['locator_id'] = $lsx_pallet->locator_fg_map->locator_id;
-                            $data[$lsx_pallet->pallet_id]['so_luong'] = $lsx_pallet->pallet->so_luong ?? 0;
-                            $data[$lsx_pallet->pallet_id]['thoi_gian_xuat'] = date('d/m/Y H:i:s', strtotime($fg_export->ngay_xuat));
-                            $data[$lsx_pallet->pallet_id]['khach_hang'] = $khach_hang;
-                            $data[$lsx_pallet->pallet_id]['delivery_note_id'] = $fg_export->delivery_note_id;
-                            if (!isset($data[$lsx_pallet->pallet_id]['lo_sx'])) $data[$lsx_pallet->pallet_id]['lo_sx'] = [];
-                            $data[$lsx_pallet->pallet_id]['lo_sx'][] = ['lo_sx' => $lsx_pallet->lo_sx, 'so_luong' => $lsx_pallet->so_luong, 'mql' => $lsx_pallet->mql, 'mdh' => $lsx_pallet->mdh, 'khach_hang' => $khach_hang];
-                            $sum_sl += $lsx_pallet->so_luong;
-                        } else {
+                    if ($sum_sl < $sl_can_xuat && $lsx_pallet->locator_fg_map) {
+                        if (in_array($lsx_pallet->lo_sx, $lsx_array)) {
                             continue;
                         }
-                        
+                        $lsx_array[] = $lsx_pallet->lo_sx;
+                        $khach_hang = $lsx_pallet->customer_id ?? "";
+                        $data[$lsx_pallet->pallet_id]['pallet_id'] = $lsx_pallet->pallet_id;
+                        $data[$lsx_pallet->pallet_id]['locator_id'] = $lsx_pallet->locator_fg_map->locator_id;
+                        $data[$lsx_pallet->pallet_id]['so_luong'] = $lsx_pallet->pallet->so_luong ?? 0;
+                        $data[$lsx_pallet->pallet_id]['thoi_gian_xuat'] = date('d/m/Y H:i:s', strtotime($fg_export->ngay_xuat));
+                        $data[$lsx_pallet->pallet_id]['khach_hang'] = $khach_hang;
+                        $data[$lsx_pallet->pallet_id]['delivery_note_id'] = $fg_export->delivery_note_id;
+                        if (!isset($data[$lsx_pallet->pallet_id]['lo_sx'])) $data[$lsx_pallet->pallet_id]['lo_sx'] = [];
+                        $data[$lsx_pallet->pallet_id]['lo_sx'][] = [
+                            'lo_sx' => $lsx_pallet->lo_sx, 
+                            'so_luong' => $lsx_pallet->remain_quantity, 
+                            'mql' => $lsx_pallet->mql, 
+                            'mdh' => $lsx_pallet->mdh, 
+                            'khach_hang' => $khach_hang,
+                            'pallet_id' => $lsx_pallet->pallet_id,
+                            'delivery_note_id' => $fg_export->delivery_note_id
+                        ];
+                        $sum_sl += $lsx_pallet->so_luong;
+                    } else {
+                        continue;
                     }
                 }
             }
         }
         // return $test;
-        return $this->success(array_values($data));
+        return $this->success(['data'=>array_values($data), 'delivery_notes'=>$delivery_notes]);
     }
 
     public function checkLoSXPallet(Request $request)
@@ -4224,13 +4234,10 @@ class ApiController extends AdminController
     public function exportPallet(Request $request)
     {
         $input = $request->all();
-        if (empty($input['pallet_id'])) {
-            return $this->failure('', 'Không có pallet');
-        }
-        if (count($input['lo_sx']) <= 0) {
+        if (count($input) <= 0) {
             return $this->failure('', 'Không có lô cần xuất');
         }
-        $locatorFgMap = LocatorFGMap::where('pallet_id', $input['pallet_id'])->first();
+        $locatorFgMap = LocatorFGMap::where('pallet_id', $input[0]['pallet_id'] ?? 0)->first();
         if ($locatorFgMap) {
             $vi_tri = $locatorFgMap->locator_id;
         } else {
@@ -4239,33 +4246,43 @@ class ApiController extends AdminController
 
         try {
             DB::beginTransaction();
-            foreach ($input['lo_sx'] as $lo) {
-                $lsx_pallet = LSXPallet::where('pallet_id', $input['pallet_id'])->where('lo_sx', $lo['lo_sx'])->first();
-                // if ($lsx_pallet) {
-                //     $lsx_pallet->update(['so_luong' => $lsx_pallet->so_luong - $lo['so_luong']]);
-                // }
+            $pallet_quantity = 0;
+            foreach ($input as $lo) {
+                $lsx_pallet = LSXPallet::where('pallet_id', $lo['pallet_id'])->where('lo_sx', $lo['lo_sx'])->first();
+                if ($lsx_pallet->remain_quantity < $lo['so_luong']) {
+                    return $this->failure('', 'Số lượng còn lại của lô ' . $lo['lo_sx'] . ' không đủ');
+                }
                 $inp['created_by'] = $request->user()->id;
                 $inp['locator_id'] = $vi_tri;
                 $inp['so_luong'] = $lo['so_luong'];
                 $inp['lo_sx'] = $lo['lo_sx'];
-                $inp['pallet_id'] = $input['pallet_id'];
+                $inp['pallet_id'] = $lo['pallet_id'];
                 $inp['type'] = 2;
                 $inp['order_id'] = $lsx_pallet->order_id;
-                $inp['delivery_note_id'] = $input['delivery_note_id'];
+                $inp['delivery_note_id'] = $lo['delivery_note_id'];
                 $log = WarehouseFGLog::where($inp)->get();
-                if (!$log->isEmpty()) {
+                if (!$lsx_pallet->remain_quantity) {
                     return $this->failure('', 'Đã xuất kho');
                 } else {
                     WarehouseFGLog::create($inp);
                 }
+                $import = LSXPallet::where('lo_sx', $lo['lo_sx'])->first();
+                if($import){
+                    $remain = ($import->remain_quantity - $lo['so_luong']) > 0 ? ($import->remain_quantity - $lo['so_luong']) : 0;
+                    $pallet_quantity += $remain;
+                    $import->update(['remain_quantity' => $remain]);
+                }
             }
-            LocatorFGMap::where('pallet_id', $input['pallet_id'])->delete();
+            if(!$pallet_quantity){
+                LocatorFGMap::where('pallet_id', $input[0]['pallet_id'] ?? null)->delete();
+            }
+            
             DB::commit();
             return $this->success([], 'Xuất kho thành công');
         } catch (\Throwable $e) {
             DB::rollBack();
             ErrorLog::saveError($request, $e);
-            return $this->failure('Có lỗi xảy ra');
+            throw $e;
         }
     }
 

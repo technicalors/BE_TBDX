@@ -6,6 +6,7 @@ use App\Models\LSXPallet;
 use App\Models\Role;
 use App\Models\Permission;
 use App\Models\RolePermission;
+use App\Models\WarehouseFGLog;
 use Encore\Admin\Controllers\AdminController;
 use Encore\Admin\Form;
 use Encore\Admin\Grid;
@@ -45,14 +46,20 @@ class LSXPalletController extends AdminController
             $query->where('lo_sx', $request->lo_sx);
         }
         if(isset($request->pallet_id)){
-            $query->where('pallet_id', 'like', "%$request->pallet_id%");
+            $query->where('pallet_id', 'like', $request->pallet_id);
         }
         if(isset($request->locator_id)){
             $query->whereHas('locator_fg_map', function($q)use($request){
                 $q->where('locator_id', 'like', "%".$request->locator_id."%");
             });
-        }elseif(isset($request->status) && $request->status == 0){
-            $query->doesntHave('warehouseFGLog');
+        }
+        if(isset($request->status)){
+            $loggedLoSX = WarehouseFGLog::pluck('pallet_id')->unique()->toArray();
+            if($request->status == 0){
+                $query->whereNotIn('pallet_id', $loggedLoSX);
+            }else{
+                $query->whereIn('pallet_id', $loggedLoSX);
+            }
         }
         //search by order
         if(isset($request->length) || isset($request->width) || isset($request->height) || isset($request->kich_thuoc)){
@@ -76,13 +83,13 @@ class LSXPalletController extends AdminController
             $record->height = $record->order->height ?? "";
             $record->kich_thuoc = $record->order->kich_thuoc ?? "";
             $record->locator_id = $record->locator_fg_map->locator_id ?? "";
-            $record->status = $record->warehouseFGLog ? 'Đã nhập kho' : 'Chưa nhập kho';
+            $record->status = count($record->warehouseFGLog) > 0 ? 'Đã nhập kho' : 'Chưa nhập kho';
         }
         return $this->success(['data'=>$records, 'totalPage'=>$count]);
     }
 
     public function exportLSXPallet(Request $request){
-        $query = LSXPallet::orderBy('mdh')->orderBy('mql');
+        $query = LSXPallet::orderBy('created_at')->orderBy('pallet_id')->orderBy('mdh')->orderBy('mql');
         if(isset($request->start_date) || isset($request->end_date)){
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)));
         }else{
@@ -90,41 +97,36 @@ class LSXPalletController extends AdminController
         }
         if(isset($request->mdh)){
             if (is_array($request->mdh)) {
-                $query->where(function ($q) use ($request) {
-                    foreach ($request->mdh as $key => $mdh) {
-                        $q->orWhere('mdh', 'like', "%$mdh%");
-                    }
-                });
+                $query->whereIn('mdh', $request->mdh);
             } else {
-                $query->where('mdh', 'like', "%$request->mdh%");
+                $query->where('mdh', $request->mdh);
             }
         }
         if(isset($request->mql)){
             if (is_array($request->mql)) {
-                $query->where(function ($q) use ($request) {
-                    foreach ($request->mql as $key => $mql) {
-                        $q->orWhere('mql', $mql);
-                    }
-                });
+                $query->whereIn('mql', $request->mql);
             } else {
                 $query->where('mql', $request->mql);
             }
         }
         if(isset($request->lo_sx)){
-            $query->where('lo_sx', 'like', "%$request->lo_sx%");
+            $query->where('lo_sx', $request->lo_sx);
         }
         if(isset($request->pallet_id)){
-            $query->where('pallet_id', 'like', "%$request->pallet_id%");
+            $query->where('pallet_id', 'like', $request->pallet_id);
         }
-        if(isset($request->lo_sx)){
-            $query->where('lo_sx', 'like', "%$request->lo_sx%");
-        }
-        if(isset($request->locator_id) || (isset($request->status) && $request->status == 1)){
+        if(isset($request->locator_id)){
             $query->whereHas('locator_fg_map', function($q)use($request){
                 $q->where('locator_id', 'like', "%".$request->locator_id."%");
             });
-        }elseif(isset($request->status) && $request->status == 0){
-            $query->doesntHave('locator_fg_map');
+        }
+        if(isset($request->status)){
+            $loggedLoSX = WarehouseFGLog::pluck('pallet_id')->unique()->toArray();
+            if($request->status == 0){
+                $query->whereNotIn('pallet_id', $loggedLoSX);
+            }else{
+                $query->whereIn('pallet_id', $loggedLoSX);
+            }
         }
         //search by order
         if(isset($request->length) || isset($request->width) || isset($request->height) || isset($request->kich_thuoc)){
@@ -135,7 +137,7 @@ class LSXPalletController extends AdminController
                 if(isset($request->kich_thuoc)) $q->where('kich_thuoc', 'like', "%".$request->kich_thuoc."%");
             });
         }
-        $records = $query->with('order', 'locator_fg_map')->get();
+        $records = $query->with('order', 'locator_fg_map', 'warehouseFGLog')->get();
         $data = [];
         foreach ($records as $key => $record) {
             $obj = new stdClass;
@@ -149,7 +151,7 @@ class LSXPalletController extends AdminController
             $obj->kich_thuoc = $record->order->kich_thuoc ?? "";
             $obj->so_luong = $record->so_luong ?? "";
             $obj->locator_id = $record->locator_fg_map->locator_id ?? "";
-            $obj->status = $obj->locator_id ? 'Đã nhập kho' : 'Chưa nhập kho';
+            $record->status = count($record->warehouseFGLog) > 0 ? 'Đã nhập kho' : 'Chưa nhập kho';
             $data[] = (array)$obj;
         }
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();

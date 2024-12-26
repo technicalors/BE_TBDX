@@ -4603,6 +4603,7 @@ class ApiController extends AdminController
                 $inp['order_id'] = $lsx->order_id;
                 $inp['nhap_du'] = $this->calculateNhapDu($lsx->so_luong, $lsx->order_id);
                 WarehouseFGLog::create($inp);
+                $lsx->update(['remain_quantity' => $lsx->so_luong]);
             }
             DB::commit();
         } catch (\Throwable $th) {
@@ -8256,7 +8257,7 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with(['user'])->orderBy('created_at');
+        $query = WarehouseFGLog::where('type', 1)->with(['user', 'exportRecord.user'])->orderBy('created_at');
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }

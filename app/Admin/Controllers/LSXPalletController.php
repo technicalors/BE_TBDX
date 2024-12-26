@@ -52,7 +52,7 @@ class LSXPalletController extends AdminController
                 $q->where('locator_id', 'like', "%".$request->locator_id."%");
             });
         }elseif(isset($request->status) && $request->status == 0){
-            $query->doesntHave('locator_fg_map');
+            $query->doesntHave('warehouseFGLog');
         }
         //search by order
         if(isset($request->length) || isset($request->width) || isset($request->height) || isset($request->kich_thuoc)){

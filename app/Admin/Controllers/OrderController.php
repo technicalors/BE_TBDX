@@ -711,14 +711,14 @@ class OrderController extends AdminController
 
     function createNextOrderId($mdh, $mql, $hanGiao) {
         // Tìm tất cả bản ghi trùng `mdh`, `mql`, và `han_giao`
-        $existedOrder = Order::where('id', 'like', $mdh."-".$mql."%") // Tìm các id có cùng tiền tố
+        $existedOrder = Order::where('id', 'like', $mdh."-".$mql) // Tìm các id có cùng tiền tố
         ->where('han_giao', $hanGiao)
         ->withTrashed()
         ->first();
         if($existedOrder){
             return $existedOrder->id;
         }
-        $latestOrderId = Order::where('id', 'like', $mdh."-".$mql."%") // Tìm các id có cùng tiền tố
+        $latestOrderId = Order::where('id', 'like', $mdh."-".$mql) // Tìm các id có cùng tiền tố
         ->where('han_giao', '!=', $hanGiao)
         ->withTrashed()
         ->get()

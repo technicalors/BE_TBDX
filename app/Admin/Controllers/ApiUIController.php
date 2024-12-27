@@ -5129,15 +5129,20 @@ class ApiUIController extends AdminController
                 $data[] = $input;
             }
         }
+        $array = [];
         try {
             DB::beginTransaction();
             foreach ($data as $key => $input) {
+                $warehouse_fg_log = WarehouseFGLog::with('exportRecord')->where('lo_sx', $input['lo_sx'])->first();
+                if (count($warehouse_fg_log->exportRecord)) {
+                    $array[] = $input;
+                }
             }
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
             throw $th;
         }
-        return 'done';
+        return $array;
     }
 }

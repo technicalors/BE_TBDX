@@ -718,12 +718,25 @@ class ApiController extends AdminController
                     ]);
                     $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
                 } else {
-                    $info_cong_doan_in->update([
-                        'sl_dau_ra_hang_loat' => $request['Pre_Counter'] - $tracking->pre_counter,
-                        'status' => 1
-                    ]);
-                    $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
-                    $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
+                    if($info_cong_doan_in){
+                        $info_cong_doan_in->update([
+                            'sl_dau_ra_hang_loat' => $request['Pre_Counter'] - $tracking->pre_counter,
+                            'status' => 1
+                        ]);
+                        $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
+                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
+                    }else{
+                        $tracking->update([
+                            'lo_sx' => null,
+                            'pre_counter' => 0,
+                            'error_counter' => 0,
+                            'is_running' => 1,
+                            'sl_kh' => 0,
+                            'thu_tu_uu_tien' => 0,
+                            'set_counter' => 0,
+                            'status' => 0
+                        ]);
+                    }
                 }
             }
             broadcast(new ProductionUpdated($broadcast))->toOthers();

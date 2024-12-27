@@ -8367,7 +8367,8 @@ class ApiController extends AdminController
             $obj->width = $record->order->width ?? "";
             $obj->height = $record->order->height ?? "";
             $obj->kich_thuoc = $record->order->kich_thuoc ?? "";
-            $obj->sl_ton = $record->sl_nhap - $record->sl_xuat;
+            $sl_da_xuat = $export->sum('so_luong') ?? 0;
+            $obj->sl_ton = $record->sl_nhap - $sl_da_xuat;
             $obj->so_ngay_ton = $obj->sl_ton ? Carbon::parse($record->created_at)->diffInDays(Carbon::now()) : 0;
             $obj->ngay_nhap = $record->created_at ? date('d/m/Y', strtotime($record->created_at)) : '';
             $obj->gio_nhap = $record->created_at ? date('H:i', strtotime($record->created_at)) : '';
@@ -8376,7 +8377,7 @@ class ApiController extends AdminController
             $obj->nguoi_nhap = $record->user->name ?? "";
             $obj->ngay_xuat = isset($export[0]->created_at) ? date('d/m/Y', strtotime($export[0]->created_at)) : '';
             $obj->gio_xuat = isset($export[0]->created_at) ? date('H:i', strtotime($export[0]->created_at)) : '';
-            $obj->sl_xuat = $export->sum('so_luong') ?? 0;
+            $obj->sl_xuat = $sl_da_xuat;
             $obj->nguoi_xuat = $export[0]->user->name ?? "";
             $obj->vi_tri = $record->locator_id;
             $obj->pallet_id = $record->pallet_id;

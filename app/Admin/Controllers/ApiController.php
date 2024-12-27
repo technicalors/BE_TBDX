@@ -994,11 +994,11 @@ class ApiController extends AdminController
         foreach ($info_list as $key => $info_lo_sx) {
             $order = $info_lo_sx->order;
             $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
-            $info_lo_sx->sl_ok = ceil(($info_lo_sx->sl_dau_ra_hang_loat - $info_lo_sx->sl_ng_sx - $info_lo_sx->sl_ng_qc) / $info_lo_sx->so_ra);
-            $info_lo_sx->sl_dau_ra_hang_loat = $info_lo_sx->so_ra > 0 ? ceil($info_lo_sx->sl_dau_ra_hang_loat / $info_lo_sx->so_ra) : "";
+            $info_lo_sx->sl_ok = ceil(($info_lo_sx->sl_dau_ra_hang_loat - $info_lo_sx->sl_ng_sx - $info_lo_sx->sl_ng_qc) / ($info_lo_sx->so_ra > 0 ? $info_lo_sx->so_ra : 1));
+            $info_lo_sx->sl_dau_ra_hang_loat = $info_lo_sx->so_ra > 0 ? ceil($info_lo_sx->sl_dau_ra_hang_loat / ($info_lo_sx->so_ra > 0 ? $info_lo_sx->so_ra : 1 )) : "";
             $info_lo_sx->quy_cach_kh = $order ? (!$order->kich_thuoc ? ($order->length . 'x' . $order->width . ($order->height ? ('x' . $order->height) : "")) : $order->kich_thuoc) : "";
             $info_lo_sx->quy_cach = $order ? ($order->dai . 'x' . $order->rong . ($order->cao ? 'x' . $order->cao : "")) : "";
-            $info_lo_sx->san_luong_kh = ceil(($info_lo_sx->dinh_muc * ($formula->he_so ?? 1)) / ($order->so_ra ?? $info_lo_sx->so_ra)) ?? 0;
+            $info_lo_sx->san_luong_kh = ceil(($info_lo_sx->dinh_muc * ($formula->he_so ?? 1)) / ($order->so_ra ?? ($info_lo_sx->so_ra > 0 ? $info_lo_sx->so_ra : 1))) ?? 0;
             $info_lo_sx->khach_hang = $order->short_name ?? "";
             $info_lo_sx->dai_tam = $order->dai_tam ?? "";
             $info_lo_sx->mdh = $order->mdh ?? "";
@@ -1025,7 +1025,7 @@ class ApiController extends AdminController
             $info_lo_sx->priority = $info_lo_sx->infoCongDoanPriority->priority ?? null;
             $qr = new stdClass();
             $qr->lo_sx = $info_lo_sx->lo_sx ?? "";
-            $qr->so_luong = $info_lo_sx ? ($info_lo_sx->sl_dau_ra_hang_loat - $info_lo_sx->sl_ng_sx - $info_lo_sx->sl_ng_qc) : "";
+            $qr->so_luong = $info_lo_sx ? ((int)$info_lo_sx->sl_dau_ra_hang_loat - (int)$info_lo_sx->sl_ng_sx - (int)$info_lo_sx->sl_ng_qc) : "";
             $info_lo_sx->qr_code = json_encode($qr);
             $data[] = $info_lo_sx;
         }

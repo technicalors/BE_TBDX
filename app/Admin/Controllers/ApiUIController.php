@@ -5103,7 +5103,8 @@ class ApiUIController extends AdminController
         return 'ok';
     }
 
-    public function capNhatTonKhoTPExcel(Request $request){
+    public function capNhatTonKhoTPExcel(Request $request)
+    {
         $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
@@ -5115,27 +5116,63 @@ class ApiUIController extends AdminController
         // file path
         $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
-        $data = [];
+        $pallet_array = [];
+        $order_array = [];
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 2
-            if ($key > 2) {
+            if ($key > 1) {
                 $input = [];
                 $input['mdh'] = $row['D'];
                 $input['mql'] = $row['E'];
                 $input['lo_sx'] = $row['X'];
-                $input['pallet_id'] = $row['B'];
+                $input['pallet_id'] = $row['W'];
                 $input['locator_id'] = $row['V'];
                 $input['so_luong'] = $row['Y'];
-                $data[] = $input;
+                $input['date'] = $row['L'];
+                $input['time'] = $row['M'];
+                $input['nhap_du'] = $row['O'] == 'Không' ? 0 : $row['O'];
+                $user = CustomUser::where('name', $row['P'])->first();
+                $input['user'] = $user->id ?? null;
+                if (!empty($input['mdh']) && is_numeric($input['mql'])){
+                    if(!empty($input['pallet_id']) && !empty($input['lo_sx'])) {
+                        $pallet_array[] = $input;
+                    } else {
+                        $order_array[] = $input;
+                    }
+                }
             }
         }
         $array = [];
         try {
             DB::beginTransaction();
-            foreach ($data as $key => $input) {
-                $warehouse_fg_log = WarehouseFGLog::with('exportRecord')->where('lo_sx', $input['lo_sx'])->first();
-                if (count($warehouse_fg_log->exportRecord)) {
-                    $array[] = $input;
+            WareHouseLog::query()->delete();
+            foreach ($pallet_array as $key => $input) {
+                WareHouseLog::create([
+                    'order_id' => $input['mdh'] . "-" . $input['mql'],
+                    'lo_sx' => $input['lo_sx'],
+                    'pallet_id' => $input['pallet_id'],
+                    'locator_id' => $input['locator_id'],
+                    'so_luong' => $input['so_luong'],
+                    'type' => 1,
+                    'created_by' => $input['user'],
+                    'nhap_du' => $input['nhap_du'],
+                    'created_at' => Carbon::createFromFormat("d/m/Y H:i:s", $input['date'] . ' ' . $input['time'] . ':00')->format('Y-m-d H:i:s'),
+                ]);
+            }
+            foreach ($order_array as $key => $value) {
+                $lsx_pallet = LSXPallet::where('order_id', 'like', $value['mdh'] . "-" . $value['mql']. "%")->first();
+                if ($lsx_pallet) {
+                    WareHouseLog::create([
+                        'order_id' => $input['mdh'] . "-" . $input['mql'],
+                        'lo_sx' => $lsx_pallet->lo_sx,
+                        'pallet_id' => $lsx_pallet->pallet_id,
+                        'locator_id' => $input['locator_id'],
+                        'so_luong' => $input['so_luong'],
+                        'type' => 1,
+                        'created_by' => $input['user'],
+                        'nhap_du' => $input['nhap_du'],
+                        'created_at' => date('Y-m-d H:i:s', mt_rand(1732881315,1734695715)),
+                    ]);
                 }
             }
             DB::commit();

@@ -741,4 +741,5 @@ Route::group([
     $router->get('cronjob', [MESUsageRateController::class, 'cronjob']);
     $router->get('retriveData', [MESUsageRateController::class, 'retriveData']);
     $router->get('deleteDuplicate', [ApiUIController::class, 'deleteDuplicate']);
+    $router->post('capNhatTonKhoTPExcel', [ApiUIController::class, 'capNhatTonKhoTPExcel']);
 });

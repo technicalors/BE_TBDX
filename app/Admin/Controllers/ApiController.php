@@ -8270,7 +8270,7 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with(['user', 'exportRecord.user'])->orderBy('created_at');
+        $query = WareHouseLog::where('type', 1)->with(['user', 'exportRecord.user'])->orderBy('created_at');
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }

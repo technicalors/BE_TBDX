@@ -8628,7 +8628,7 @@ class ApiController extends AdminController
             if(count($orders)) $query->whereIn('order_id', $orders);
         }
         $query->whereHas('lsxpallets', function($q)use($request){
-            $q->selectRaw('SUM(so_luong) as sl_ton');
+            $q->selectRaw('SUM(remain_quantity) as sl_ton');
             $q->having('sl_ton', '>', 0);
             if (isset($request->sl_ton_min)) {
                 $q->having('sl_ton', '>=', $request->sl_ton_min);
@@ -8648,10 +8648,7 @@ class ApiController extends AdminController
         $data = [];
         foreach ($records as $record) {
             $record->so_luong_xuat = $record->so_luong;
-            $record->sl_ton = (int)$record->lsxpallets->sum('so_luong');
-            // if ($record->sl_ton <= 0) {
-            //     continue;
-            // }
+            $record->sl_ton = (int)$record->lsxpallets->sum('remain_quantity');
             if ($record->order) {
                 $data[] = array_merge($record->order->toArray(), $record->toArray());
             } else {

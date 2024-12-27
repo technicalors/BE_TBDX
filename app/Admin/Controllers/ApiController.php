@@ -4320,7 +4320,7 @@ class ApiController extends AdminController
             }
         }
         if (isset($request->delivery_note_id)) {
-            $query->where('warehouse_fg_export.delivery_note_id', 'like', '%' . $request->delivery_note_id . '%');
+            $query->where('warehouse_fg_export.delivery_note_id', $request->delivery_note_id);
         }
         if (isset($request->created_by)) {
             $user_ids = CustomUser::where('name', 'like', '%' . $request->created_by . '%')->pluck('id')->toArray();
@@ -8306,11 +8306,9 @@ class ApiController extends AdminController
                 if (isset($input['sl_ton_max'])) {
                     $q->where('remain_quantity', '<=', $input['sl_ton_max']);
                 }
-            
                 if (isset($input['so_ngay_ton_min'])) {
                     $q->whereRaw('DATEDIFF(NOW(), created_at) >= ?', [$input['so_ngay_ton_min']]);
                 }
-            
                 if (isset($input['so_ngay_ton_max'])) {
                     $q->whereRaw('DATEDIFF(NOW(), created_at) <= ?', [$input['so_ngay_ton_max']]);
                 }

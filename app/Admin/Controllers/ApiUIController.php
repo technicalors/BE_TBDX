@@ -5102,4 +5102,42 @@ class ApiUIController extends AdminController
         }
         return 'ok';
     }
+
+    public function capNhatTonKhoTPExcel(Request $request){
+        $extension = pathinfo($_FILES['files']['name'], PATHINFO_EXTENSION);
+        if ($extension == 'csv') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+        } elseif ($extension == 'xlsx') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        } else {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+        }
+        // file path
+        $spreadsheet = $reader->load($_FILES['files']['tmp_name']);
+        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+        $data = [];
+        foreach ($allDataInSheet as $key => $row) {
+            //Lấy dứ liệu từ dòng thứ 2
+            if ($key > 2) {
+                $input = [];
+                $input['mdh'] = $row['D'];
+                $input['mql'] = $row['E'];
+                $input['lo_sx'] = $row['X'];
+                $input['pallet_id'] = $row['B'];
+                $input['locator_id'] = $row['V'];
+                $input['so_luong'] = $row['Y'];
+                $data[] = $input;
+            }
+        }
+        try {
+            DB::beginTransaction();
+            foreach ($data as $key => $input) {
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            throw $th;
+        }
+        return 'done';
+    }
 }

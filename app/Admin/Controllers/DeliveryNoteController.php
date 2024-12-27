@@ -31,7 +31,7 @@ class DeliveryNoteController extends AdminController
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)));
         }
         if(isset($request->id)){
-            $query->where('id', 'like', "%$request->id%");
+            $query->where('id', $request->id);
         }
         if(isset($request->vehicle_id)){
             $query->where('vehicle_id', 'like', "%$request->vehicle_id%");

@@ -19,6 +19,6 @@ class Pallet extends Model
         return $this->hasOne(LocatorFGMap::class, 'pallet_id', 'id');
     }
     public function warehouse_fg_log(){
-        return $this->hasMany(WarehouseFGLog::class);
+        return $this->hasMany(WarehouseFGLog::class, 'pallet_id', 'id');
     }
 }

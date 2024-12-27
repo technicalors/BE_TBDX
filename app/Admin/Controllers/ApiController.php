@@ -4587,12 +4587,12 @@ class ApiController extends AdminController
             if (!$locator_fg) {
                 return $this->failure('', 'Vị trí nhập kho không phù hợp');
             }
+            if (count($pallet->warehouse_fg_log ?? []) > 0) {
+                return $this->failure('', 'Pallet đã được nhập kho');
+            }
             LocatorFGMap::updateOrCreate(['pallet_id' => $input['pallet_id']], ['locator_id' => $input['locator_id']]);
             $lsxs = LSXPallet::with('warehouseFGLog')->where('pallet_id', $input['pallet_id'])->get();
             foreach ($lsxs as $key => $lsx) {
-                if ($lsx->warehouseFGLog ?? false) {
-                    return $this->failure('', 'Pallet đã được nhập kho');
-                }
                 $inp = [];
                 $inp['lo_sx'] = $lsx->lo_sx;
                 $inp['pallet_id'] = $input['pallet_id'];

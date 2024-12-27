@@ -8322,29 +8322,6 @@ class ApiController extends AdminController
         $pageSize = $request->pageSize;
         $query = $this->customQueryWarehouseFGLog($request);
         $totalPage = $query->count();
-        // ->sortBy('order_id', SORT_NATURAL)->map(function ($item) {
-        //     if (!$item->exportRecord) {
-        //         $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
-        //         $item->sl_ton = $item->so_luong;
-        //     }
-        //     return $item;
-        // })->filter(function ($item) use ($input) {
-        //     $passes = true;
-        //     if (isset($input['sl_ton_max']) && $item->sl_ton > $input['sl_ton_max']) {
-        //         $passes = false;
-        //     }
-        //     if (isset($input['sl_ton_min']) && $item->sl_ton < $input['sl_ton_min']) {
-        //         $passes = false;
-        //     }
-        //     if (isset($input['so_ngay_ton_min']) && $item->so_ngay_ton < $input['so_ngay_ton_min']) {
-        //         $passes = false;
-        //     }
-        //     if (isset($input['so_ngay_ton_max']) && $item->so_ngay_ton > $input['so_ngay_ton_max']) {
-        //         $passes = false;
-        //     }
-        //     return $passes;
-        // })->values();
-        // $totalPage = count($allData);
         $records = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->get();
         foreach ($records as $key => $record) {
             $export = $record->exportRecord;
@@ -8376,29 +8353,7 @@ class ApiController extends AdminController
     {
         $input = $request->all();
         $query = $this->customQueryWarehouseFGLog($request);
-        $allData = $query->with('order')->get()->map(function ($item) {
-            if (!$item->exportRecord) {
-                $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
-                $item->sl_ton = $item->so_luong;
-            }
-            return $item;
-        });
-        $records = $allData->filter(function ($item) use ($input) {
-            $passes = true;
-            if (isset($input['sl_ton_max']) && $item->sl_ton > $input['sl_ton_max']) {
-                $passes = false;
-            }
-            if (isset($input['sl_ton_min']) && $item->sl_ton < $input['sl_ton_min']) {
-                $passes = false;
-            }
-            if (isset($input['so_ngay_ton_min']) && $item->so_ngay_ton < $input['so_ngay_ton_min']) {
-                $passes = false;
-            }
-            if (isset($input['so_ngay_ton_max']) && $item->so_ngay_ton > $input['so_ngay_ton_max']) {
-                $passes = false;
-            }
-            return $passes;
-        })->values();
+        $records = $query->get();
         $data = [];
         foreach ($records as $key => $record) {
             $export = $record->exportRecord;
@@ -8412,17 +8367,17 @@ class ApiController extends AdminController
             $obj->width = $record->order->width ?? "";
             $obj->height = $record->order->height ?? "";
             $obj->kich_thuoc = $record->order->kich_thuoc ?? "";
-            $obj->sl_ton = $record->sl_ton;
-            $obj->so_ngay_ton = $record->so_ngay_ton;
+            $obj->sl_ton = $record->sl_nhap - $record->sl_xuat;
+            $obj->so_ngay_ton = $obj->sl_ton ? Carbon::parse($record->created_at)->diffInDays(Carbon::now()) : 0;
             $obj->ngay_nhap = $record->created_at ? date('d/m/Y', strtotime($record->created_at)) : '';
             $obj->gio_nhap = $record->created_at ? date('H:i', strtotime($record->created_at)) : '';
             $obj->sl_nhap = $record->so_luong ?? 0;
             $obj->nhap_du = $record->nhap_du < 0 ? abs($record->nhap_du) : "Không";
             $obj->nguoi_nhap = $record->user->name ?? "";
-            $obj->ngay_xuat = isset($export->created_at) ? date('d/m/Y', strtotime($export->created_at)) : '';
-            $obj->gio_xuat = isset($export->created_at) ? date('H:i', strtotime($export->created_at)) : '';
-            $obj->sl_xuat = $export->so_luong ?? 0;
-            $obj->nguoi_xuat = $export->user->name ?? "";
+            $obj->ngay_xuat = isset($export[0]->created_at) ? date('d/m/Y', strtotime($export[0]->created_at)) : '';
+            $obj->gio_xuat = isset($export[0]->created_at) ? date('H:i', strtotime($export[0]->created_at)) : '';
+            $obj->sl_xuat = $export->sum('so_luong') ?? 0;
+            $obj->nguoi_xuat = $export[0]->user->name ?? "";
             $obj->vi_tri = $record->locator_id;
             $obj->pallet_id = $record->pallet_id;
             $obj->lo_sx = $record->lo_sx;

@@ -56,12 +56,12 @@ class WareHouseLog extends Model
     // Quan hệ để lấy bản ghi nhập (import) liên quan đến bản ghi xuất (export)
     public function importRecord()
     {
-        return $this->hasOne(WarehouseFGLog::class, 'lo_sx', 'lo_sx')->where('type', 1); // Bản ghi nhập
+        return $this->hasOne(WareHouseLog::class, 'lo_sx', 'lo_sx')->where('type', 1); // Bản ghi nhập
     }
 
     // Quan hệ để lấy bản ghi xuất (export) liên quan đến bản ghi nhập (import)
     public function exportRecord()
     {
-        return $this->hasMany(WarehouseFGLog::class, 'lo_sx', 'lo_sx')->where('type', 2)->orderBy('created_at', 'DESC'); // Bản ghi xuất
+        return $this->hasMany(WareHouseLog::class, 'lo_sx', 'lo_sx')->where('type', 2)->orderBy('created_at', 'DESC'); // Bản ghi xuất
     }
 }

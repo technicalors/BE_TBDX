@@ -4603,6 +4603,7 @@ class ApiController extends AdminController
                 $inp['order_id'] = $lsx->order_id;
                 $inp['nhap_du'] = $this->calculateNhapDu($lsx->so_luong, $lsx->order_id);
                 WarehouseFGLog::create($inp);
+                $lsx->update(['remain_quantity' => $lsx->so_luong]);
             }
             DB::commit();
         } catch (\Throwable $th) {
@@ -8256,21 +8257,18 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with(['user'])->orderBy('created_at');
+        $query = WarehouseFGLog::where('type', 1)->with(['user', 'exportRecord.user'])->orderBy('created_at');
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }
         if (isset($input['locator_id'])) {
-            $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
-        }
-        if (isset($input['locator_id'])) {
-            $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
+            $query->where('locator_id', 'like', '%'. $input['locator_id'] . '%');
         }
         if (isset($input['pallet_id'])) {
-            $query->where('pallet_id', 'like', '%' . $input['pallet_id'] . '%');
+            $query->where('pallet_id', 'like', $input['pallet_id'] . '%');
         }
         if (isset($input['lo_sx'])) {
-            $query->where('lo_sx', 'like', "%" . $input['lo_sx'] . "%");
+            $query->where('lo_sx', 'like', $input['lo_sx'] . "%");
         }
         if (isset($input['khach_hang']) || isset($input['mdh']) || isset($input['mql']) || isset($input['kich_thuoc']) || isset($input['length']) || isset($input['width']) || isset($input['height'])) {
             $order_query = Order::withTrashed();
@@ -8300,6 +8298,21 @@ class ApiController extends AdminController
                 $query->whereIn('order_id', $orders);
             }
         }
+        if (isset($input['sl_ton_min'])) {
+            $query->where('remain_quantity', '>=', $input['sl_ton_min']);
+        }
+    
+        if (isset($input['sl_ton_max'])) {
+            $query->where('remain_quantity', '<=', $input['sl_ton_max']);
+        }
+    
+        if (isset($input['so_ngay_ton_min'])) {
+            $query->whereRaw('DATEDIFF(NOW(), created_at) >= ?', [$input['so_ngay_ton_min']]);
+        }
+    
+        if (isset($input['so_ngay_ton_max'])) {
+            $query->whereRaw('DATEDIFF(NOW(), created_at) <= ?', [$input['so_ngay_ton_max']]);
+        }
         return $query;
     }
     public function warehouseFGLog(Request $request)
@@ -8308,30 +8321,31 @@ class ApiController extends AdminController
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
         $query = $this->customQueryWarehouseFGLog($request);
-        $allData = $query->get()->sortBy('order_id', SORT_NATURAL)->map(function ($item) {
-            if (!$item->exportRecord) {
-                $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
-                $item->sl_ton = $item->so_luong;
-            }
-            return $item;
-        })->filter(function ($item) use ($input) {
-            $passes = true;
-            if (isset($input['sl_ton_max']) && $item->sl_ton > $input['sl_ton_max']) {
-                $passes = false;
-            }
-            if (isset($input['sl_ton_min']) && $item->sl_ton < $input['sl_ton_min']) {
-                $passes = false;
-            }
-            if (isset($input['so_ngay_ton_min']) && $item->so_ngay_ton < $input['so_ngay_ton_min']) {
-                $passes = false;
-            }
-            if (isset($input['so_ngay_ton_max']) && $item->so_ngay_ton > $input['so_ngay_ton_max']) {
-                $passes = false;
-            }
-            return $passes;
-        })->values();
-        $totalPage = count($allData);
-        $records = $allData->skip(($input['page'] - 1) * $input['pageSize'])->take($input['pageSize'])->values();
+        $totalPage = $query->count();
+        // ->sortBy('order_id', SORT_NATURAL)->map(function ($item) {
+        //     if (!$item->exportRecord) {
+        //         $item->so_ngay_ton = Carbon::parse($item->created_at)->diffInDays(Carbon::now());
+        //         $item->sl_ton = $item->so_luong;
+        //     }
+        //     return $item;
+        // })->filter(function ($item) use ($input) {
+        //     $passes = true;
+        //     if (isset($input['sl_ton_max']) && $item->sl_ton > $input['sl_ton_max']) {
+        //         $passes = false;
+        //     }
+        //     if (isset($input['sl_ton_min']) && $item->sl_ton < $input['sl_ton_min']) {
+        //         $passes = false;
+        //     }
+        //     if (isset($input['so_ngay_ton_min']) && $item->so_ngay_ton < $input['so_ngay_ton_min']) {
+        //         $passes = false;
+        //     }
+        //     if (isset($input['so_ngay_ton_max']) && $item->so_ngay_ton > $input['so_ngay_ton_max']) {
+        //         $passes = false;
+        //     }
+        //     return $passes;
+        // })->values();
+        // $totalPage = count($allData);
+        $records = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->get();
         foreach ($records as $key => $record) {
             $export = $record->exportRecord;
             $record->khu_vuc = $record->locator_id ? "Khu " . ((int)substr($record->locator_id, 1, 2) ?? "") : "";
@@ -8347,15 +8361,13 @@ class ApiController extends AdminController
             $record->kich_thuoc = $record->order->kich_thuoc ?? "";
             $record->nhap_du = $record->nhap_du < 0 ? abs($record->nhap_du) : "Không";
             $record->tg_nhap = $record->created_at;
-            $record->tg_xuat = $export->created_at ?? "";
-            $record->sl_nhap = $record->so_luong ?? "";
-            $record->sl_xuat = $export->so_luong ?? "";
+            $record->tg_xuat = $export[0]->created_at ?? "";
+            $record->sl_nhap = $record->so_luong ?? 0;
+            $record->sl_xuat = $export->sum('so_luong') ?? 0;
             $record->nguoi_nhap = $record->user->name ?? "";
-            $record->nguoi_xuat = $export->user->name ?? "";
-            $record->sl_ton = $record->sl_ton ?? 0;
-            $record->so_ngay_ton = $record->so_ngay_ton ?? 0;
-            $record->import_id = $record->id;
-            $record->export_id = $export->id ?? null;
+            $record->nguoi_xuat = $export[0]->user->name ?? "";
+            $record->sl_ton = $record->sl_nhap - $record->sl_xuat;
+            $record->so_ngay_ton = $record->sl_ton ? Carbon::parse($record->created_at)->diffInDays(Carbon::now()) : 0;
         }
         return $this->success(['data' => $records, 'totalPage' => $totalPage]);
     }

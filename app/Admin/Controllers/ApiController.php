@@ -8298,20 +8298,23 @@ class ApiController extends AdminController
                 $query->whereIn('order_id', $orders);
             }
         }
-        if (isset($input['sl_ton_min'])) {
-            $query->where('remain_quantity', '>=', $input['sl_ton_min']);
-        }
-    
-        if (isset($input['sl_ton_max'])) {
-            $query->where('remain_quantity', '<=', $input['sl_ton_max']);
-        }
-    
-        if (isset($input['so_ngay_ton_min'])) {
-            $query->whereRaw('DATEDIFF(NOW(), created_at) >= ?', [$input['so_ngay_ton_min']]);
-        }
-    
-        if (isset($input['so_ngay_ton_max'])) {
-            $query->whereRaw('DATEDIFF(NOW(), created_at) <= ?', [$input['so_ngay_ton_max']]);
+        if(isset($input['sl_ton_min']) || isset($input['sl_ton_max']) || isset($input['so_ngay_ton_min']) || isset($input['so_ngay_ton_max'])){
+            $query->whereHas('lo_sx_pallet', function($q) use ($input){
+                if (isset($input['sl_ton_min'])) {
+                    $q->where('remain_quantity', '>=', $input['sl_ton_min']);
+                }
+                if (isset($input['sl_ton_max'])) {
+                    $q->where('remain_quantity', '<=', $input['sl_ton_max']);
+                }
+            
+                if (isset($input['so_ngay_ton_min'])) {
+                    $q->whereRaw('DATEDIFF(NOW(), created_at) >= ?', [$input['so_ngay_ton_min']]);
+                }
+            
+                if (isset($input['so_ngay_ton_max'])) {
+                    $q->whereRaw('DATEDIFF(NOW(), created_at) <= ?', [$input['so_ngay_ton_max']]);
+                }
+            });
         }
         return $query;
     }

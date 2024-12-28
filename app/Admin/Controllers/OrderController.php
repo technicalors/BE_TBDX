@@ -104,10 +104,10 @@ class OrderController extends AdminController
     public function getOrders(Request $request)
     {
         $query = Order::with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name'])->orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
-        if(isset($request->status)){
-            if($request->status === 'all'){
+        if (isset($request->status)) {
+            if ($request->status === 'all') {
                 $query->withTrashed();
-            }else if($request->status === 'deleted'){
+            } else if ($request->status === 'deleted') {
                 $query->onlyTrashed();
             }
         }
@@ -209,7 +209,7 @@ class OrderController extends AdminController
         $role_ids = $request->user()->roles()->pluck('id')->toArray();
         $table = Table::where('table', 'orders')->first();
         $field_query = FieldRole::where('table_id', $table->id);
-        if($request->user()->username !== 'admin'){
+        if ($request->user()->username !== 'admin') {
             $field_query->whereIn('role_id', $role_ids);
         }
         $field_ids = $field_query->pluck('field_id')->toArray();
@@ -264,7 +264,7 @@ class OrderController extends AdminController
                 if (isset($input['dai']) && isset($input['rong']) && isset($input['so_luong']) && (!($input['so_ra'] ?? "") || !($input['kho_tong'] ?? "") || !($input['kho'] ?? "") || !($input['dai_tam'] ?? ""))) {
                     $khuon_link = KhuonLink::with('khuon')
                         ->where('customer_id', $order->short_name)
-                        ->where(DB::raw('CONCAT_WS("", dai, rong, cao)'), ($input['dai'] ?? "").($input['rong'] ?? "").($input['cao'] ?? ""))
+                        ->where(DB::raw('CONCAT_WS("", dai, rong, cao)'), ($input['dai'] ?? "") . ($input['rong'] ?? "") . ($input['cao'] ?? ""))
                         // ->where('dai', $input['dai'] ?? null)
                         // ->where('rong', $input['rong'] ?? null)
                         // ->where('cao', $input['cao'] ?? null)
@@ -272,8 +272,8 @@ class OrderController extends AdminController
                         ->where('buyer_id', $input['buyer_id'] ?? null)
                         ->where('pad_xe_ranh', $input['note_3'] ?? null)
                         ->first();
-                        // return [$input['dai'], $input['rong'], $input['cao']];
-                        // return $khuon_link;
+                    // return [$input['dai'], $input['rong'], $input['cao']];
+                    // return $khuon_link;
                     $input['khuon_id'] = $khuon_link->khuon_id ?? null;
                     $formula = DB::table('formulas')->where('phan_loai_1', $input['phan_loai_1'] ?? "")->where('phan_loai_2', $input['phan_loai_2'] ?? "")->first();
                     if ((!in_array($input['phan_loai_2'], ['thung-be', 'pad-be']) && $formula) || ($formula && in_array($input['phan_loai_2'], ['thung-be', 'pad-be']) && $khuon_link && $khuon_link->dai_khuon && $khuon_link->kho_khuon && $khuon_link->so_con)) {
@@ -388,13 +388,13 @@ class OrderController extends AdminController
         try {
             DB::beginTransaction();
             $input = $request->all();
-            if(empty($input['mdh'])){
+            if (empty($input['mdh'])) {
                 return $this->failure('', 'Không có mã đơn hàng');
             }
-            if(empty($input['mql'])){
+            if (empty($input['mql'])) {
                 return $this->failure('', 'Không có mã quản lý');
             }
-            if(empty($input['hna_giao'])){
+            if (empty($input['hna_giao'])) {
                 return $this->failure('', 'Không có hạn giao');
             }
             $input['id'] = $this->createNextOrderId($input['mdh'], $input['mql'], $input['han_giao']);
@@ -640,11 +640,11 @@ class OrderController extends AdminController
                     if (!$row['D']) {
                         return $this->failure([], 'Hàng số ' . $key . ': Thiếu thông mã khách hàng');
                     }
-                    if(!in_array($row['D'], $customer_array)){
-                        return $this->failure('', 'Không tìm thấy mã khách hàng ở dòng số '. $key);
+                    if (!in_array($row['D'], $customer_array)) {
+                        return $this->failure('', 'Không tìm thấy mã khách hàng ở dòng số ' . $key);
                     }
-                    if(!in_array($row['C'], $short_customer_array)){
-                        return $this->failure('', 'Không tìm thấy tên rút gọn khách hàng ở dòng số '. $key);
+                    if (!in_array($row['C'], $short_customer_array)) {
+                        return $this->failure('', 'Không tìm thấy tên rút gọn khách hàng ở dòng số ' . $key);
                     }
                     // $row['F'] = $this->formarMDH($row['F']);
                     $row = array_map('trim', $row);
@@ -696,6 +696,7 @@ class OrderController extends AdminController
                     $input['id'] = $this->createNextOrderId($input['mdh'], $input['mql'], $input['han_giao']);
                     $input['created_by'] = $request->user()->id;
                     Order::updateOrCreate(['id'=>$input['id']], $input);
+                    // $this->handleOrder($input);
                     unset($input);
                 }
             }
@@ -709,21 +710,22 @@ class OrderController extends AdminController
         return $this->success([], 'Upload thành công');
     }
 
-    function createNextOrderId($mdh, $mql, $hanGiao) {
+    function createNextOrderId($mdh, $mql, $hanGiao)
+    {
         // Tìm tất cả bản ghi trùng `mdh`, `mql`, và `han_giao`
-        $existedOrder = Order::where('id', 'REGEXP', '^'.$mdh.'-'.$mql.'(-|$)')
-        ->where('han_giao', $hanGiao)
-        ->withTrashed()
-        ->first();
-        if($existedOrder){
+        $existedOrder = Order::where('id', 'REGEXP', '^' . $mdh . '-' . $mql . '(-|$)')
+            ->where('han_giao', $hanGiao)
+            ->withTrashed()
+            ->first();
+        if ($existedOrder) {
             return $existedOrder->id;
         }
-        $latestOrderId = Order::where('id', 'REGEXP', '^'.$mdh.'-'.$mql.'(-|$)')
-        ->where('han_giao', '!=', $hanGiao)
-        ->withTrashed()
-        ->get()
-        ->sortByDesc('id', SORT_NATURAL)
-        ->first();
+        $latestOrderId = Order::where('id', 'REGEXP', '^' . $mdh . '-' . $mql . '(-|$)')
+            ->where('han_giao', '!=', $hanGiao)
+            ->withTrashed()
+            ->get()
+            ->sortByDesc('id', SORT_NATURAL)
+            ->first();
         if (!$latestOrderId) {
             return "$mdh-$mql";
         }
@@ -731,6 +733,50 @@ class OrderController extends AdminController
         $latestStt = isset($parts[2]) ? (int)$parts[2] : 0;
         $nextStt = $latestStt + 1;
         return "$mdh-$mql-$nextStt";
+    }
+
+    function handleOrder($row)
+    {
+        $mdh = $row['mdh'];
+        $mql = $row['mql'];
+        $han_giao = $row['han_giao'];
+        // Kiểm tra tồn tại của các đơn hàng cùng mdh và mql
+        $existingOrders = Order::where('mdh', $mdh)
+            ->where('mql', $mql)
+            ->get();
+        if ($existingOrders->isEmpty()) {
+            // Nếu là đơn hàng đầu tiên, không có hậu tố
+            $row['id'] = "$mdh-$mql";
+        } else {
+            // Nếu đã có đơn hàng, tìm số thứ tự lớn nhất
+            $latestId = $existingOrders
+                ->pluck('id')
+                ->map(function ($id) use ($mdh, $mql) {
+                    try {
+                        if (preg_match("/^$mdh-$mql-(\d+)$/", $id, $matches)) {
+                            return (int)$matches[1]; // Lấy số nguyên từ hậu tố
+                        }
+                    } catch (\Throwable $th) {
+                        Log::error($id);
+                        throw $th;
+                    }
+                    
+                    return 0; // Đơn hàng đầu tiên không có hậu tố
+                })
+                ->max();
+            // Tăng số thứ tự lên 1
+            $newSuffix = $latestId + 1;
+            $row['id'] = "$mdh-$mql-$newSuffix";
+        }
+        // Tạo mới hoặc cập nhật đơn hàng
+        $existingOrder = $existingOrders->firstWhere('han_giao', $han_giao);
+        if ($existingOrder) {
+            // Nếu trùng han_giao, cập nhật
+            $existingOrder->update($row);
+        } else {
+            // Tạo mới
+            Order::create($row);
+        }
     }
 
     public function splitOrders(Request $request)
@@ -839,7 +885,8 @@ class OrderController extends AdminController
         return $this->success($plans, 'Upload thành công');
     }
 
-    public function restoreOrders(Request $request){
+    public function restoreOrders(Request $request)
+    {
         try {
             DB::beginTransaction();
             $restore = Order::withTrashed()->where('id', $request->id)->restore();

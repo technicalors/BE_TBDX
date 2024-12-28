@@ -5061,22 +5061,30 @@ class ApiUIController extends AdminController
         //     LSXPallet::upsert($group, ['id'], ['remain_quantity']);
         // });
 
-        $logs = WareHouseLog::with('exprtRecord', 'order')->where('type', 1)->get();
-        foreach ($logs as $log) {
-            LSXPalletClone::create([
-                'mdh' => explode('-', $log->order_id)[0],
-                'mql' => explode('-', $log->order_id)[1],
-                'pallet_id' => $log->pallet_id,
-                'order_id' => $log->order_id,
-                'customer_id' => $log->order->customer_id ?? null,
-                'lo_sx' => $log->lo_sx,
-                'so_luong' => $log->so_luong,
-                'remain_quantity' => $log->so_luong - $log->exprtRecord->sum('so_luong'),
-                'created_at' => $log->created_at,
-                'updated_at' => $log->created_at,
-            ]);
-        }
+        // $logs = WareHouseLog::with('exprtRecord', 'order')->where('type', 1)->get();
+        // foreach ($logs as $log) {
+        //     LSXPalletClone::create([
+        //         'mdh' => explode('-', $log->order_id)[0],
+        //         'mql' => explode('-', $log->order_id)[1],
+        //         'pallet_id' => $log->pallet_id,
+        //         'order_id' => $log->order_id,
+        //         'customer_id' => $log->order->customer_id ?? null,
+        //         'lo_sx' => $log->lo_sx,
+        //         'so_luong' => $log->so_luong,
+        //         'remain_quantity' => $log->so_luong - $log->exprtRecord->sum('so_luong'),
+        //         'created_at' => $log->created_at,
+        //         'updated_at' => $log->created_at,
+        //     ]);
+        // }
 
+        $logs = WarehouseFGLog::whereNull('order_id')->orWhere('order_id', '')->get();
+        foreach ($logs as $log) {
+            $tem = Tem::where('lo_sx', $log->lo_sx)->first();
+            if($tem){
+                $log->update(['order_id' => $tem->order_id]);
+                $log->lo_sx_pallet()->update(['order_id' => $tem->order_id]);
+            }
+        }
         return 'ok';
     }
 

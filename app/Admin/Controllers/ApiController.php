@@ -431,7 +431,7 @@ class ApiController extends AdminController
         }
         $infos->update(['status' => -1]);
         $tracking = Tracking::where('machine_id', $request->machine_id)->first();
-        if($tracking && in_array($tracking->lo_sx, $infos->pluck('lo_sx')->toArray())){
+        if ($tracking && in_array($tracking->lo_sx, $infos->pluck('lo_sx')->toArray())) {
             $tracking->update([
                 'lo_sx' => null,
                 'so_ra' => 0,
@@ -718,14 +718,14 @@ class ApiController extends AdminController
                     ]);
                     $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
                 } else {
-                    if($info_cong_doan_in){
+                    if ($info_cong_doan_in) {
                         $info_cong_doan_in->update([
                             'sl_dau_ra_hang_loat' => $request['Pre_Counter'] - $tracking->pre_counter,
                             'status' => 1
                         ]);
                         $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
                         $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
-                    }else{
+                    } else {
                         $tracking->update([
                             'lo_sx' => null,
                             'pre_counter' => 0,
@@ -753,7 +753,7 @@ class ApiController extends AdminController
         $broadcast = [];
         $info_cong_doan_dan = InfoCongDoan::where('machine_id', $machine->id)->where('lo_sx', $tracking->lo_sx)->first();
         if ($info_cong_doan_dan) {
-            $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0,1])->where('lo_sx', '<>', $info_cong_doan_dan->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
+            $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_dan->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
             if ($next_batch) {
                 if (($request['Pre_Counter'] - $tracking->pre_counter)  >= $info_cong_doan_dan->dinh_muc) {
                     $info_cong_doan_dan->update([
@@ -978,7 +978,7 @@ class ApiController extends AdminController
                     ->whereIn('status', [0, 1])
                     ->whereDate('ngay_sx', '<=', date('Y-m-d'))
                     ->where('machine_id', $request->machine_id)
-                    ->with('plan', 'order.buyer','infoCongDoanPriority');
+                    ->with('plan', 'order.buyer', 'infoCongDoanPriority');
                 if (count($info_priority)) {
                     $unfinished_query->orderByRaw('FIELD(id, ' . implode(',', ($info_priority ?? [])) . ')');
                 } else {
@@ -1008,7 +1008,7 @@ class ApiController extends AdminController
             $order = $info_lo_sx->order;
             $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
             $info_lo_sx->sl_ok = ceil(($info_lo_sx->sl_dau_ra_hang_loat - $info_lo_sx->sl_ng_sx - $info_lo_sx->sl_ng_qc) / ($info_lo_sx->so_ra > 0 ? $info_lo_sx->so_ra : 1));
-            $info_lo_sx->sl_dau_ra_hang_loat = $info_lo_sx->so_ra > 0 ? ceil($info_lo_sx->sl_dau_ra_hang_loat / ($info_lo_sx->so_ra > 0 ? $info_lo_sx->so_ra : 1 )) : "";
+            $info_lo_sx->sl_dau_ra_hang_loat = $info_lo_sx->so_ra > 0 ? ceil($info_lo_sx->sl_dau_ra_hang_loat / ($info_lo_sx->so_ra > 0 ? $info_lo_sx->so_ra : 1)) : "";
             $info_lo_sx->quy_cach_kh = $order ? (!$order->kich_thuoc ? ($order->length . 'x' . $order->width . ($order->height ? ('x' . $order->height) : "")) : $order->kich_thuoc) : "";
             $info_lo_sx->quy_cach = $order ? ($order->dai . 'x' . $order->rong . ($order->cao ? 'x' . $order->cao : "")) : "";
             $info_lo_sx->san_luong_kh = ceil(($info_lo_sx->dinh_muc * ($formula->he_so ?? 1)) / ($order->so_ra ?? ($info_lo_sx->so_ra > 0 ? $info_lo_sx->so_ra : 1))) ?? 0;
@@ -4172,7 +4172,7 @@ class ApiController extends AdminController
         //     $delivery_query->where('id', $request->delivery_note_id);
         // }
         $delivery_query->whereHas('exporters', function ($q) use ($request) {
-            if($request->user()->username !== 'admin'){
+            if ($request->user()->username !== 'admin') {
                 $q->where('admin_user_id', $request->user()->id);
             }
         });
@@ -4186,12 +4186,14 @@ class ApiController extends AdminController
         if (isset($request->delivery_note_id)) {
             $query->where('delivery_note_id', $request->delivery_note_id);
         }
-        $fg_exports = $query->orderBy('created_at', 'DESC')->whereHas('lsxpallets', function($subQuery){
-            $subQuery->where('remain_quantity', '>', 0);
-        })->with(['lsxpallets.locator_fg_map', 'warehouse_fg_log'=>function ($subQuery) {
-            $subQuery->where('type', 2);
-        }])->get();
-        // return $fg_exports;
+        $fg_exports = $query->orderBy('created_at', 'DESC')->with([
+            'warehouse_fg_log' => function ($subQuery) {
+                $subQuery->where('type', 2);
+            },
+            // 'lsxpallets'=> function ($subQuery) {
+            //     $subQuery->where('remain_quantity', '>', 0);
+            // }
+        ])->get();
         $data = [];
         $lsx_array = [];
         $test = [];
@@ -4217,10 +4219,10 @@ class ApiController extends AdminController
                         $data[$lsx_pallet->pallet_id]['delivery_note_id'] = $fg_export->delivery_note_id;
                         if (!isset($data[$lsx_pallet->pallet_id]['lo_sx'])) $data[$lsx_pallet->pallet_id]['lo_sx'] = [];
                         $data[$lsx_pallet->pallet_id]['lo_sx'][] = [
-                            'lo_sx' => $lsx_pallet->lo_sx, 
-                            'so_luong' => $lsx_pallet->remain_quantity, 
-                            'mql' => $lsx_pallet->mql, 
-                            'mdh' => $lsx_pallet->mdh, 
+                            'lo_sx' => $lsx_pallet->lo_sx,
+                            'so_luong' => $lsx_pallet->remain_quantity,
+                            'mql' => $lsx_pallet->mql,
+                            'mdh' => $lsx_pallet->mdh,
                             'khach_hang' => $khach_hang,
                             'pallet_id' => $lsx_pallet->pallet_id,
                             'delivery_note_id' => $fg_export->delivery_note_id
@@ -4233,7 +4235,7 @@ class ApiController extends AdminController
             }
         }
         // return $test;
-        return $this->success(['data'=>array_values($data), 'delivery_notes'=>$delivery_notes]);
+        return $this->success(['data' => array_values($data), 'delivery_notes' => $delivery_notes]);
     }
 
     public function checkLoSXPallet(Request $request)
@@ -4280,16 +4282,16 @@ class ApiController extends AdminController
                     WarehouseFGLog::create($inp);
                 }
                 $import = LSXPallet::where('lo_sx', $lo['lo_sx'])->first();
-                if($import){
+                if ($import) {
                     $remain = ($import->remain_quantity - $lo['so_luong']) > 0 ? ($import->remain_quantity - $lo['so_luong']) : 0;
                     $pallet_quantity += $remain;
                     $import->update(['remain_quantity' => $remain]);
                 }
             }
-            if(!$pallet_quantity){
+            if (!$pallet_quantity) {
                 LocatorFGMap::where('pallet_id', $input[0]['pallet_id'] ?? null)->delete();
             }
-            
+
             DB::commit();
             return $this->success([], 'Xuất kho thành công');
         } catch (\Throwable $e) {
@@ -4303,7 +4305,7 @@ class ApiController extends AdminController
     {
         $page = $request->page - 1;
         $pageSize = $request->pageSize;
-        $query = WareHouseFGExport::with('delivery_note.creator','delivery_note.exporters', 'order')->orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
+        $query = WareHouseFGExport::with('delivery_note.creator', 'delivery_note.exporters', 'order')->orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
         if (isset($request->start_date) && isset($request->end_date)) {
             $query->whereDate('ngay_xuat', '>=', date('Y-m-d 00:00:00', strtotime($request->start_date)))->whereDate('ngay_xuat', '<=', date('Y-m-d 23:59:59', strtotime($request->end_date)));
         }
@@ -8144,7 +8146,7 @@ class ApiController extends AdminController
     public function exportWarehouseMLTLog(Request $request)
     {
         $query = $this->customQueryWarehouseMLTLog($request);
-        $records = $query->with('material', 'warehouse_mlt_import','locatorMlt.warehouse_mlt')->get();
+        $records = $query->with('material', 'warehouse_mlt_import', 'locatorMlt.warehouse_mlt')->get();
         $data = [];
         foreach ($records as $key => $record) {
             // if ($record->tg_xuat) {
@@ -8270,12 +8272,12 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WareHouseLog::where('type', 1)->with(['user', 'exportRecord.user'])->orderBy('created_at');
+        $query = WarehouseFGLog::where('type', 1)->with(['user', 'exportRecord.user'])->orderBy('created_at');
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }
         if (isset($input['locator_id'])) {
-            $query->where('locator_id', 'like', '%'. $input['locator_id'] . '%');
+            $query->where('locator_id', 'like', '%' . $input['locator_id'] . '%');
         }
         if (isset($input['pallet_id'])) {
             $query->where('pallet_id', 'like', $input['pallet_id'] . '%');
@@ -8289,7 +8291,7 @@ class ApiController extends AdminController
                 $order_query->where('short_name', $input['khach_hang']);
             }
             if (isset($input['mdh'])) {
-                $order_query->where('mdh', 'like', $input['mdh']."%");
+                $order_query->where('mdh', 'like', $input['mdh'] . "%");
             }
             if (isset($input['mql'])) {
                 $order_query->where('mql', $input['mql']);
@@ -8307,12 +8309,12 @@ class ApiController extends AdminController
                 $order_query->where('height', $input['height']);
             }
             $orders = $order_query->pluck('id')->toArray();
-            if(count($orders) > 0){
+            if (count($orders) > 0) {
                 $query->whereIn('order_id', $orders);
             }
         }
-        if(isset($input['sl_ton_min']) || isset($input['sl_ton_max']) || isset($input['so_ngay_ton_min']) || isset($input['so_ngay_ton_max'])){
-            $query->whereHas('lo_sx_pallet', function($q) use ($input){
+        if (isset($input['sl_ton_min']) || isset($input['sl_ton_max']) || isset($input['so_ngay_ton_min']) || isset($input['so_ngay_ton_max'])) {
+            $query->whereHas('lo_sx_pallet', function ($q) use ($input) {
                 if (isset($input['sl_ton_min'])) {
                     $q->where('remain_quantity', '>=', $input['sl_ton_min']);
                 }
@@ -8570,7 +8572,7 @@ class ApiController extends AdminController
                 }
             }
             if (isset($input['order'])) {
-                $order_query->where('order', 'like', "%".$input['order']."%");
+                $order_query->where('order', 'like', "%" . $input['order'] . "%");
             }
             if (isset($input['mql'])) {
                 if (is_array($input['mql'])) {
@@ -8580,7 +8582,7 @@ class ApiController extends AdminController
                 }
             }
             if (isset($input['kich_thuoc'])) {
-                $order_query->where('kich_thuoc', 'like', "%".$input['kich_thuoc']."%");
+                $order_query->where('kich_thuoc', 'like', "%" . $input['kich_thuoc'] . "%");
             }
             if (isset($input['length'])) {
                 $order_query->where('length', 'like', $input['length']);
@@ -8592,28 +8594,28 @@ class ApiController extends AdminController
                 $order_query->where('height', 'like', $input['height']);
             }
             if (isset($input['po'])) {
-                $order_query->where('po', 'like', "%".$input['po']."%");
+                $order_query->where('po', 'like', "%" . $input['po'] . "%");
             }
             if (isset($input['style'])) {
-                $order_query->where('style', 'like', "%".$input['style']."%");
+                $order_query->where('style', 'like', "%" . $input['style'] . "%");
             }
             if (isset($input['style_no'])) {
-                $order_query->where('style_no', 'like', "%".$input['style_no']."%");
+                $order_query->where('style_no', 'like', "%" . $input['style_no'] . "%");
             }
             if (isset($input['color'])) {
-                $order_query->where('color', 'like', "%".$input['color']."%");
+                $order_query->where('color', 'like', "%" . $input['color'] . "%");
             }
             if (isset($input['item'])) {
-                $order_query->where('item', 'like', "%".$input['item']."%");
+                $order_query->where('item', 'like', "%" . $input['item'] . "%");
             }
             if (isset($input['rm'])) {
-                $order_query->where('rm', 'like', "%".$input['rm']."%");
+                $order_query->where('rm', 'like', "%" . $input['rm'] . "%");
             }
             if (isset($input['size'])) {
-                $order_query->where('size', 'like', "%".$input['size']."%");
+                $order_query->where('size', 'like', "%" . $input['size'] . "%");
             }
             if (isset($input['note_2'])) {
-                $order_query->where('note_2', 'like', "%".$input['note_2']."%");
+                $order_query->where('note_2', 'like', "%" . $input['note_2'] . "%");
             }
             if (isset($input['han_giao'])) {
                 $order_query->whereDate('han_giao', date('Y-m-d', strtotime($input['han_giao'])));
@@ -8625,9 +8627,9 @@ class ApiController extends AdminController
                 $order_query->where('tmo', $input['tmo']);
             }
             $orders = $order_query->pluck('id')->toArray();
-            if(count($orders)) $query->whereIn('order_id', $orders);
+            if (count($orders)) $query->whereIn('order_id', $orders);
         }
-        $query->whereHas('lsxpallets', function($q)use($request){
+        $query->whereHas('lsxpallets', function ($q) use ($request) {
             $q->selectRaw('SUM(remain_quantity) as sl_ton');
             $q->having('sl_ton', '>', 0);
             if (isset($request->sl_ton_min)) {
@@ -8658,7 +8660,7 @@ class ApiController extends AdminController
         $res = [
             "data" => array_values($data),
             "totalPage" => $totalPage,
-            'order'=>$order_test,
+            'order' => $order_test,
         ];
         return $this->success($res);
     }

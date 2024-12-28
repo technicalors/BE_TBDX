@@ -19,6 +19,7 @@ use App\Models\Vehicle;
 use App\Models\VOCRegister;
 use App\Models\VOCType;
 use App\Models\WarehouseFGLog;
+use App\Models\WareHouseLog;
 use App\Models\WarehouseMLTLog;
 use Encore\Admin\Controllers\AdminController;
 use Illuminate\Http\Request;
@@ -220,7 +221,7 @@ class KPIController extends AdminController
         $lot = InfoCongDoan::whereIn('machine_id', $machineXaLot)->get()->pluck('lo_sx')->unique()->toArray();
         
         // return $export;
-        $inventories = WarehouseFGLog::select('so_luong', 'lo_sx')
+        $inventories = WareHouseLog::select('so_luong', 'lo_sx')
             ->selectRaw("
                 CASE
                     WHEN lo_sx IN ('" . implode("','", $thung) . "') THEN 'Thùng'

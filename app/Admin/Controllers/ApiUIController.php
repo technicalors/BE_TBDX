@@ -5109,15 +5109,15 @@ class ApiUIController extends AdminController
                     DB::raw("GROUP_CONCAT(id ORDER BY id SEPARATOR ',') AS grouped_ids")
                 )
                 ->groupBy(
-                    'locator_id',
+                    // 'locator_id',
                     'pallet_id',
                     'lo_sx',
-                    'so_luong',
+                    // 'so_luong',
                     'type',
-                    'created_by',
-                    'order_id',
-                    'delivery_note_id',
-                    'nhap_du'
+                    // 'created_by',
+                    // 'order_id',
+                    // 'delivery_note_id',
+                    // 'nhap_du'
                 )
                 ->having('duplicate_count', '>', 1)
                 ->get()->each(function ($item) use (&$group_ids) {

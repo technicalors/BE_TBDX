@@ -1360,8 +1360,6 @@ class ApiController extends AdminController
             }
         }
         try {
-            DB::beginTransaction();
-
             $tracking->update([
                 'lo_sx' => $tem->lo_sx,
                 'sl_kh' => $request->so_luong,
@@ -1382,9 +1380,7 @@ class ApiController extends AdminController
                 'order_id' => $tem->order_id ?? null
             ]);
             InfoCongDoan::where('lo_sx', '!=', $request->lo_sx)->where('machine_id', $request->machine_id)->where('status', 1)->update(['status' => 0]);
-            DB::commit();
         } catch (\Throwable $th) {
-            DB::rollBack();
             ErrorLog::saveError($request, $th);
             return $this->failure($th, 'Đã xảy ra lỗi');
         }

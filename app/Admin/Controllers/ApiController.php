@@ -4483,11 +4483,7 @@ class ApiController extends AdminController
             if ($input['sl_xuat'] > $log->so_luong) {
                 return $this->failure('', 'Số lượng xuất không được lớn hơn số lượng nhập');
             }
-            $lsx_pallet = LSXPallet::where('pallet_id', $input['pallet_id'])->where('lo_sx', $input['lo_sx'])->first();
-            // if ($lsx_pallet) {
-            //     $lsx_pallet->update(['so_luong' => $lsx_pallet->so_luong - $input['so_luong']]);
-            // }
-            WarehouseFGLog::where('lo_sx', $log->lo_sx)->where('type', 2)->delete();
+            WarehouseFGLog::where('lo_sx', $log->lo_sx)->where('pallet_id', $log->pallet_id)->where('type', 2)->delete();
             $inp['created_by'] = $request->user()->id;
             $inp['created_at'] = isset($input['tg_xuat']) ? date('Y-m-d H:i:s', strtotime($input['tg_xuat'])) : date('Y-m-d H:i:s');
             $inp['locator_id'] = $input['locator_id'];

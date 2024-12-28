@@ -4476,17 +4476,18 @@ class ApiController extends AdminController
         // return $input;
         try {
             DB::beginTransaction();
-            $log = WarehouseFGLog::find($input['import_id']);
+            $log = WarehouseFGLog::find($input['id']);
             if (!$log) {
                 return $this->failure('', 'Không tìm thấy bản lịch sử nhập');
             }
-            if ($input['so_luong'] > $log->so_luong) {
+            if ($input['sl_xuat'] > $log->so_luong) {
                 return $this->failure('', 'Số lượng xuất không được lớn hơn số lượng nhập');
             }
             $lsx_pallet = LSXPallet::where('pallet_id', $input['pallet_id'])->where('lo_sx', $input['lo_sx'])->first();
             // if ($lsx_pallet) {
             //     $lsx_pallet->update(['so_luong' => $lsx_pallet->so_luong - $input['so_luong']]);
             // }
+            WarehouseFGLog::where('lo_sx', $log->lo_sx)->where('type', 2)->delete();
             $inp['created_by'] = $request->user()->id;
             $inp['created_at'] = isset($input['tg_xuat']) ? date('Y-m-d H:i:s', strtotime($input['tg_xuat'])) : date('Y-m-d H:i:s');
             $inp['locator_id'] = $input['locator_id'];
@@ -4496,14 +4497,15 @@ class ApiController extends AdminController
             $inp['type'] = 2;
             $inp['order_id'] = $input['order_id'];
             $inp['delivery_note_id'] = $input['delivery_note_id'] ?? null;
-            WarehouseFGLog::updateOrCreate(['id' => $input['export_id' ?? ""]], $inp);
+            WarehouseFGLog::create($inp);
             LocatorFGMap::where('pallet_id', $input['pallet_id'])->delete();
             DB::commit();
             return $this->success([], 'Xuất kho thành công');
         } catch (\Throwable $e) {
             DB::rollBack();
             ErrorLog::saveError($request, $e);
-            return $this->failure('Có lỗi xảy ra');
+            throw $e;
+            return $this->failure($e, 'Có lỗi xảy ra');
         }
     }
 

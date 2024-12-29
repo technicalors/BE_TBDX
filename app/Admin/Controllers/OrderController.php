@@ -693,10 +693,10 @@ class OrderController extends AdminController
                     $input['xuat_tai_kho'] = $row['AG'] ?? null;
                     $input['tg_doi_model'] = 0;
                     $input['toc_do'] = 80;
-                    $input['id'] = $this->createNextOrderId($input['mdh'], $input['mql'], $input['han_giao']);
+                    // $input['id'] = $this->createNextOrderId($input['mdh'], $input['mql'], $input['han_giao']);
                     $input['created_by'] = $request->user()->id;
-                    Order::updateOrCreate(['id'=>$input['id']], $input);
-                    // $this->handleOrder($input);
+                    // Order::updateOrCreate(['id'=>$input['id']], $input);
+                    $this->handleOrder($input);
                     unset($input);
                 }
             }
@@ -753,7 +753,7 @@ class OrderController extends AdminController
                 ->pluck('id')
                 ->map(function ($id) use ($mdh, $mql) {
                     try {
-                        if (preg_match("/^$mdh-$mql-(\d+)$/", $id, $matches)) {
+                        if (preg_match("/^" . preg_quote($mdh, '/') . "-" . preg_quote($mql, '/') . "-(\d+)$/", $id, $matches)) {
                             return (int)$matches[1]; // Lấy số nguyên từ hậu tố
                         }
                     } catch (\Throwable $th) {
@@ -769,9 +769,10 @@ class OrderController extends AdminController
             $row['id'] = "$mdh-$mql-$newSuffix";
         }
         // Tạo mới hoặc cập nhật đơn hàng
-        $existingOrder = $existingOrders->firstWhere('han_giao', $han_giao);
+        $existingOrder = $existingOrders->firstWhere('han_giao', $han_giao ?? null);
         if ($existingOrder) {
             // Nếu trùng han_giao, cập nhật
+            unset($row['id']);
             $existingOrder->update($row);
         } else {
             // Tạo mới

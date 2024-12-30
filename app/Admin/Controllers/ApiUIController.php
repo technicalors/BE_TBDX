@@ -4997,8 +4997,8 @@ class ApiUIController extends AdminController
 
     public function updateInfoCongDoanPriority()
     {
-        $infos = InfoCongDoan::with('plan')->where('ngay_sx', '>=', date('Y-m-28'))->where('machine_id', 'So01')->whereIn('status', [0, 1])->orderBy('ngay_sx')->orderBy('thu_tu_uu_tien')->orderBy('updated_at')->get();
-        InfoCongDoanPriority::truncate();
+        $infos = InfoCongDoan::with('plan')->where('ngay_sx', '>=', date('Y-m-d'))->where('machine_id', 'So01')->whereIn('status', [0, 1])->orderBy('ngay_sx')->orderBy('thu_tu_uu_tien')->orderBy('updated_at')->get();
+        // InfoCongDoanPriority::truncate();
         $index = 1;
         foreach ($infos as $key => $info) {
             InfoCongDoanPriority::create([

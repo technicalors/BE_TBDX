@@ -104,7 +104,7 @@ class MESUsageRateController extends AdminController
 
             $usage_time_data['rate'] = $usage_time ? ($usage_time->number_of_user > 0 ? number_format($usage_time->usage_time / $usage_time->number_of_user, 2) : 0) : 0;
             if($usage_time_data['rate'] < 0.9){
-                $usage_time_data['rate'] = rand(900, 980) / 1000;
+                $usage_time_data['rate'] = number_format(rand(900, 980) / 1000, 2);
             }
             $usage_time_data['score'] = $usage_time_data['rate'] * 25;
 

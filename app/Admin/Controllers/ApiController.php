@@ -564,12 +564,10 @@ class ApiController extends AdminController
                         $this->reorderInfoCongDoan();
                         $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
                         $info_ids = InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray();
-                        $next_info = InfoCongDoan::with('order')->whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
+                        $next_info = InfoCongDoan::whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
                         if ($next_info) {
-                            $order = $next_info->order ?? null;
-                            $so_ra = $order->so_ra ?? $next_info->so_ra;
+                            $so_ra = $next_info->so_ra;
                             $next_info->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s'), 'status' => 1, 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $so_ra, 'so_ra' => $so_ra]);
-                            // $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
                             $tracking->update([
                                 'sl_kh' => $next_info->so_dao,
                                 'lo_sx' => $next_info->lo_sx,
@@ -619,12 +617,10 @@ class ApiController extends AdminController
                 }
             } else {
                 $info_ids = InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray();
-                $next_info = InfoCongDoan::with('order')->whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
+                $next_info = InfoCongDoan::whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
                 if ($next_info) {
-                    $order = $next_info->order ?? null;
-                    $so_ra = $order->so_ra ?? $next_info->so_ra;
+                    $so_ra = $next_info->so_ra;
                     $next_info->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s'), 'status' => 1, 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $so_ra, 'so_ra' => $so_ra]);
-                    // $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
                     $tracking->update([
                         'sl_kh' => $next_info->so_dao,
                         'lo_sx' => $next_info->lo_sx,

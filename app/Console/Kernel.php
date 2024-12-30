@@ -19,7 +19,7 @@ class Kernel extends ConsoleKernel
         // ->everyMinute();
         $schedule->command('ws:listen')
         ->everyMinute();
-        $schedule->command('dailydatausage:run')->dailyAt('22:00');
+        $schedule->command('dailydatausage:run')->dailyAt('10:40');
     }
 
 

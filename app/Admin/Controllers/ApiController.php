@@ -742,7 +742,7 @@ class ApiController extends AdminController
 
     public function TemPrintProductionCH($request, $tracking, $machine)
     {
-        if (!$tracking->lo_sx || $tracking->is_running === 0) {
+        if (!$tracking->lo_sx || $tracking->is_running === 0 || $tracking->status === 0) {
             return;
         }
         $info_cong_doan_in = InfoCongDoan::where('machine_id', $machine->id)->where('lo_sx', $tracking->lo_sx)->first();

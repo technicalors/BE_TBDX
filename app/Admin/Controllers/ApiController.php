@@ -740,6 +740,50 @@ class ApiController extends AdminController
         }
     }
 
+    public function TemPrintProductionCH($request, $tracking, $machine)
+    {
+        if (!$tracking->lo_sx || $tracking->is_running === 0) {
+            return;
+        }
+        $info_cong_doan_in = InfoCongDoan::where('machine_id', $machine->id)->where('lo_sx', $tracking->lo_sx)->first();
+        $tracking->update([
+            'pre_counter' => $request['Pre_Counter'],
+            'error_counter' => $request['Error_Counter'],
+            'set_counter' => $request['Set_Counter']
+        ]);
+        if(!$info_cong_doan_in){
+            return $this->failure('', 'Không tìm thấy lô sản xuất');
+        }
+        else {
+            $broadcast = [];
+            if ($request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
+                $info_cong_doan_in->update([
+                    'status' => 2
+                ]);
+                $tracking->update([
+                    'lo_sx' => null,
+                    'pre_counter' => 0,
+                    'error_counter' => 0,
+                    'sl_kh' => 0,
+                    'thu_tu_uu_tien' => 0,
+                    'set_counter' => 0
+                ]);
+                $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
+                $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
+            } else {
+                $info_cong_doan_in->update([
+                    'sl_dau_ra_hang_loat' => $request['Pre_Counter'],
+                    'sl_ng_sx' => $request['Error_Counter'],
+                    'status' => 1
+                ]);
+                $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
+                $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
+            }
+        }
+        broadcast(new ProductionUpdated($broadcast))->toOthers();
+        return $broadcast;
+    }
+
     public function TemGluingProduction($request, $tracking, $machine)
     {
         if (!$tracking->lo_sx || $tracking->is_running === 0) {
@@ -831,7 +875,12 @@ class ApiController extends AdminController
                 return $this->CorrugatingProduction($request, $tracking, $machine);
                 break;
             case Line::LINE_IN:
-                return $this->TemPrintProduction($request, $tracking, $machine);
+                if($machine->id === 'CH02' || $machine->id === 'CH03'){
+                    return $this->TemPrintProductionCH($request, $tracking, $machine);
+                }else{
+                    return $this->TemPrintProduction($request, $tracking, $machine);
+                }
+                
                 break;
             case Line::LINE_DAN:
                 return $this->TemGluingProduction($request, $tracking, $machine);
@@ -1333,7 +1382,6 @@ class ApiController extends AdminController
     {
         $tracking = Tracking::where('machine_id', $request->machine_id)->first();
         $machine = Machine::with('line')->find($request->machine_id);
-        $line = $machine->line;
         $tem = Tem::where('lo_sx', $request->lo_sx)->first();
         if (!$tem) {
             return $this->failure('', 'Không có KHSX');

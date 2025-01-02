@@ -336,7 +336,7 @@ Route::group([
     $router->get('manufacture/paused-plan-list', [ApiController::class, 'getPausedPlanList']);
     $router->post('manufacture/pause-plan', [ApiController::class, 'pausePlan']);
     $router->post('manufacture/resume-plan', [ApiController::class, 'resumePlan']);
-    $router->post('manufacture/update-quantity-info-cong-doan', [ApiController::class, 'updateQuantityInfoCongDoan']);
+    $router->post('manufacture/update-quantity-info-cong-doan', [ApiController::class, 'updateQuantityInfoCongDoan'])->middleware('prevent-duplicate-requests');
     $router->post('manufacture/delete-paused-plan-list', [ApiController::class, 'deletePausedPlanList']);
 
     $router->post('manufacture/manual/input', [ApiController::class, 'manualInput']);

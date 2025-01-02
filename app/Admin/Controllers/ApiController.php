@@ -751,7 +751,7 @@ class ApiController extends AdminController
         $broadcast = [];
         $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
         if ($next_batch) {
-            if ($request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
+            if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
                 $info_cong_doan_in->update([
                     'status' => 2,
                     'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),

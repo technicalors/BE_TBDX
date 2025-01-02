@@ -82,7 +82,7 @@ class InfoCongDoan extends Model
     }
     public function oldPlan()
     {
-        return $this->hasOne(ProductionPlan::class, ['lo_sx', 'machine_id'], ['lo_sx', 'machine_id']);
+        return $this->hasOne(ProductionPlan::class, 'lo_sx', 'lo_sx');
     }
     public function plan()
     {

@@ -503,17 +503,18 @@ class ApiController extends AdminController
         // }
         $info->update([
             'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
-            'status' => $info->status > 1 ? $info->status : 2,
+            'status' => 2,
             'nhan_vien_sx' => $request->user()->id ?? null,
             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
         ]);
         $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
         if ($tracking) {
+            $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
             $tracking->update([
-                'lo_sx' => null,
-                'so_ra' => 0,
-                'thu_tu_uu_tien' => null,
-                'sl_kh' => 0
+                'lo_sx' => $next_batch->lo_sx ?? null,
+                'so_ra' => $next_batch->so_ra ?? 0,
+                'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien ?? 0,
+                'sl_kh' => $next_batch->dinh_muc ?? 0,
             ]);
         }
         return $this->success('', 'Đã cập nhật');

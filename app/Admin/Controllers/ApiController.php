@@ -497,26 +497,41 @@ class ApiController extends AdminController
         $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat;
         if ($info->machine_id == 'So01') {
             $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat * $info->so_ra;
-        }
-        // if ($sl_dau_ra_hang_loat > $info->dinh_muc) {
-        //     return $this->failure($info, 'Sản lượng nhập tay không được lớn hơn số lượng KH');
-        // }
-        $info->update([
-            'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
-            'status' => 2,
-            'nhan_vien_sx' => $request->user()->id ?? null,
-            'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
-        ]);
-        $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
-        if ($tracking) {
-            $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
-            $tracking->update([
-                'lo_sx' => $next_batch->lo_sx ?? null,
-                'so_ra' => $next_batch->so_ra ?? 0,
-                'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien ?? 0,
-                'sl_kh' => ($next_batch->so_dao || $next_batch->dinh_muc) ?? 0,
+            $info->update([
+                'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
+                'status' => 2,
+                'nhan_vien_sx' => $request->user()->id ?? null,
+                'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
             ]);
+            $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
+            if ($tracking) {
+                $tracking->update([
+                    'lo_sx' => null,
+                    'so_ra' => 0,
+                    'thu_tu_uu_tien' => 0,
+                    'sl_kh' => 0,
+                ]);
+            }
+        }else{
+            $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat;
+            $info->update([
+                'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
+                'status' => 2,
+                'nhan_vien_sx' => $request->user()->id ?? null,
+                'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
+            ]);
+            $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
+            if ($tracking) {
+                $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
+                $tracking->update([
+                    'lo_sx' => $next_batch->lo_sx ?? null,
+                    'so_ra' => $next_batch->so_ra ?? 0,
+                    'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien ?? 0,
+                    'sl_kh' => $next_batch->dinh_muc ?? 0,
+                ]);
+            }
         }
+        
         return $this->success('', 'Đã cập nhật');
     }
 

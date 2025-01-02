@@ -514,7 +514,7 @@ class ApiController extends AdminController
                 'lo_sx' => $next_batch->lo_sx ?? null,
                 'so_ra' => $next_batch->so_ra ?? 0,
                 'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien ?? 0,
-                'sl_kh' => $next_batch->dinh_muc ?? 0,
+                'sl_kh' => ($next_batch->so_dao || $next_batch->dinh_muc) ?? 0,
             ]);
         }
         return $this->success('', 'Đã cập nhật');

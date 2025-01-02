@@ -80,10 +80,10 @@ class InfoCongDoan extends Model
     {
         return $this->hasOneThrough(Line::class, Machine::class, 'id', 'id', 'machine_id', 'line_id');
     }
-    // public function plan()
-    // {
-    //     return $this->hasOne(ProductionPlan::class, ['lo_sx', 'machine_id'], ['lo_sx', 'machine_id']);
-    // }
+    public function oldPlan()
+    {
+        return $this->hasOne(ProductionPlan::class, ['lo_sx', 'machine_id'], ['lo_sx', 'machine_id']);
+    }
     public function plan()
     {
         return $this->belongsTo(ProductionPlan::class, 'plan_id');

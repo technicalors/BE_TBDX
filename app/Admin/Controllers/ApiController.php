@@ -769,7 +769,7 @@ class ApiController extends AdminController
                 $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
             } else {
                 $info_cong_doan_in->update([
-                    'sl_dau_ra_hang_loat' => $request['Pre_Counter'],
+                    'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
                     'status' => 1
                 ]);
                 $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
@@ -795,7 +795,7 @@ class ApiController extends AdminController
             } else {
                 if ($info_cong_doan_in) {
                     $info_cong_doan_in->update([
-                        'sl_dau_ra_hang_loat' => $request['Pre_Counter'],
+                        'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
                         'status' => 1
                     ]);
                     $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;

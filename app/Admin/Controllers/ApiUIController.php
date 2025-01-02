@@ -5072,10 +5072,10 @@ class ApiUIController extends AdminController
 
         // $count = InfoCongDoan::whereNull('order_id')->count();
         // return $count;
-        $infos = InfoCongDoan::with('tem')->whereNull('order_id')->chunk(100, function ($infos) {
+        $infos = InfoCongDoan::with('oldPlan')->whereNull('order_id')->chunk(100, function ($infos) {
             foreach ($infos as $info) {
-                if ($info->tem && $info->tem->mdh && $info->tem->mql) {
-                    $info->update(['order_id' => $info->tem->mdh . "-" . $info->tem->mql]);
+                if ($info->oldPlan) {
+                    $info->update(['order_id' => $info->order_id]);
                 }
             }
         });

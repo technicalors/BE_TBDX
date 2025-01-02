@@ -776,7 +776,7 @@ class ApiController extends AdminController
                 $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
             }
         } else {
-            if ($request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
+            if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
                 $info_cong_doan_in->update([
                     'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
                     'status' => 2,

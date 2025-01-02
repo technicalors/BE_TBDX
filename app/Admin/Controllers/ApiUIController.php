@@ -5079,6 +5079,7 @@ class ApiUIController extends AdminController
                 }
             }
         });
+        return $infos;
         return 'ok';
     }
 

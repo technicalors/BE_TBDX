@@ -5069,13 +5069,13 @@ class ApiUIController extends AdminController
         //         $log->lo_sx_pallet()->update(['order_id' => $tem->order_id]);
         //     }
         // }
-        
+
         // $count = InfoCongDoan::whereNull('order_id')->count();
         // return $count;
-        $infos = InfoCongDoan::with('oldPlan')->whereNull('order_id')->chunk(1000, function ($infos) {
+        $infos = InfoCongDoan::with('tem')->whereNull('order_id')->chunk(100, function ($infos) {
             foreach ($infos as $info) {
-                if ($info->oldPlan) {
-                    $info->update(['order_id' => $info->oldPlan->order_id]);
+                if ($info->tem) {
+                    $info->update(['order_id' => $info->tem->order_id]);
                 }
             }
         });

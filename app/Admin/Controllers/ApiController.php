@@ -821,7 +821,7 @@ class ApiController extends AdminController
             }
             //code...
         } catch (\Throwable $th) {
-            //throw $th;
+            throw $th;
         }
     }
 

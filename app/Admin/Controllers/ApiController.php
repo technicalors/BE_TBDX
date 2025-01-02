@@ -775,6 +775,8 @@ class ApiController extends AdminController
                 $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
                 $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
             }
+            broadcast(new ProductionUpdated($broadcast))->toOthers();
+            return $broadcast;
         } else {
             if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
                 $info_cong_doan_in->update([
@@ -813,8 +815,8 @@ class ApiController extends AdminController
                     ]);
                 }
             }
-        broadcast(new ProductionUpdated($broadcast))->toOthers();
-        return $broadcast;
+            broadcast(new ProductionUpdated($broadcast))->toOthers();
+            return $broadcast;
         }
     }
 
@@ -909,12 +911,12 @@ class ApiController extends AdminController
                 return $this->CorrugatingProduction($request, $tracking, $machine);
                 break;
             case Line::LINE_IN:
-                if($machine->id === 'CH02' || $machine->id === 'CH03'){
+                if ($machine->id === 'CH02' || $machine->id === 'CH03') {
                     return $this->TemPrintProductionCH($request, $tracking, $machine);
-                }else{
+                } else {
                     return $this->TemPrintProduction($request, $tracking, $machine);
                 }
-                
+
                 break;
             case Line::LINE_DAN:
                 return $this->TemGluingProduction($request, $tracking, $machine);
@@ -1445,7 +1447,7 @@ class ApiController extends AdminController
                 'is_running' => 1,
                 'pre_counter' => 0,
                 'error_counter' => 0,
-                'status'=>0
+                'status' => 0
             ]);
             InfoCongDoan::create([
                 'lo_sx' => $request->lo_sx,

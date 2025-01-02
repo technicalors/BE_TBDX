@@ -5075,7 +5075,7 @@ class ApiUIController extends AdminController
         $infos = InfoCongDoan::with('oldPlan')->whereNull('order_id')->chunk(100, function ($infos) {
             foreach ($infos as $info) {
                 if ($info->oldPlan) {
-                    $info->update(['order_id' => $info->order_id]);
+                    $info->update(['order_id' => $info->oldPlan->order_id ?? null]);
                 }
             }
         });

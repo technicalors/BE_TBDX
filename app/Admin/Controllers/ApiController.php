@@ -2891,11 +2891,7 @@ class ApiController extends AdminController
                 ELSE DATE(created_at) BETWEEN ? AND ?
             END
         ", [$start, $end, $start, $end]);
-        $lo_sx = [];
-        $plan_query = ProductionPlan::query();
-        $tem_query = Tem::query();
-        if (isset($request->customer_id) || isset($request->mdh) || isset($request->mql) || isset($request->quy_cach) || isset($request->dot)) {
-            $order_query = Order::withTrashed();
+        $query->whereHas('order', function ($order_query) use ($request) {
             if (isset($request->customer_id)) {
                 $order_query->where('short_name', 'like', "$request->customer_id%");
             }
@@ -2915,15 +2911,7 @@ class ApiController extends AdminController
             if (isset($request->dot)) {
                 $order_query->where('dot', $request->dot);
             }
-            if (isset($request->customer_id)) {
-                $tem_query->where('khach_hang', 'like', "$request->customer_id%");
-            }
-            $orders = $order_query->pluck('id')->unique()->toArray();
-            $tems = Tem::whereIn('order_id', $orders)->pluck('lo_sx')->toArray();
-            $plans = ProductionPlan::whereIn('order_id', $orders)->pluck('lo_sx')->toArray();
-            $lo_sx = array_merge($lo_sx, $plans, $tems);
-            $query->whereIn('lo_sx', array_unique($lo_sx));
-        }
+        });
         $query->with("plan.order.customer", "line", "user", "tem.order");
         return $query;
     }

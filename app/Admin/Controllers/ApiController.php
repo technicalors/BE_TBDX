@@ -1519,6 +1519,7 @@ class ApiController extends AdminController
                 'ngay_sx' => date('Y-m-d'),
                 'nhan_vien_sx' => $request->user()->id ?? null,
                 'status' => 2,
+                'order_id' => $tem->order_id ?? null
             ]);
         }
         return $this->success($info_lo_sx);

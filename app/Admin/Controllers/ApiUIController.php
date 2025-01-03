@@ -4032,10 +4032,75 @@ class ApiUIController extends AdminController
         $result = array_map('json_decode', $unique, array_fill(0, count($unique), true));
         return $result;
     }
+    public function importNewFGLocator(Request $request)
+    {
+        $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
+        if ($extension == 'csv') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
+        } elseif ($extension == 'xlsx') {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+        } else {
+            $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+        }
+        // file path
+        $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
+        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+        $locators = [];
+        foreach ($allDataInSheet as $key => $row) {
+            //Lấy dứ liệu từ dòng thứ 2
+            if ($key > 2) {
+                if(!empty($row['C'])){
+                    $locators[] = $row['C'];
+                }
+                if(!empty($row['E'])){
+                    $locators[] = $row['E'];
+                }
+                if(!empty($row['G'])){
+                    $locators[] = $row['G'];
+                }
+                if(!empty($row['I'])){
+                    $locators[] = $row['I'];
+                }
+                if(!empty($row['K'])){
+                    $locators[] = $row['K'];
+                }
+            }
+        }
+        try {
+            DB::beginTransaction();
+            foreach ($locators as $key => $locator) {
+                $input['id'] = $locator;
+                $input['name'] = $locator;
+                $input['capacity'] = 0;
+                $input['warehouse_fg_id'] = 1;
+                LocatorFG::updateOrCreate(['id' => $locator], $input);
+            }
+            DB::commit();
+        } catch (\Exception $th) {
+            DB::rollBack();
+            return $th;
+        }
+
+        return $this->success([], 'Upload thành công');
+    }
     public function getTem(Request $request)
     {
-        $data = LocatorFG::skip(0)->take(25)->where('id', 'like', '%F08%')->orderBy('name')->get();
-        return $this->success($data);
+        $data = LocatorFG::get();
+        $result = [];
+        foreach ($data as $key => $value) {
+            if(str_contains($value->id, 'F01') && (int)explode('F01.', $value->id)[1] > 64){
+                $result[] = $value;
+            } else if(str_contains($value->id, 'F02') && (int)explode('F02.', $value->id)[1] > 34){
+                $result[] = $value;
+            } else if(str_contains($value->id, 'F03') && (int)explode('F03.', $value->id)[1] > 29){
+                $result[] = $value;
+            } else if(str_contains($value->id, 'F04') && (int)explode('F04.', $value->id)[1] > 27){
+                $result[] = $value;
+            } else if(str_contains($value->id, 'F05') && (int)explode('F05.', $value->id)[1] > 18){
+                $result[] = $value;
+            }
+        }
+        return $this->success($result);
     }
 
     public function importMaterial(Request $request)

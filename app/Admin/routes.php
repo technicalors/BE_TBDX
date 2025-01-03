@@ -715,6 +715,7 @@ Route::group([
 ], function (Router $router) {
     $router->post('import-material', [ApiUIController::class, 'importMaterial']);
     $router->post('import', [ApiUIController::class, 'import']);
+    $router->post('import-new-fg-locator', [ApiUIController::class, 'importNewFGLocator']);
     $router->get('intem', [ApiUIController::class, 'getTem']);
     $router->post('create-table-fields', [ApiUIController::class, 'insertTableFields']);
     $router->post('import-user-line-machine', [ApiUIController::class, 'importUserLineMachine']);

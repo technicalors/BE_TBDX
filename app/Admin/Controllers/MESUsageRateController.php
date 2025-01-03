@@ -10,6 +10,7 @@ use App\Models\MaintenanceStatistic;
 use App\Models\PQCProcessing;
 use App\Models\QCLog;
 use App\Models\Shift;
+use App\Models\Tracking;
 use App\Models\UsageTime;
 use Encore\Admin\Controllers\AdminController;
 use Illuminate\Http\Request;
@@ -136,7 +137,7 @@ class MESUsageRateController extends AdminController
         $this->calculateMaintenanceMachine($date);
         $this->calculatePQCProcessing($date);
         $this->calculateKhuonBe($date);
-        Log::info('Logged at: ' . now());
+        Tracking::whereIn('machine_id', ['CH02', 'CH03'])->update(['status' => 0]);
         CustomUser::query()->update(['login_times_in_day'=>0, 'last_use_at'=>null, 'usage_time_in_day'=>0]);
         return 'done';
     }

@@ -777,10 +777,6 @@ class ApiController extends AdminController
                         'lo_sx' => $next_batch->lo_sx,
                         'sl_kh' => $next_batch->dinh_muc,
                         'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien,
-                        'pre_counter' => 0,
-                        'error_counter' => 0,
-                        'is_running' => 1,
-                        'status' => 0
                     ]);
                     $next_batch->update(['status' => 1]);
                     $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
@@ -802,13 +798,8 @@ class ApiController extends AdminController
                     ]);
                     $tracking->update([
                         'lo_sx' => null,
-                        'pre_counter' => 0,
-                        'error_counter' => 0,
-                        'is_running' => 1,
                         'sl_kh' => 0,
                         'thu_tu_uu_tien' => 0,
-                        'set_counter' => 0,
-                        'status' => 0
                     ]);
                     $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
                 } else {
@@ -822,13 +813,8 @@ class ApiController extends AdminController
                     } else {
                         $tracking->update([
                             'lo_sx' => null,
-                            'pre_counter' => 0,
-                            'error_counter' => 0,
-                            'is_running' => 1,
                             'sl_kh' => 0,
                             'thu_tu_uu_tien' => 0,
-                            'set_counter' => 0,
-                            'status' => 0
                         ]);
                     }
                 }

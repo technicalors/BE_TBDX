@@ -2884,7 +2884,7 @@ class ApiController extends AdminController
             $start = date('Y-m-d');
             $end = date('Y-m-d');
         }
-        $machine_iot = Machine::where('is_iot', 1)->pluck('id')->toArray();
+        $machine_iot = Machine::where('is_iot', 1)->whereIn('machine_id', $request->machine)->pluck('id')->toArray();
         $query->whereRaw("
             CASE 
                 WHEN machine_id IN ('" . implode("','", $machine_iot) . "') THEN DATE(thoi_gian_bat_dau) BETWEEN ? AND ?

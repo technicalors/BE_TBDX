@@ -512,7 +512,7 @@ class ApiController extends AdminController
                     'sl_kh' => 0,
                 ]);
             }
-        }else{
+        } else {
             $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat;
             $info->update([
                 'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
@@ -531,7 +531,7 @@ class ApiController extends AdminController
                 ]);
             }
         }
-        
+
         return $this->success('', 'Đã cập nhật');
     }
 
@@ -2874,23 +2874,22 @@ class ApiController extends AdminController
             $query->where('lo_sx', $request->lo_sx);
         }
         if (isset($request->end_date) && isset($request->start_date)) {
-            // $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))
-            //     ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)));
             $start = date('Y-m-d', strtotime($request->start_date));
             $end = date('Y-m-d', strtotime($request->end_date));
         } else {
-            // $query->whereDate('created_at', '>=', date('Y-m-d'))
-            //     ->whereDate('created_at', '<=', date('Y-m-d'));
             $start = date('Y-m-d');
             $end = date('Y-m-d');
         }
         $machine_iot = Machine::where('is_iot', 1)->whereIn('id', $request->machine)->pluck('id')->toArray();
         $query->whereRaw("
-            CASE 
-                WHEN machine_id IN ('" . implode("','", $machine_iot) . "') THEN DATE(thoi_gian_bat_dau) BETWEEN ? AND ?
-                ELSE DATE(created_at) BETWEEN ? AND ?
-            END
-        ", [$start, $end, $start, $end]);
+            DATE(
+                CASE
+                    WHEN machine_id IN (" . implode(',', $machine_iot) . ")
+                    THEN thoi_gian_bat_dau
+                    ELSE created_at
+                END
+            ) BETWEEN ? AND ?
+        ", [$start, $end]);
         $query->whereHas('order', function ($order_query) use ($request) {
             if (isset($request->customer_id)) {
                 $order_query->where('short_name', 'like', "$request->customer_id%");

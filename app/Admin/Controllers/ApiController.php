@@ -2880,13 +2880,14 @@ class ApiController extends AdminController
             $start = date('Y-m-d');
             $end = date('Y-m-d');
         }
-        $machine_iot = Machine::where('is_iot', 1)->whereIn('id', $request->machine)->pluck('id')->toArray();
-        $query->whereRaw("
-            CASE 
-                WHEN machine_id IN ('" . implode("','", $machine_iot) . "') THEN DATE(thoi_gian_bat_dau) BETWEEN ? AND ?
-                ELSE DATE(created_at) BETWEEN ? AND ?
-            END
-        ", [$start, $end, $start, $end]);
+        // $machine_iot = Machine::where('is_iot', 1)->whereIn('id', $request->machine)->pluck('id')->toArray();
+        // $query->whereRaw("
+        //     CASE 
+        //         WHEN machine_id IN ('" . implode("','", $machine_iot) . "') THEN DATE(thoi_gian_bat_dau) BETWEEN ? AND ?
+        //         ELSE DATE(created_at) BETWEEN ? AND ?
+        //     END
+        // ", [$start, $end, $start, $end]);
+        $query->whereDate('thoi_gian_bat_dau', '>=', $start)->whereDate('thoi_gian_bat_dau', '<=', $end);
         $query->whereHas('order', function ($order_query) use ($request) {
             if (isset($request->customer_id)) {
                 $order_query->where('short_name', 'like', "$request->customer_id%");

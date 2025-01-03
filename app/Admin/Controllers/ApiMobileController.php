@@ -3725,11 +3725,14 @@ class ApiMobileController extends AdminController
                     }
                 }
             }
+            $formula = DB::table('formulas')->where('phan_loai_1', $plan->order->phan_loai_1 ?? null)->where('phan_loai_2', $plan->order->phan_loai_2 ?? null)->first();
             $input['sl_kh'] = $plan->orders->sum('sl');
-            $input['sl_kh'] += $input['loss_quantity'];
+            $input['sl_kh'] += ($input['loss_quantity'] * $plan->order->so_ra) / ($formula->he_so ?? 1);
             $update = $plan->update($input);
             $lo_sx_log = LSXLog::where('lo_sx', $plan->lo_sx)->update(['thu_tu_uu_tien' => $input['thu_tu_uu_tien']]);
-
+            $plan->infoCongDoan()->update([
+                'so_dao' => isset($plan->order->so_ra) ? ceil($plan->sl_kh * ($formula->he_so ?? 1) / $plan->order->so_ra) : ($plan->order->so_dao ?? 0),
+            ]);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();

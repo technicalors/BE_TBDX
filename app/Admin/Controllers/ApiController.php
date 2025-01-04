@@ -3976,18 +3976,10 @@ class ApiController extends AdminController
 
     public function listPallet(Request $request)
     {
-        $records = Pallet::with(['losxpallet' => function ($q) {
-            $q->orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
-        }, 'locator_fg_map'])->whereDate('created_at', date('Y-m-d'))->select('*', 'id as key')->orderBy('created_at', 'DESC')->get();
+        $records = Pallet::with(['losxpallet', 'locator_fg_map'])->whereDate('created_at', '>=', date('2024-12-23'))->whereDate('created_at', '<=', date('2024-12-23'))->orderBy('created_at', 'DESC')->get();
         foreach ($records as $key => $record) {
             $record->key = $record->id;
-            $khach_hang = "";
-            if (count($record->losxpallet) > 0) {
-                $khach_hang = $record->losxpallet[0]->customer_id ?? '';
-            } else if (count($record->warehouse_fg_log) > 0) {
-                $khach_hang = $record->warehouse_fg_log[0]->order->short_name ?? '';
-            }
-            $record->khach_hang = $khach_hang;
+            $record->khach_hang = $record->losxpallet[0]->customer_id ?? '';
             if ($record->locator_fg_map) {
                 $record->is_location = 1;
             } else {
@@ -4215,17 +4207,17 @@ class ApiController extends AdminController
 
     public function getLogImportWarehouseFG(Request $request)
     {
-        $logs = WarehouseFGLog::with('pallet', 'order')->whereDate('created_at', date('Y-m-d'))->where('type', 1)->groupBy('pallet_id')->get();
+        $logs = WarehouseFGLog::with('pallet', 'order')->whereDate('created_at', date('Y-m-d'))->where('type', 1)->get()->groupBy('pallet_id');
         $data = [];
-        foreach ($logs as $key => $log) {
-            // $record = LSXPallet::where('pallet_id', $log->pallet_id)->first();
+        foreach ($logs as $pallet_id => $log) {
+            $first_log = $log[0];
             $obj = new stdClass();
-            $obj->pallet_id = $log->pallet_id;
-            $obj->so_luong = $log->pallet->so_luong ?? '';
-            $obj->khach_hang = $log->order->short_name ?? "";
-            $obj->locator_id = $log->locator_id;
-            $obj->mdh = $log->order->mdh ?? '';
-            $obj->thoi_gian_nhap = date('d/m/Y H:i', strtotime($log->created_at));
+            $obj->pallet_id = $pallet_id;
+            $obj->so_luong = $log->sum('so_luong') ?? '';
+            $obj->khach_hang = $first_log->order->short_name ?? "";
+            $obj->locator_id = $first_log->locator_id;
+            $obj->mdh = $first_log->order->mdh ?? '';
+            $obj->thoi_gian_nhap = isset($first_log->created_at) ? date('d/m/Y H:i', strtotime($first_log->created_at)) : '';
             $data[] = $obj;
         }
         return $this->success($data);

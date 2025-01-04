@@ -3976,7 +3976,7 @@ class ApiController extends AdminController
 
     public function listPallet(Request $request)
     {
-        $records = Pallet::with(['losxpallet', 'locator_fg_map'])->whereDate('created_at', '>=', date('2024-12-23'))->whereDate('created_at', '<=', date('2024-12-23'))->orderBy('created_at', 'DESC')->get();
+        $records = Pallet::with(['losxpallet', 'locator_fg_map'])->whereDate('created_at', date('Y-m-d'))->orderBy('created_at', 'DESC')->get();
         foreach ($records as $key => $record) {
             $record->key = $record->id;
             $record->khach_hang = $record->losxpallet[0]->customer_id ?? '';

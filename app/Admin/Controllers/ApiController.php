@@ -1454,7 +1454,6 @@ class ApiController extends AdminController
                 'is_running' => 1,
                 'pre_counter' => 0,
                 'error_counter' => 0,
-                'status' => 0
             ]);
             InfoCongDoan::create([
                 'lo_sx' => $request->lo_sx,

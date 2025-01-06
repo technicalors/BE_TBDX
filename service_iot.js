@@ -5,8 +5,8 @@ const axios = require('axios');
 const pLimit = require('p-limit');
 
 // ====== Configuration Constants ======
-const TELEMETRY_URL = "http://113.176.95.167:3030/api/plugins/telemetry/DEVICE";
-const AUTH_URL       = "http://113.176.95.167:3030/api/auth/login";
+const TELEMETRY_URL = "http://113.161.189.44:3030/api/plugins/telemetry/DEVICE";
+const AUTH_URL       = "http://113.161.189.44:3030/api/auth/login";
 
 const POST_URL                  = "https://backtbdx.ouransoft.vn/api/websocket";
 const POST_MACHINE_STATUS_URL   = "https://backtbdx.ouransoft.vn/api/websocket-machine-status";

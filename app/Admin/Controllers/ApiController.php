@@ -2051,9 +2051,9 @@ class ApiController extends AdminController
             })
             ->where('machine_id', $request->machine_id);
         if (isset($input['start_date']) && isset($input['end_date'])) {
-            $query->whereDate('thoi_gian_ket_thuc', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('thoi_gian_ket_thuc', '<=', date('Y-m-d', strtotime($input['end_date'])));
+            $query->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($input['end_date'])));
         } else {
-            $query->whereDate('thoi_gian_ket_thuc', date('Y-m-d'));
+            $query->whereDate('ngay_sx', date('Y-m-d'));
         }
         $list = $query->orderByRaw("FIELD(phan_dinh, " . implode(',', $customOrder) . ")")->get();
         foreach ($list as $value) {

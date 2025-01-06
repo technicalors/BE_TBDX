@@ -512,7 +512,7 @@ class ApiController extends AdminController
                     'sl_kh' => 0,
                 ]);
             }
-        }else{
+        } else {
             $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat;
             $info->update([
                 'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
@@ -531,7 +531,7 @@ class ApiController extends AdminController
                 ]);
             }
         }
-        
+
         return $this->success('', 'Đã cập nhật');
     }
 
@@ -2051,7 +2051,11 @@ class ApiController extends AdminController
             })
             ->where('machine_id', $request->machine_id);
         if (isset($input['start_date']) && isset($input['end_date'])) {
-            $query->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($input['end_date'])));
+            if ($request->machine_id === 'So01') {
+                $query->whereDate('thoi_gian_bat_dau', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('thoi_gian_bat_dau', '<=', date('Y-m-d', strtotime($input['end_date'])));
+            } else {
+                $query->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($input['end_date'])));
+            }
         } else {
             $query->whereDate('ngay_sx', date('Y-m-d'));
         }

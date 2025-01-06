@@ -281,7 +281,7 @@ class LSXPalletController extends AdminController
     }
 
     public function printPallet(Request $request){
-        $lsx_pallet = LSXPallet::where('pallet_id', $request->pallet_id)->get();
+        $lsx_pallet = LSXPallet::where('pallet_id', $request->pallet_id)->get()->sortBy('order_id', SORT_NATURAL);
         if(empty($lsx_pallet)){
             return $this->failure('', 'Không tìm thấy pallet');
         }

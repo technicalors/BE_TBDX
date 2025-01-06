@@ -4200,7 +4200,7 @@ class ApiController extends AdminController
             }
             $pallet->update(['so_luong' => $so_luong, 'number_of_lot' => count($input['inp_arr'])]);
             DB::commit();
-            $data = collect($data)->sortBy([['mdh', 'asc'], ['mql', 'asc']]);
+            $data = collect($data)->sortBy('order_id', SORT_NATURAL);
             return $this->success($data, 'Tạo pallet thành công');
         } catch (\Throwable $e) {
             DB::rollBack();

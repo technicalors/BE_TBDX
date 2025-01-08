@@ -1140,7 +1140,7 @@ class ApiController extends AdminController
             ->where('machine_id', $request->machine_id)
             ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
             ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
-            ->orderBy('created_at', 'DESC')
+            ->orderBy('updated_at', 'DESC')
             ->orderBy('order_id')
             ->get();
         $data = [];

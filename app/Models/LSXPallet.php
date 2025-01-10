@@ -29,6 +29,6 @@ class LSXPallet extends Model
         return $this->hasOne(LocatorFGMap::class, 'pallet_id', 'pallet_id');
     }
     public function warehouseFGLog(){
-        return $this->hasMany(WarehouseFGLog::class, 'lo_sx', 'lo_sx');
+        return $this->hasMany(WarehouseFGLog::class, ['lo_sx', 'pallet_id'], ['lo_sx', 'pallet_id']);
     }
 }

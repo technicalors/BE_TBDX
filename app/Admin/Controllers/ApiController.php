@@ -576,13 +576,15 @@ class ApiController extends AdminController
                     $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
                     $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
                     if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity)) {   
-                        
+                        $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
                         $running_infos = InfoCongDoan::where('lo_sx', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->where('status', 1)->get();
                         if(count($running_infos) > 0){
-                            $running_infos->update([
-                                'status' => 2,
-                                'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
-                            ]);
+                            foreach ($running_infos as $info) {
+                                $info->update([
+                                    'status' => 2,
+                                    'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
+                                ]);
+                            }
                         }
                         InfoCongDoanPriority::whereIn('info_cong_doan_id', $running_infos->pluck('id')->Array())->delete();
                         $info_ids = $this->reorderInfoCongDoan();
@@ -612,7 +614,6 @@ class ApiController extends AdminController
                                 'error_counter' => $request['Error_Counter'],
                             ]);
                         }
-                        $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
                     } else {
                         $info_lo_sx->update([
                             'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $tracking->so_ra,

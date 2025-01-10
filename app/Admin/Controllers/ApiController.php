@@ -503,6 +503,8 @@ class ApiController extends AdminController
                 'nhan_vien_sx' => $request->user()->id ?? null,
                 'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
             ]);
+            $info->infoCongDoanPriority()->delete();
+            $this->reorderInfoCongDoan();
             $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
             if ($tracking) {
                 $tracking->update([
@@ -636,7 +638,7 @@ class ApiController extends AdminController
                     ]);
                 }
             } else {
-                $info_ids = InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray();
+                $info_ids = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
                 $next_info = InfoCongDoan::whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
                 if ($next_info) {
                     $so_ra = $next_info->so_ra;

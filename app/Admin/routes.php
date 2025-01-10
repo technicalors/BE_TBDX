@@ -743,4 +743,5 @@ Route::group([
     $router->get('retriveData', [MESUsageRateController::class, 'retriveData']);
     $router->get('deleteDuplicate', [ApiUIController::class, 'deleteDuplicate']);
     $router->post('capNhatTonKhoTPExcel', [ApiUIController::class, 'capNhatTonKhoTPExcel']);
+    $router->get('reorderInfoCongDoan', [ApiController::class, 'reorderInfoCongDoan']);
 });

@@ -336,7 +336,7 @@ class ApiController extends AdminController
                 'priority' => $key + 1,
             ]);
         }
-        return 'reordered';
+        return $infos_priority->pluck('info_cong_doan_id')->toArray();
     }
 
     public function reorderPriority(Request $request)
@@ -560,6 +560,7 @@ class ApiController extends AdminController
 
     public function CorrugatingProduction($request, $tracking)
     {
+        $startTime = microtime(true);
         //Kiểm tra tracking. Nếu tracking có chạy thì tiếp tục ngược lại thì không
         if ($tracking->is_running == 0) {
             return;
@@ -572,15 +573,17 @@ class ApiController extends AdminController
                 if ($info_lo_sx) {
                     $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
                     $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
-                    if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity)) {
-                        $info_lo_sx->update([
-                            'status' => $info_lo_sx->phan_dinh !== 0 ? 3 : 2,
-                            'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
-                        ]);
-                        InfoCongDoanPriority::where('info_cong_doan_id', $info_lo_sx->id)->delete();
+                    if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity)) {   
                         $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
-                        $this->reorderInfoCongDoan();
-                        $info_ids = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
+                        $running_infos = InfoCongDoan::where('lo_sx', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->where('status', 1)->get();
+                        if(count($running_infos) > 0){
+                            $running_infos->update([
+                                'status' => 2,
+                                'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
+                            ]);
+                        }
+                        InfoCongDoanPriority::whereIn('info_cong_doan_id', $running_infos->pluck('id')->Array())->delete();
+                        $info_ids = $this->reorderInfoCongDoan();
                         $next_info = InfoCongDoan::whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
                         if ($next_info) {
                             $so_ra = $next_info->so_ra;
@@ -666,6 +669,9 @@ class ApiController extends AdminController
             DB::rollBack();
             throw $th;
         }
+        $endTime = microtime(true);
+        $timeTaken = $endTime - $startTime;
+        return $this->success(['machine_id'=>$tracking->machine_id, 'timeTaken'=>$timeTaken]);
     }
 
     protected function broadcastProductionUpdate($info_lo_sx, $so_ra, $reload = false)
@@ -766,7 +772,7 @@ class ApiController extends AdminController
         //Tìm lô đang chạy
         $broadcast = [];
         try {
-            $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
+            $next_batch = InfoCongDoan::whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
             if ($next_batch) {
                 if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
                     $info_cong_doan_in->update([

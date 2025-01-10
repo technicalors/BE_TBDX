@@ -586,7 +586,7 @@ class ApiController extends AdminController
                                 ]);
                             }
                         }
-                        InfoCongDoanPriority::whereIn('info_cong_doan_id', $running_infos->pluck('id')->Array())->delete();
+                        InfoCongDoanPriority::whereIn('info_cong_doan_id', $running_infos->pluck('id')->toArray())->delete();
                         $info_ids = $this->reorderInfoCongDoan();
                         $next_info = InfoCongDoan::whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
                         if ($next_info) {

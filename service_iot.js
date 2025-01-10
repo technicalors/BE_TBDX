@@ -122,7 +122,7 @@ async function postData(data) {
         }
         await axios.post(POST_URL, data, { timeout: 5000 });
     } catch (error) {
-        console.error('Error posting data:', error.message);
+        console.error('Error posting data:', error?.response?.message);
     }
 }
 

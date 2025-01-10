@@ -568,7 +568,7 @@ class ApiController extends AdminController
             DB::beginTransaction();
             //Tìm kiếm lô đang chạy
             if ($tracking->lo_sx) {
-                $info_lo_sx = InfoCongDoan::with('infoCongDoanPriority', 'order')->where('lo_sx', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->where('status', 1)->first();
+                $info_lo_sx = InfoCongDoan::where('lo_sx', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->where('status', 1)->first();
                 if ($info_lo_sx) {
                     $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
                     $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
@@ -578,9 +578,9 @@ class ApiController extends AdminController
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
                         ]);
                         InfoCongDoanPriority::where('info_cong_doan_id', $info_lo_sx->id)->delete();
-                        $this->reorderInfoCongDoan();
                         $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
-                        $info_ids = InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray();
+                        $this->reorderInfoCongDoan();
+                        $info_ids = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
                         $next_info = InfoCongDoan::whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
                         if ($next_info) {
                             $so_ra = $next_info->so_ra;
@@ -973,7 +973,8 @@ class ApiController extends AdminController
             $machine_query->where('is_iot', $request->is_iot);
         }
         $roles_arr = $user->roles()->pluck('name')->toArray();
-        if ($user->username === 'admin' || $user->username === 'vodanh' || (isset($request->is_iot) && (in_array('PQC', $roles_arr) || in_array('OQC', $roles_arr)))) {
+        $permissions = $user->roles->flatMap->permissions->pluck('slug')->toArray();
+        if (in_array('*', $permissions) || (isset($request->is_iot) && (in_array('PQC', $roles_arr) || in_array('OQC', $roles_arr)))) {
             $machines = $machine_query->get();
             return $this->success($machines);
         }

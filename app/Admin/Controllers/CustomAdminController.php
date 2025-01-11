@@ -384,4 +384,10 @@ class CustomAdminController extends AdminController
         }
         return $this->success([], 'Upload thành công');
     }
+
+    public function profile(Request $request){
+        $user = $request->user();
+        $user->permissions = $user->roles->flatMap->permissions;
+        return $this->success($user);
+    }
 }

@@ -3,6 +3,7 @@
 use App\Admin\Controllers\ApiMobileController;
 use App\Admin\Controllers\ApiUIController;
 use App\Admin\Controllers\ApiController;
+use App\Admin\Controllers\CustomAdminController;
 use App\Admin\Controllers\DeliveryNoteController;
 use App\Admin\Controllers\DepartmentController;
 use App\Admin\Controllers\InfoCongDoanController;
@@ -706,6 +707,8 @@ Route::group([
     $router->post('departments/create', [DepartmentController::class, 'create']);
     $router->post('departments/delete', [DepartmentController::class, 'delete']);
     $router->patch('departments/update', [DepartmentController::class, 'update']);
+
+    $router->get('profile', [CustomAdminController::class, 'profile']);
 });
 
 Route::group([

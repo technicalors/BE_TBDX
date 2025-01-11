@@ -70,6 +70,7 @@ class KPIController extends AdminController
                 DATEDIFF(NOW(), MAX(tg_nhap)) AS days_since_latest
             ")
             ->whereNull('tg_xuat')
+            ->orderBy('tg_nhap')
             ->groupBy('material_id')
             ->get()
             ->groupBy(function ($item) {

@@ -625,7 +625,7 @@ class ApiController extends AdminController
         }   
         $endTime = microtime(true);
         $timeTaken = $endTime - $startTime;
-        Log::debug(['machine_id'=>$tracking->machine_id,'timeTaken'=>$timeTaken, 'pre'=>$request['Pre_Counter'], 'set'=>$request['Set_Counter']]);
+        return (['machine_id'=>$tracking->machine_id,'timeTaken'=>$timeTaken, 'pre'=>$request['Pre_Counter'], 'set'=>$request['Set_Counter']]);
     }
 
     protected function broadcastProductionUpdate($info_lo_sx, $so_ra, $reload = false)
@@ -885,7 +885,6 @@ class ApiController extends AdminController
                 } else {
                     return $this->TemPrintProduction($request, $tracking, $machine);
                 }
-
                 break;
             case Line::LINE_DAN:
                 return $this->TemGluingProduction($request, $tracking, $machine);

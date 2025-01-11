@@ -8,9 +8,9 @@ const pLimit = require('p-limit');
 const TELEMETRY_URL = "http://113.161.189.44:3030/api/plugins/telemetry/DEVICE";
 const AUTH_URL       = "http://113.161.189.44:3030/api/auth/login";
 
-const POST_URL                  = "http://127.0.0.1:8000/api/websocket";
-const POST_MACHINE_STATUS_URL   = "http://127.0.0.1:8000/api/websocket-machine-status";
-const POST_MACHINE_PARAMS_URL   = "http://127.0.0.1:8000/api/websocket-machine-params";
+const POST_URL                  = "https://backtbdx.ouransoft.vn/api/websocket";
+const POST_MACHINE_STATUS_URL   = "https://backtbdx.ouransoft.vn/api/websocket-machine-status";
+const POST_MACHINE_PARAMS_URL   = "https://backtbdx.ouransoft.vn/api/websocket-machine-params";
 
 const USER_CREDENTIALS = {
     username: 'messystem@gmail.com',

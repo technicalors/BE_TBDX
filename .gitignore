@@ -26,3 +26,4 @@ Homestead.json
 /public/admin.php
 /laravel-echo-server.json
 /laravel-echo-server.lock
+storage/debugbar

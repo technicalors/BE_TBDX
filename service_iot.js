@@ -8,9 +8,9 @@ const pLimit = require('p-limit');
 const TELEMETRY_URL = "http://113.161.189.44:3030/api/plugins/telemetry/DEVICE";
 const AUTH_URL       = "http://113.161.189.44:3030/api/auth/login";
 
-const POST_URL                  = "https://backtbdx.ouransoft.vn/api/websocket";
-const POST_MACHINE_STATUS_URL   = "https://backtbdx.ouransoft.vn/api/websocket-machine-status";
-const POST_MACHINE_PARAMS_URL   = "https://backtbdx.ouransoft.vn/api/websocket-machine-params";
+const POST_URL                  = "http://127.0.0.1:8000/api/websocket";
+const POST_MACHINE_STATUS_URL   = "http://127.0.0.1:8000/api/websocket-machine-status";
+const POST_MACHINE_PARAMS_URL   = "http://127.0.0.1:8000/api/websocket-machine-params";
 
 const USER_CREDENTIALS = {
     username: 'messystem@gmail.com',
@@ -39,11 +39,13 @@ const RETRY_INTERVALS = {
 // ====== Store states for duplicate checking ======
 const previousData   = {};
 const previousStatus = {};
+let token;
 
 // ====== 1) Function: authenticate -> lấy token ======
 async function authenticate() {
     try {
         const response = await axios.post(AUTH_URL, USER_CREDENTIALS);
+        token = response.data.token;
         return response.data.token;
     } catch (error) {
         console.error('Authentication failed:', error.message);
@@ -120,7 +122,7 @@ async function postData(data) {
         if (data.device_id === 'f5957000-ad38-11ef-a8bd-45ae64f28680') {
             console.log('Data posted:', data);
         }
-        await axios.post(POST_URL, data, { timeout: 5000 });
+        return await axios.post(POST_URL, data, { timeout: 5000 });
     } catch (error) {
         console.error('Error posting data:', error?.response?.message);
     }
@@ -171,7 +173,12 @@ async function processData(device, token) {
             const prev = previousData[device];
             if (!isDataDuplicate(prev, data)) {
                 previousData[device] = data;
-                await postData(data);
+                const startTime = performance.now();
+                var res = await postData(data);
+                const endTime = performance.now();
+                const timeTaken = (endTime - startTime) / 1000; // sec
+                console.log(`Thời gian xử lý (từ FE): ${timeTaken} s`);
+                console.log(data);
             } else {
                 console.log(`Duplicate data for device ${device}, not sending.`);
             }
@@ -216,7 +223,7 @@ async function initialize() {
     while (true) {
         try {
             // Mỗi vòng lặp ta auth 1 lần (hoặc có thể cache token)
-            const token = await authenticate();
+            // const token = await authenticate();
 
             // Gọi xử lý tất cả devices (đã limit concurrency)
             await runDevices(token);

@@ -525,7 +525,6 @@ class ApiController extends AdminController
                         $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
                         $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
                         if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity)) {   
-                            $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
                             $running_infos = InfoCongDoan::where('machine_id', $tracking->machine_id)->where('status', 1)->get();
                             if(count($running_infos) > 0){
                                 foreach ($running_infos as $info) {
@@ -563,18 +562,19 @@ class ApiController extends AdminController
                                     'error_counter' => $request['Error_Counter'],
                                 ]);
                             }
+                            $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
                         } else {
                             $info_lo_sx->update([
                                 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $tracking->so_ra,
                                 'sl_ng_sx' => isset($request['Error_Counter']) ? ($request['Error_Counter'] * $tracking->so_ra) : $info_lo_sx->sl_ng_sx,
                                 'status' => 1
                             ]);
-                            $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra);
                             $tracking->update([
                                 'pre_counter' => $request['Pre_Counter'],
                                 'error_counter' => $request['Error_Counter'],
                                 'set_counter' => $request['Set_Counter']
                             ]);
+                            $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra);
                         }
                     } else {
                         $tracking->update([

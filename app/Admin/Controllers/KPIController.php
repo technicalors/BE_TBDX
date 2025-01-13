@@ -62,28 +62,27 @@ class KPIController extends AdminController
 
     public function kpiTonKhoNVL(Request $request)
     {
-        $results = WarehouseMLTLog::has('material')
-            ->selectRaw("
-                so_kg_nhap,
-                material_id,
-                MAX(tg_nhap) as latest_tg_nhap,
-                DATEDIFF(NOW(), MAX(tg_nhap)) AS days_since_latest
-            ")
-            ->whereNull('tg_xuat')
-            ->orderBy('tg_nhap')
+        $ids = WarehouseMLTLog::has('material')
+            ->selectRaw("id, material_id, MAX(tg_nhap) as latest_tg_nhap")
             ->groupBy('material_id')
+            ->pluck('id')->toArray();
+        $results = WarehouseMLTLog::with('material')->whereIn('id', $ids)->select('*')->selectRaw("
+                DATEDIFF(NOW(), tg_nhap) AS days_since_latest
+            ")
+            ->orderBy('tg_nhap', 'desc')
             ->get()
-            ->groupBy(function ($item) {
+            ->mapToGroups(function ($item) {
+                $item->so_kg_cuoi = $item->material->so_kg ?? 0;
                 if ($item->days_since_latest >= 0 && $item->days_since_latest <= 90) {
-                    return '1 Quý';
+                    return ['1 Quý' => $item];
                 } else if ($item->days_since_latest >= 91 && $item->days_since_latest <= 180) {
-                    return '2 Quý';
+                    return ['2 Quý' => $item];
                 } else if ($item->days_since_latest >= 181 && $item->days_since_latest <= 270) {
-                    return '3 Quý';
+                    return ['3 Quý' => $item];
                 } else if ($item->days_since_latest >= 271 && $item->days_since_latest <= 365) {
-                    return '4 Quý';
+                    return ['4 Quý' => $item];
                 } else if ($item->days_since_latest > 365) {
-                    return '> 1 Năm';
+                    return ['> 1 Năm' => $item];
                 }
             })->sortKeys();
         // return $results;
@@ -97,7 +96,7 @@ class KPIController extends AdminController
 
         // Gán dữ liệu từ kết quả truy vấn
         foreach ($results as $key => $row) {
-            $quarters[$key] = $row->sum('so_kg_nhap');
+            $quarters[$key] = $row->sum('so_kg_cuoi');
         }
         $data['categories'] = array_keys($quarters);
         $data['inventory'] = array_values($quarters);

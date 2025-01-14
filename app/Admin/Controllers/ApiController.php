@@ -8384,7 +8384,7 @@ class ApiController extends AdminController
             $record->nguoi_nhap = $record->user->name ?? "";
             $record->nguoi_xuat = $export[0]->user->name ?? "";
             $record->sl_ton = $record->sl_nhap - $record->sl_xuat;
-            $record->so_ngay_ton = $record->sl_ton ? $this->datediff($record->created_at, date('Y-m-d H:i:s')) : "";
+            $record->so_ngay_ton = $record->sl_ton ? $this->datediff(date('Y-m-d H:i:s'), $record->created_at) : "";
         }
         return $this->success(['data' => $records, 'totalPage' => $totalPage]);
     }
@@ -8415,7 +8415,7 @@ class ApiController extends AdminController
             $obj->kich_thuoc = $record->order->kich_thuoc ?? "";
             $sl_da_xuat = $export->sum('so_luong') ?? 0;
             $obj->sl_ton = $record->so_luong - $sl_da_xuat;
-            $obj->so_ngay_ton = $obj->sl_ton ? $this->datediff($record->created_at, date('Y-m-d H:i:s')) : "";
+            $obj->so_ngay_ton = $obj->sl_ton ? $this->datediff(date('Y-m-d H:i:s'), $record->created_at) : "";
             $obj->ngay_nhap = $record->created_at ? date('d/m/Y', strtotime($record->created_at)) : '';
             $obj->gio_nhap = $record->created_at ? date('H:i', strtotime($record->created_at)) : '';
             $obj->sl_nhap = $record->so_luong ?? 0;

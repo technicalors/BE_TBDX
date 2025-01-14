@@ -43,7 +43,7 @@ class WarehouseFGLog extends Model
 
     public function lo_sx_pallet()
     {
-        return $this->belongsTo(LSXPallet::class, 'lo_sx', 'lo_sx');
+        return $this->belongsTo(LSXPallet::class, ['lo_sx', 'pallet_id'], ['lo_sx', 'pallet_id']);
     }
 
     public function order()

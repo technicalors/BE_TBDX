@@ -8384,7 +8384,7 @@ class ApiController extends AdminController
             $record->nguoi_nhap = $record->user->name ?? "";
             $record->nguoi_xuat = $export[0]->user->name ?? "";
             $record->sl_ton = $record->sl_nhap - $record->sl_xuat;
-            $record->so_ngay_ton = $record->sl_ton ? $this->datediff(date('Y-m-d H:i:s'), $record->created_at) : "";
+            $record->so_ngay_ton = $record->sl_ton ? $this->datediff($record->created_at, now()) : "11";
         }
         return $this->success(['data' => $records, 'totalPage' => $totalPage]);
     }

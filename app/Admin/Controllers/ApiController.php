@@ -8390,9 +8390,14 @@ class ApiController extends AdminController
     }
 
     function datediff($date1, $date2) {
-        $d1 = new DateTime($date1);
-        $d2 = new DateTime($date2);
-        return $d1->diff($d2)->days;
+        $d1 = Carbon::parse($date1);
+        $d2 = Carbon::parse($date2);
+        // Nếu hai thời điểm nằm trong cùng ngày lịch
+        if ($d1->isSameDay($d2)) {
+            return 0;
+        }
+        // Nếu khác ngày, trả về số ngày chênh lệch
+        return $d1->diffInDays($d2);
     }
 
     public function exportWarehouseFGLog(Request $request)

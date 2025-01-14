@@ -8345,13 +8345,13 @@ class ApiController extends AdminController
                 if (isset($input['sl_ton_max'])) {
                     $q->where('remain_quantity', '<=', $input['sl_ton_max']);
                 }
-                if (isset($input['so_ngay_ton_min'])) {
-                    $q->whereRaw('DATEDIFF(NOW(), created_at) >= ?', [$input['so_ngay_ton_min']]);
-                }
-                if (isset($input['so_ngay_ton_max'])) {
-                    $q->whereRaw('DATEDIFF(NOW(), created_at) <= ?', [$input['so_ngay_ton_max']]);
-                }
             });
+            if (isset($input['so_ngay_ton_min'])) {
+                $query->whereRaw('DATEDIFF(NOW(), created_at) >= ?', [$input['so_ngay_ton_min']]);
+            }
+            if (isset($input['so_ngay_ton_max'])) {
+                $query->whereRaw('DATEDIFF(NOW(), created_at) <= ?', [$input['so_ngay_ton_max']]);
+            }
         }
         return $query;
     }

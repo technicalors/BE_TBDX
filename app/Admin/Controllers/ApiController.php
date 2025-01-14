@@ -8384,7 +8384,7 @@ class ApiController extends AdminController
             $record->nguoi_nhap = $record->user->name ?? "";
             $record->nguoi_xuat = $export[0]->user->name ?? "";
             $record->sl_ton = $record->sl_nhap - $record->sl_xuat;
-            $record->so_ngay_ton = $record->sl_ton ? $this->datediff($record->created_at, now()) : "11";
+            $record->so_ngay_ton = $record->sl_ton ? $this->datediff($record->created_at, now()) : "";
         }
         return $this->success(['data' => $records, 'totalPage' => $totalPage]);
     }
@@ -8392,6 +8392,7 @@ class ApiController extends AdminController
     function datediff($date1, $date2) {
         $d1 = Carbon::parse($date1);
         $d2 = Carbon::parse($date2);
+        Log::info($d1->format('Y-m-d H:i:s'), $d2->format('Y-m-d H:i:s'));
         // Nếu hai thời điểm nằm trong cùng ngày lịch
         if ($d1->isSameDay($d2)) {
             return 0;

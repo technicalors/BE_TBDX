@@ -8392,7 +8392,7 @@ class ApiController extends AdminController
     function datediff($date1, $date2) {
         $d1 = Carbon::parse($date1);
         $d2 = Carbon::parse($date2);
-        Log::info($d1->format('Y-m-d H:i:s'), $d2->format('Y-m-d H:i:s'));
+        Log::info([$d1->format('Y-m-d H:i:s'), $d2->format('Y-m-d H:i:s')]);
         // Nếu hai thời điểm nằm trong cùng ngày lịch
         if ($d1->isSameDay($d2)) {
             return 0;

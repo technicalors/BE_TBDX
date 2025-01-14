@@ -8338,7 +8338,7 @@ class ApiController extends AdminController
         }
         if (isset($input['sl_ton_min']) || isset($input['sl_ton_max']) || isset($input['so_ngay_ton_min']) || isset($input['so_ngay_ton_max'])) {
             $query->whereHas('lo_sx_pallet', function ($q) use ($input) {
-                $q->where('remain_quantity', '>', 0)->whereColumn('remain_quantity', '!=', 'so_luong');
+                $q->where('remain_quantity', '>', 0);
                 if (isset($input['sl_ton_min'])) {
                     $q->where('remain_quantity', '>=', $input['sl_ton_min']);
                 }

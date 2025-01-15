@@ -3731,6 +3731,10 @@ class ApiMobileController extends AdminController
             $update = $plan->update($input);
             $lo_sx_log = LSXLog::where('lo_sx', $plan->lo_sx)->update(['thu_tu_uu_tien' => $input['thu_tu_uu_tien']]);
             $plan->infoCongDoan()->update([
+                'ngay_sx' => $plan->ngay_sx,
+                'dinh_muc' => $plan->sl_kh,
+                'thu_tu_uu_tien' => $plan->thu_tu_uu_tien,
+                'so_ra' => $plan->order->so_ra,
                 'so_dao' => isset($plan->order->so_ra) ? ceil($plan->sl_kh * ($formula->he_so ?? 1) / $plan->order->so_ra) : ($plan->order->so_dao ?? 0),
             ]);
             DB::commit();

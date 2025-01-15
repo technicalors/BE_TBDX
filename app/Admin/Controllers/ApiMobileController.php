@@ -3670,7 +3670,7 @@ class ApiMobileController extends AdminController
     public function updateProductPlan(Request $request)
     {
         $input = $request->all();
-        $plan = ProductionPlan::find($input['id']);
+        $plan = ProductionPlan::with('order')->find($input['id']);
         $list = ProductionPlan::with('order')->orderBy('thu_tu_uu_tien')->orderBy('created_at', 'DESC')->where('machine_id', $plan->machine_id)->whereDate('ngay_sx', $plan->ngay_sx)->get();
         $current = $plan->thu_tu_uu_tien;
         $target = (int)$input['thu_tu_uu_tien'];

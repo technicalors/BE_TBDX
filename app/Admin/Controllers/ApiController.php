@@ -4232,7 +4232,7 @@ class ApiController extends AdminController
                 $sum_sl = 0;
                 $sl_can_xuat = $fg_export->so_luong - $so_luong_da_xuat;
                 foreach ($lsx_pallets as $lsx_pallet) {
-                    if ($sum_sl < $sl_can_xuat && $lsx_pallet->locator_fg_map) {
+                    if ($sum_sl < $sl_can_xuat && $lsx_pallet->remain_quantity > 0) {
                         if (in_array($lsx_pallet->lo_sx, $lsx_array)) {
                             continue;
                         }

@@ -4241,7 +4241,7 @@ class ApiController extends AdminController
                         $lsx_array[] = $lsx_pallet->lo_sx;
                         $khach_hang = $lsx_pallet->customer_id ?? "";
                         $data[$lsx_pallet->pallet_id]['pallet_id'] = $lsx_pallet->pallet_id;
-                        $data[$lsx_pallet->pallet_id]['locator_id'] = $lsx_pallet->warehouseFGLog->locator_id ?? "";
+                        $data[$lsx_pallet->pallet_id]['locator_id'] = $lsx_pallet->warehouseFGLog[0]->locator_id ?? "";
                         $data[$lsx_pallet->pallet_id]['so_luong'] = $lsx_pallet->pallet->so_luong ?? 0;
                         $data[$lsx_pallet->pallet_id]['thoi_gian_xuat'] = date('d/m/Y H:i:s', strtotime($fg_export->ngay_xuat));
                         $data[$lsx_pallet->pallet_id]['khach_hang'] = $khach_hang;

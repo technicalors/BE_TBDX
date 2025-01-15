@@ -4226,7 +4226,9 @@ class ApiController extends AdminController
         $test = [];
         if (count($fg_exports) > 0) {
             foreach ($fg_exports as $key => $fg_export) {
-                $lsx_pallets = $fg_export->lsxpallets;
+                $lsx_pallets = LSXPallet::with(['warehouseFGLog' => function ($logQuery) {
+                    $logQuery->where('type', 1);
+                }])->where('order_id', $fg_export->order_id)->get();
                 $so_luong_da_xuat = $fg_export->warehouse_fg_log->sum('so_luong');
                 // $test[] = [$fg_export->id, $lsx_pallets, $so_luong_da_xuat];
                 $sum_sl = 0;
@@ -4239,7 +4241,7 @@ class ApiController extends AdminController
                         $lsx_array[] = $lsx_pallet->lo_sx;
                         $khach_hang = $lsx_pallet->customer_id ?? "";
                         $data[$lsx_pallet->pallet_id]['pallet_id'] = $lsx_pallet->pallet_id;
-                        $data[$lsx_pallet->pallet_id]['locator_id'] = $lsx_pallet->locator_fg_map->locator_id;
+                        $data[$lsx_pallet->pallet_id]['locator_id'] = $lsx_pallet->warehouseFGLog->locator_id ?? "";
                         $data[$lsx_pallet->pallet_id]['so_luong'] = $lsx_pallet->pallet->so_luong ?? 0;
                         $data[$lsx_pallet->pallet_id]['thoi_gian_xuat'] = date('d/m/Y H:i:s', strtotime($fg_export->ngay_xuat));
                         $data[$lsx_pallet->pallet_id]['khach_hang'] = $khach_hang;

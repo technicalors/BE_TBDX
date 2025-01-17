@@ -13,7 +13,7 @@ class Pallet extends Model
     protected $casts = ["id" => "string"];
     public function losxpallet()
     {
-        return $this->hasMany(LSXPallet::class, "pallet_id");
+        return $this->hasMany(LSXPallet::class, "pallet_id")->orderBy('mdh')->orderBy('mql');
     }
     public function locator_fg_map(){
         return $this->hasOne(LocatorFGMap::class, 'pallet_id', 'id');

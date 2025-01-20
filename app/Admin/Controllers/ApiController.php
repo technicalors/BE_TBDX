@@ -8339,8 +8339,8 @@ class ApiController extends AdminController
             }
         }
         if (isset($input['sl_ton_min']) || isset($input['sl_ton_max']) || isset($input['so_ngay_ton_min']) || isset($input['so_ngay_ton_max'])) {
+            $query->doesntHave('exportRecord');
             $query->whereHas('lo_sx_pallet', function ($q) use ($input) {
-                $q->where('remain_quantity', '>', 0);
                 if (isset($input['sl_ton_min'])) {
                     $q->where('remain_quantity', '>=', $input['sl_ton_min']);
                 }
@@ -8359,12 +8359,9 @@ class ApiController extends AdminController
     }
     public function warehouseFGLog(Request $request)
     {
-        $input = $request->all();
-        $page = $request->page - 1;
-        $pageSize = $request->pageSize;
         $query = $this->customQueryWarehouseFGLog($request);
         $totalPage = $query->count();
-        $records = $query->offset(($page - 1) * $pageSize)->limit($pageSize)->get();
+        $records = $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize)->get();
         foreach ($records as $key => $record) {
             $export = $record->exportRecord;
             $record->khu_vuc = $record->locator_id ? "Khu " . ((int)substr($record->locator_id, 1, 2) ?? "") : "";

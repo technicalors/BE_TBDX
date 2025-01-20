@@ -8310,7 +8310,7 @@ class ApiController extends AdminController
         if (isset($input['lo_sx'])) {
             $query->where('lo_sx', 'like', $input['lo_sx'] . "%");
         }
-        if (empty($input['khach_hang']) || empty($input['mdh']) || empty($input['mql']) || empty($input['kich_thuoc']) || empty($input['length']) || empty($input['width']) || empty($input['height'])) {
+        if (!empty($input['khach_hang']) || !empty($input['mdh']) || !empty($input['mql']) || !empty($input['kich_thuoc']) || !empty($input['length']) || !empty($input['width']) || !empty($input['height'])) {
             $order_query = Order::withTrashed();
             if (isset($input['khach_hang'])) {
                 $order_query->where('short_name', $input['khach_hang']);

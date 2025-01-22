@@ -8103,6 +8103,7 @@ class ApiController extends AdminController
         $ids = WarehouseMLTLog::has('material')
             ->selectRaw("id, material_id, MAX(tg_nhap) as latest_tg_nhap")
             ->groupBy('material_id')
+            ->get()
             ->pluck('id')->toArray();
         $query = WarehouseMLTLog::whereIn('id', $ids)->orderBy('tg_nhap', 'DESC');
         if (isset($input['loai_giay']) || isset($input['kho_giay']) || isset($input['dinh_luong']) || isset($input['ma_cuon_ncc']) || isset($input['ma_vat_tu']) || isset($input['so_kg']) || isset($input['so_cuon'])) {
@@ -8142,12 +8143,6 @@ class ApiController extends AdminController
         $query->offset($page * $pageSize)->limit($pageSize ?? 20);
         $records = $query->get();
         foreach ($records as $key => $record) {
-            // if ($record->tg_xuat) {
-            //     $nextImportLog = WarehouseMLTLog::where('tg_nhap', '>=', $record->tg_xuat)->where('material_id', $record->material_id)->orderBy('tg_nhap')->first();
-            // } else {
-            //     $nextImportLog = null;
-            // }
-            // $so_con_lai = $nextImportLog->so_kg_nhap ?? 0;
             $record->ten_ncc = ($record->material && $record->material->supplier) ? $record->material->supplier->name : '';
             $record->loai_giay = $record->material->loai_giay ?? '';
             $record->fsc = ($record->material && $record->material->fsc) ? 'X' : '';
@@ -8297,7 +8292,7 @@ class ApiController extends AdminController
     function customQueryWarehouseFGLog($request)
     {
         $input = $request->all();
-        $query = WarehouseFGLog::where('type', 1)->with(['user', 'exportRecord.user'])->orderBy('created_at');
+        $query = WarehouseFGLog::where('type', 1)->orderBy('created_at');
         if (isset($input['start_date']) && isset($input['end_date'])) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));
         }
@@ -8361,7 +8356,7 @@ class ApiController extends AdminController
     {
         $query = $this->customQueryWarehouseFGLog($request);
         $totalPage = $query->count();
-        $records = $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize)->get();
+        $records = $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize)->with(['user', 'exportRecord.user'])->get();
         foreach ($records as $key => $record) {
             $export = $record->exportRecord;
             $record->khu_vuc = $record->locator_id ? "Khu " . ((int)substr($record->locator_id, 1, 2) ?? "") : "";
@@ -8398,7 +8393,7 @@ class ApiController extends AdminController
     {
         $input = $request->all();
         $query = $this->customQueryWarehouseFGLog($request);
-        $records = $query->get();
+        $records = $query->with(['user', 'exportRecord.user'])->get();
         $data = [];
         foreach ($records as $key => $record) {
             $export = $record->exportRecord;

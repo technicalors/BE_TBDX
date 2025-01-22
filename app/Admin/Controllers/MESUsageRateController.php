@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use App\Traits\API;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use stdClass;
 
@@ -139,6 +140,7 @@ class MESUsageRateController extends AdminController
         $this->calculateKhuonBe($date);
         Tracking::whereIn('machine_id', ['CH02', 'CH03'])->update(['status' => 0]);
         CustomUser::query()->update(['login_times_in_day'=>0, 'last_use_at'=>null, 'usage_time_in_day'=>0]);
+        DB::table('personal_access_tokens')->truncate();
         return 'done';
     }
 

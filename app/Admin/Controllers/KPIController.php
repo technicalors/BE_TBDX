@@ -222,7 +222,7 @@ class KPIController extends AdminController
         $lot = InfoCongDoan::whereIn('machine_id', $machineXaLot)->get()->pluck('lo_sx')->unique()->toArray();
         
         // return $export;
-        $inventories = WareHouseLog::select('so_luong', 'lo_sx')
+        $inventories = WarehouseFGLog::select('so_luong', 'lo_sx')
             ->selectRaw("
                 CASE
                     WHEN lo_sx IN ('" . implode("','", $thung) . "') THEN 'Thùng'

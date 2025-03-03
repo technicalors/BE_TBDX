@@ -517,7 +517,7 @@ class ApiController extends AdminController
         //Kiểm tra tracking. Nếu tracking có chạy thì tiếp tục ngược lại thì không
         if ($tracking->is_running != 0) {
             try {
-                DB::beginTransaction();
+                // DB::beginTransaction();
                 //Tìm kiếm lô đang chạy
                 if ($tracking->lo_sx) {
                     $info_lo_sx = InfoCongDoan::where('lo_sx', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->where('status', 1)->first();
@@ -617,9 +617,9 @@ class ApiController extends AdminController
                         ]);
                     }
                 }
-                DB::commit();
+                // DB::commit();
             } catch (\Throwable $th) {
-                DB::rollBack();
+                // DB::rollBack();
                 throw $th;
             }
         }   
@@ -4228,7 +4228,10 @@ class ApiController extends AdminController
             foreach ($fg_exports as $key => $fg_export) {
                 $lsx_pallets = LSXPallet::with(['warehouseFGLog' => function ($logQuery) {
                     $logQuery->where('type', 1);
-                }])->where('order_id', $fg_export->order_id)->get();
+                }])
+                ->where('remain_quantity', '>', 0)
+                ->where('order_id', $fg_export->order_id)
+                ->get();
                 $so_luong_da_xuat = $fg_export->warehouse_fg_log->sum('so_luong');
                 // $test[] = [$fg_export->id, $lsx_pallets, $so_luong_da_xuat];
                 $sum_sl = 0;
@@ -4310,11 +4313,10 @@ class ApiController extends AdminController
                 } else {
                     WarehouseFGLog::create($inp);
                 }
-                $import = LSXPallet::where('lo_sx', $lo['lo_sx'])->first();
-                if ($import) {
-                    $remain = ($import->remain_quantity - $lo['so_luong']) > 0 ? ($import->remain_quantity - $lo['so_luong']) : 0;
-                    $pallet_quantity += $remain;
-                    $import->update(['remain_quantity' => $remain]);
+                if ($lsx_pallet) {
+                    $remain = ($lsx_pallet->remain_quantity - $lo['so_luong']);
+                    $pallet_quantity += $remain > 0 ? $remain : 0;
+                    $lsx_pallet->update(['remain_quantity' => $remain > 0 ? $remain : 0]);
                 }
             }
             if (!$pallet_quantity) {

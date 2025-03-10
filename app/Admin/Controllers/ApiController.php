@@ -8184,7 +8184,7 @@ class ApiController extends AdminController
             $obj->fsc = $record->material->fsc ? 'X' : '';
             $obj->kho_giay = $record->material->kho_giay ?? "";
             $obj->dinh_luong = $record->material->dinh_luong ?? "";
-            $obj->ma_cuon_ncc = $record->warehouse_mlt_import->ma_cuon_ncc ?? "";
+            $obj->ma_cuon_ncc = $record->material->ma_cuon_ncc ?? "";
             $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
             $obj->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
             $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";

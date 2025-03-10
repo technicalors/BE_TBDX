@@ -16,7 +16,7 @@ class LogRequest
     {
         
         $response = $next($request);
-        if(!auth()->user()){
+        if(!auth()->user() || $request->getMethod() === 'GET'){
             return $response;
         }
         $payload = $request->all();

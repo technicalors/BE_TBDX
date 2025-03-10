@@ -5099,8 +5099,10 @@ class ApiUIController extends AdminController
 
     public function endOldInfoCongDoan()
     {
-        $infos = InfoCongDoan::whereDate('ngay_sx', '!=', now())->where('status', 0)->update(['status' => 2]);
-        $this->updateInfoCongDoanPriority();
+        $infos = InfoCongDoan::whereNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')->get();
+        foreach ($infos as $key => $info) {
+            $info->update(['thoi_gian_bat_dau'=>$info->thoi_gian_ket_thuc]);
+        }
         return 'ok';
     }
     public function wtf()

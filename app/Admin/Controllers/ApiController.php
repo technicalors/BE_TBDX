@@ -8102,11 +8102,15 @@ class ApiController extends AdminController
     function customQueryWarehouseMLTLog($request)
     {
         $input = $request->all();
-        $ids = WarehouseMLTLog::has('material')
-            ->selectRaw("id, material_id, MAX(tg_nhap) as latest_tg_nhap")
-            ->groupBy('material_id')
-            ->pluck('id')->toArray();
-        $query = WarehouseMLTLog::whereIn('id', $ids)->orderBy('tg_nhap', 'DESC');
+        // $ids = WarehouseMLTLog::has('material')
+        //     ->selectRaw("id, material_id, MAX(tg_nhap) as latest_tg_nhap")
+        //     ->groupBy('material_id')
+        //     ->pluck('id')->toArray();
+        $query = WarehouseMLTLog::has('material')->whereIn('id', function ($query) {
+            $query->selectRaw('MAX(id)')
+                ->from('warehouse_mlt_logs')
+                ->groupBy('material_id');
+        })->orderBy('tg_nhap', 'DESC');
         if (isset($input['loai_giay']) || isset($input['kho_giay']) || isset($input['dinh_luong']) || isset($input['ma_cuon_ncc']) || isset($input['ma_vat_tu']) || isset($input['so_kg']) || isset($input['so_cuon'])) {
             $query->whereHas('material', function ($q) use ($input) {
                 if (isset($input['loai_giay'])) $q->where('loai_giay', 'like', "%" . $input['loai_giay'] . "%");

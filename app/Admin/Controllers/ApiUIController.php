@@ -682,25 +682,26 @@ class ApiUIController extends AdminController
         foreach ($lines as $line_id) {
             $line = Line::find($line_id);
             $machine_ids = Machine::where('line_id', $line_id)->where('is_iot', 1)->pluck('id')->toArray();
-            $info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->where(function ($q) {
-                $q->whereDate('ngay_sx', date('Y-m-d'))->orWhereDate('thoi_gian_bat_dau', date('Y-m-d'));
-            });
-            $infos = $info_plan_query->get();
-            $sl_hien_tai = $infos->sum('sl_dau_ra_hang_loat');
+            
+            
             $ke_hoach_ca = 0;
             switch ((string)$line_id) {
                 case '30':
-                    $infos_has_priority = InfoCongDoan::whereIn('id', InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray())
-                    ->whereIn('status', [0, 1])
-                    ->whereDate('ngay_sx', '<=', date('Y-m-d'))
-                    ->get();
-                    $ke_hoach_ca = $infos_has_priority->sum('dinh_muc');
+                    $song_info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids);
+                    $infos = $song_info_plan_query->get();
+                    $datetime = date('Y-m-d 07:00:00');
+                    $ke_hoach_ca = (clone $song_info_plan_query)->whereDate('ngay_sx', $datetime)->sum('dinh_muc');
+                    $sl_hien_tai = (clone $song_info_plan_query)->where('thoi_gian_bat_dau', '>=', $datetime)->sum('sl_dau_ra_hang_loat');
                     // $sl_muc_tieu = (int)(($ke_hoach_ca / 8) * (int)((strtotime(date('Y-m-d H:i:s')) - strtotime(date('Y-m-d 07:30:00'))) / 3600));
                     $sl_muc_tieu = $ke_hoach_ca;
-                    $sl_hien_tai = $infos_has_priority->sum('sl_dau_ra_hang_loat');
                     break;
                 case '31':
                 case '32':
+                    $info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->where(function ($q) {
+                        $q->whereDate('ngay_sx', date('Y-m-d'))->orWhereDate('thoi_gian_bat_dau', date('Y-m-d'));
+                    });
+                    $infos = $info_plan_query->get();
+                    $sl_hien_tai = $infos->sum('sl_dau_ra_hang_loat');
                     $ke_hoach_ca = $infos->sum('dinh_muc');
                     $sl_muc_tieu = $ke_hoach_ca;
                 default:

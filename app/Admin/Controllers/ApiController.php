@@ -8109,6 +8109,7 @@ class ApiController extends AdminController
         $query = WarehouseMLTLog::has('material')->whereIn('id', function ($query) {
             $query->selectRaw('MAX(id)')
                 ->from('warehouse_mlt_logs')
+                ->whereNotNull('tg_xuat')
                 ->groupBy('material_id');
         })->orderBy('tg_nhap', 'DESC');
         if (isset($input['loai_giay']) || isset($input['kho_giay']) || isset($input['dinh_luong']) || isset($input['ma_cuon_ncc']) || isset($input['ma_vat_tu']) || isset($input['so_kg']) || isset($input['so_cuon'])) {

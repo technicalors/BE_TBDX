@@ -690,9 +690,11 @@ class ApiUIController extends AdminController
             $ke_hoach_ca = 0;
             switch ((string)$line_id) {
                 case '30':
-                    $ke_hoach_ca = $infos->sum('dinh_muc');
+                    $infos_has_priority = InfoCongDoan::whereIn('id', InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray())->get();
+                    $ke_hoach_ca = $infos_has_priority->sum('dinh_muc');
                     // $sl_muc_tieu = (int)(($ke_hoach_ca / 8) * (int)((strtotime(date('Y-m-d H:i:s')) - strtotime(date('Y-m-d 07:30:00'))) / 3600));
                     $sl_muc_tieu = $ke_hoach_ca;
+                    $sl_hien_tai = $infos_has_priority->sum('sl_dau_ra_hang_loat');
                     break;
                 case '31':
                 case '32':

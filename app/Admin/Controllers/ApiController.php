@@ -452,6 +452,7 @@ class ApiController extends AdminController
                 'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
                 'status' => 2,
                 'nhan_vien_sx' => $request->user()->id ?? null,
+                'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
                 'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
             ]);
             $info->infoCongDoanPriority()->delete();
@@ -471,6 +472,7 @@ class ApiController extends AdminController
                 'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
                 'status' => 2,
                 'nhan_vien_sx' => $request->user()->id ?? null,
+                'thoi_gian_bat_dau' => date('Y-m-d H:i:s'),
                 'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
             ]);
             $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();

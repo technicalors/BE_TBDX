@@ -2830,12 +2830,13 @@ class ApiController extends AdminController
             $query->where('lo_sx', $request->lo_sx);
         }
         if (isset($request->end_date) && isset($request->start_date)) {
-            $start = date('Y-m-d', strtotime($request->start_date));
-            $end = date('Y-m-d', strtotime($request->end_date));
+            $start = Carbon::parse($request->start_date)->setTimezone('Asia/Ho_Chi_Minh')->startOfDay()->setTime(7, 0, 0);
+            $end = Carbon::parse($request->end_date)->setTimezone('Asia/Ho_Chi_Minh')->endOfDay()->addHours(6);
         } else {
-            $start = date('Y-m-d');
-            $end = date('Y-m-d');
+            $start = Carbon::now()->startOfDay()->setTime(7, 0, 0);
+            $end = Carbon::now()->endOfDay()->addHours(6);
         }
+        // return [$start, $end];
         // $machine_iot = Machine::where('is_iot', 1)->whereIn('id', $request->machine)->pluck('id')->toArray();
         // $query->whereRaw("
         //     CASE 
@@ -2843,7 +2844,8 @@ class ApiController extends AdminController
         //         ELSE DATE(created_at) BETWEEN ? AND ?
         //     END
         // ", [$start, $end, $start, $end]);
-        $query->whereDate('thoi_gian_bat_dau', '>=', $start)->whereDate('thoi_gian_bat_dau', '<=', $end);
+        $query->where('thoi_gian_bat_dau', '>=', $start)->where('thoi_gian_bat_dau', '<=', $end);
+        // return $query;
         $query->whereHas('order', function ($order_query) use ($request) {
             if (isset($request->customer_id)) {
                 $order_query->where('short_name', 'like', "$request->customer_id%");
@@ -2872,7 +2874,7 @@ class ApiController extends AdminController
     {
         // return $request->all();
         $query = $this->queryProduceHistory($request);
-        // return $query->get();
+        // return $query;
         $totalPage = $query->count();
         $page = $request->page - 1;
         $pageSize = $request->pageSize;

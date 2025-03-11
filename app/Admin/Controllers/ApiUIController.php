@@ -688,7 +688,6 @@ class ApiUIController extends AdminController
             switch ((string)$line_id) {
                 case '30':
                     $song_info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids);
-                    $infos = $song_info_plan_query->get();
                     $ke_hoach_ca = (clone $song_info_plan_query)->whereDate('ngay_sx', date('Y-m-d'))->sum('dinh_muc');
                     $sl_hien_tai = (clone $song_info_plan_query)->where('thoi_gian_bat_dau', '>=', date('Y-m-d 07:00:00'))->sum('sl_dau_ra_hang_loat');
                     // $sl_muc_tieu = (int)(($ke_hoach_ca / 8) * (int)((strtotime(date('Y-m-d H:i:s')) - strtotime(date('Y-m-d 07:30:00'))) / 3600));

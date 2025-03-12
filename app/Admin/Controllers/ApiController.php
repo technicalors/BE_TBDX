@@ -8113,9 +8113,8 @@ class ApiController extends AdminController
         //     ->groupBy('material_id')
         //     ->pluck('id')->toArray();
         $query = WarehouseMLTLog::has('material')->whereIn('id', function ($query) {
-            $query->selectRaw('MAX(id)')
+            $query->selectRaw('MIN(id)')
                 ->from('warehouse_mlt_logs')
-                ->whereNotNull('tg_xuat')
                 ->groupBy('material_id');
         })->orderBy('tg_nhap', 'DESC');
         if (isset($input['loai_giay']) || isset($input['kho_giay']) || isset($input['dinh_luong']) || isset($input['ma_cuon_ncc']) || isset($input['ma_vat_tu']) || isset($input['so_kg']) || isset($input['so_cuon'])) {
@@ -8155,6 +8154,27 @@ class ApiController extends AdminController
         $query->offset($page * $pageSize)->limit($pageSize ?? 20);
         $records = $query->get();
         foreach ($records as $key => $record) {
+            $so_kg_dau = $record->so_kg_nhap;
+            $so_kg_cuoi = 0;
+            $tg_xuat = null;
+            //Lấy bản ghi nhập mới nhất của NVL
+            $lastImportLog = WarehouseMLTLog::where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
+            if(!$lastImportLog->tg_xuat){
+                //Nếu bản ghi nhập mới nhất chưa có xuất thì tìm bản ghi xuất mới nhất
+                $lastExportLog = WarehouseMLTLog::whereNotNull('tg_xuat')->where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
+                if($lastExportLog){
+                    //Nếu có bản ghi xuất lấy số lượng nhập cuối cùng là của bản ghi có nhập xuất mới nhất
+                    $so_kg_dau = $lastExportLog->so_kg_nhap;
+                    $tg_xuat = $lastExportLog->tg_xuat;
+                }
+                //Nếu ko có bản ghi xuất mới nhất thì số kg đầu giữ nguyên, số kg cuối = số kg nhập
+                $so_kg_cuoi = $lastImportLog->so_kg_nhap;
+            }else{
+                $record->so_kg_nhap = $lastImportLog->so_kg_nhap;
+                $so_kg_cuoi = $lastImportLog->so_kg_nhap;
+                $so_kg_dau = $lastImportLog->so_kg_nhap;
+                $tg_xuat = $lastImportLog->tg_xuat;
+            }
             $record->ten_ncc = ($record->material && $record->material->supplier) ? $record->material->supplier->name : '';
             $record->loai_giay = $record->material->loai_giay ?? '';
             $record->fsc = ($record->material && $record->material->fsc) ? 'X' : '';
@@ -8164,10 +8184,11 @@ class ApiController extends AdminController
             $record->ma_vat_tu = $record->material->ma_vat_tu ?? '';
             $record->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $record->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
-            $record->so_kg_dau = $record->material->so_kg_dau ?? "0";
-            $record->so_kg_cuoi = $record->material->so_kg ?? 0;
-            $record->so_kg_xuat = $record->so_kg_nhap -  $record->so_kg_cuoi;
-            $record->tg_xuat = $record->tg_xuat ? date('d/m/Y', strtotime($record->tg_xuat)) : '';
+            $record->so_kg_nhap = $record->material->so_kg_dau ?? "0";
+            $record->so_kg_dau = $so_kg_dau;
+            $record->so_kg_cuoi = $so_kg_cuoi;
+            $record->so_kg_xuat = $record->so_kg_dau - $record->so_kg_cuoi;
+            $record->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
             $record->so_cuon = ($record->material && $record->material->so_kg == $record->material->so_kg_dau) ? 1 : 0;
             $record->khu_vuc = str_contains($record->locator_id, 'C') ? ('Khu' . (int)str_replace('C', '', $record->locator_id)) : "";
             $record->locator_id = $record->locator_id;

@@ -8129,7 +8129,7 @@ class ApiController extends AdminController
             });
         }
         if (isset($input['material_id'])) {
-            $query->where('warehouse_mlt_logs.material_id', 'like', $input['material_id']);
+            $query->where('warehouse_mlt_logs.material_id', 'like', "%".$input['material_id']."%");
         }
         // Lấy tg_xuat của bản ghi xuất mới nhất cho mỗi material_id
         $query->leftJoinSub(

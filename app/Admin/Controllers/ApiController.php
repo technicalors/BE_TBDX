@@ -8165,7 +8165,7 @@ class ApiController extends AdminController
         $records = $query->get();
         // return $records;
         foreach ($records as $key => $record) {
-            $so_kg_dau = $record->so_kg_nhap;
+            $so_kg_nhap = $record->so_kg_nhap;
             $so_kg_cuoi = 0;
             $tg_xuat = $record->latest_tg_xuat;
             //Lấy bản ghi nhập mới nhất của NVL
@@ -8175,7 +8175,7 @@ class ApiController extends AdminController
                 $lastExportLog = WarehouseMLTLog::whereNotNull('tg_xuat')->where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
                 if($lastExportLog){
                     //Nếu có bản ghi xuất lấy số lượng nhập cuối cùng là của bản ghi có nhập xuất mới nhất
-                    $so_kg_dau = $lastExportLog->so_kg_nhap;
+                    $so_kg_nhap = $lastExportLog->so_kg_nhap;
                     $tg_xuat = $lastExportLog->tg_xuat;
                 }
                 //Nếu ko có bản ghi xuất mới nhất thì số kg đầu giữ nguyên, số kg cuối = số kg nhập
@@ -8183,7 +8183,7 @@ class ApiController extends AdminController
             }else{
                 $record->so_kg_nhap = $lastImportLog->so_kg_nhap;
                 $so_kg_cuoi = $lastImportLog->so_kg_nhap;
-                $so_kg_dau = $lastImportLog->so_kg_nhap;
+                $so_kg_nhap = $lastImportLog->so_kg_nhap;
             }
             $record->ten_ncc = ($record->material && $record->material->supplier) ? $record->material->supplier->name : '';
             $record->loai_giay = $record->material->loai_giay ?? '';
@@ -8194,12 +8194,12 @@ class ApiController extends AdminController
             $record->ma_vat_tu = $record->material->ma_vat_tu ?? '';
             $record->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
             $record->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
-            $record->so_kg_nhap = $record->material->so_kg_dau ?? "0";
-            $record->so_kg_dau = $so_kg_dau;
+            $record->so_kg_nhap = $so_kg_nhap;
+            $record->so_kg_dau = $record->material->so_kg_dau ?? "0";
             $record->so_kg_cuoi = $so_kg_cuoi;
-            $record->so_kg_xuat = $record->so_kg_dau - $record->so_kg_cuoi;
+            $record->so_kg_xuat = $record->so_kg_nhap - $record->so_kg_cuoi;
             $record->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
-            $record->so_cuon = ($record->material && $record->material->so_kg == $record->material->so_kg_dau) ? 1 : 0;
+            $record->so_cuon = $so_kg_cuoi > 0 ? 1 : 0;
             $record->khu_vuc = str_contains($record->locator_id, 'C') ? ('Khu' . (int)str_replace('C', '', $record->locator_id)) : "";
             $record->locator_id = $record->locator_id;
         }
@@ -8212,7 +8212,7 @@ class ApiController extends AdminController
         $records = $query->get();
         $data = [];
         foreach ($records as $key => $record) {
-            $so_kg_dau = $record->so_kg_nhap;
+            $so_kg_nhap = $record->so_kg_nhap;
             $so_kg_cuoi = 0;
             $tg_xuat = $record->latest_tg_xuat;
             //Lấy bản ghi nhập mới nhất của NVL
@@ -8222,7 +8222,7 @@ class ApiController extends AdminController
                 $lastExportLog = WarehouseMLTLog::whereNotNull('tg_xuat')->where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
                 if($lastExportLog){
                     //Nếu có bản ghi xuất lấy số lượng nhập cuối cùng là của bản ghi có nhập xuất mới nhất
-                    $so_kg_dau = $lastExportLog->so_kg_nhap;
+                    $so_kg_nhap = $lastExportLog->so_kg_nhap;
                     $tg_xuat = $lastExportLog->tg_xuat;
                 }
                 //Nếu ko có bản ghi xuất mới nhất thì số kg đầu giữ nguyên, số kg cuối = số kg nhập
@@ -8230,7 +8230,7 @@ class ApiController extends AdminController
             }else{
                 $record->so_kg_nhap = $lastImportLog->so_kg_nhap;
                 $so_kg_cuoi = $lastImportLog->so_kg_nhap;
-                $so_kg_dau = $lastImportLog->so_kg_nhap;
+                $so_kg_nhap = $lastImportLog->so_kg_nhap;
             }
             $obj = new stdClass;
             $obj->stt = $key + 1;
@@ -8244,12 +8244,12 @@ class ApiController extends AdminController
             $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
             $obj->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
             $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
-            $obj->so_kg_nhap = $record->material->so_kg_dau ?? "0";
-            $obj->so_kg_dau = $so_kg_dau;
-            $obj->so_kg_xuat = $so_kg_dau - $so_kg_cuoi;
+            $obj->so_kg_dau = $record->material->so_kg_dau ?? "0";
+            $obj->so_kg_nhap = $so_kg_nhap;
+            $obj->so_kg_xuat = $so_kg_nhap - $so_kg_cuoi;
             $obj->so_kg_cuoi = $so_kg_cuoi;
             $obj->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
-            $obj->so_cuon = $record->material->so_kg == $record->material->so_kg_dau ? 1 : 0;
+            $obj->so_cuon = $so_kg_cuoi > 0 ? 1 : 0;
             $obj->khu_vuc = $record->locatorMlt->warehouse_mlt->name ?? "";
             $obj->locator_id = $record->locator_id;
             $data[] = (array)$obj;
@@ -8292,8 +8292,8 @@ class ApiController extends AdminController
             'Mã vật tư',
             'Số phiếu nhập kho',
             'Ngày nhập',
-            'SL nhập (kg)',
             'SL đầu (kg)',
+            'SL nhập (kg)',
             'SL xuất (kg)',
             'SL cuối (kg)',
             'Ngày xuất',

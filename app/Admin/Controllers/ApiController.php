@@ -4706,7 +4706,15 @@ class ApiController extends AdminController
             foreach ($input as $reimport_data) {
                 $material = Material::find($reimport_data['material_id']);
                 if ($material) {
-                    $log = WarehouseMLTLog::where('material_id', $reimport_data['material_id'])->whereNull('tg_xuat')->first();
+                    $log = WarehouseMLTLog::where('material_id', $reimport_data['material_id'])->orderBy('tg_nhap', 'DESC')->first();
+                    if($log){
+                        if(!$log->tg_xuat){
+                            return $this->failure($material, 'NVL chưa được xuất');
+                        }
+                        if($reimport_data['so_kg'] > $log->so_kg_nhap){
+                            return $this->failure($material, 'Số ký nhập lại không được lớn hơn số ký đầu');
+                        }
+                    }
                     $reimport_data['so_m_toi'] = floor(($reimport_data['so_kg'] / ($material->kho_giay / 100)) / ($material->dinh_luong / 1000));
                     $material->update($reimport_data);
                     unset($reimport_data['so_m_toi']);
@@ -4735,7 +4743,8 @@ class ApiController extends AdminController
         } catch (\Throwable $th) {
             DB::rollBack();
             ErrorLog::saveError($request, $th);
-            return $this->failure('', 'Đã xảy ra lỗi');
+            return $this->failure($material, 'Đã xảy ra lỗi');
+            // throw $th;
         }
 
         return $this->success([], 'Nhập lại thành công');
@@ -8199,7 +8208,7 @@ class ApiController extends AdminController
             $record->so_kg_cuoi = $so_kg_cuoi;
             $record->so_kg_xuat = $record->so_kg_nhap - $record->so_kg_cuoi;
             $record->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
-            $record->so_cuon = $so_kg_cuoi > 0 ? 1 : 0;
+            $record->so_cuon = $record->tg_xuat ? 0 : 1;
             $record->khu_vuc = str_contains($record->locator_id, 'C') ? ('Khu' . (int)str_replace('C', '', $record->locator_id)) : "";
             $record->locator_id = $record->locator_id;
         }
@@ -8249,7 +8258,7 @@ class ApiController extends AdminController
             $obj->so_kg_xuat = $so_kg_nhap - $so_kg_cuoi;
             $obj->so_kg_cuoi = $so_kg_cuoi;
             $obj->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
-            $obj->so_cuon = $so_kg_cuoi > 0 ? 1 : 0;
+            $obj->so_cuon = $obj->tg_xuat ? 0 : 1;
             $obj->khu_vuc = $record->locatorMlt->warehouse_mlt->name ?? "";
             $obj->locator_id = $record->locator_id;
             $data[] = (array)$obj;

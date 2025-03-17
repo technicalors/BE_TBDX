@@ -34,4 +34,8 @@ class WarehouseMLTLog extends Model
     {
         return $this->belongsTo(CustomUser::class, 'exporter_id', 'id');
     }
+    public function exporter()
+    {
+        return $this->belongsTo(CustomUser::class, 'exporter_id', 'id');
+    }
 }

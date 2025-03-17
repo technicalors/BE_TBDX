@@ -8208,7 +8208,7 @@ class ApiController extends AdminController
             $record->so_kg_cuoi = $so_kg_cuoi;
             $record->so_kg_xuat = $record->so_kg_nhap - $record->so_kg_cuoi;
             $record->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
-            $record->so_cuon = $record->tg_xuat ? 0 : 1;
+            $record->so_cuon = $record->tg_xuat ? "0" : "1";
             $record->khu_vuc = str_contains($record->locator_id, 'C') ? ('Khu' . (int)str_replace('C', '', $record->locator_id)) : "";
             $record->locator_id = $record->locator_id;
         }
@@ -8258,7 +8258,7 @@ class ApiController extends AdminController
             $obj->so_kg_xuat = $so_kg_nhap - $so_kg_cuoi;
             $obj->so_kg_cuoi = $so_kg_cuoi;
             $obj->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
-            $obj->so_cuon = $obj->tg_xuat ? 0 : 1;
+            $obj->so_cuon = $obj->tg_xuat ? "0" : "1";
             $obj->khu_vuc = $record->locatorMlt->warehouse_mlt->name ?? "";
             $obj->locator_id = $record->locator_id;
             $data[] = (array)$obj;

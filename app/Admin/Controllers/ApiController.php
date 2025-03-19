@@ -2055,29 +2055,27 @@ class ApiController extends AdminController
     {
         $input = $request->all();
         $customOrder = [0, 2, 1];
-        $query = InfoCongDoan::select(
-            '*',
-            'sl_dau_ra_hang_loat as san_luong',
-            DB::raw('sl_dau_ra_hang_loat - sl_ng_sx - sl_ng_qc as sl_ok'),
-            DB::raw('sl_ng_sx + sl_ng_qc as sl_ng'),
-        )
-            ->where(function ($query) {
+        $query = InfoCongDoan::where(function ($query) {
                 $query->where('status', '>=', 2)
                     ->orWhere('status', 1)->where('sl_dau_ra_hang_loat', '>=', 100);
             })
-            ->whereIn('machine_id', $request->machine ?? []);
+            ->where('machine_id', $request->machine_id);
         if (isset($input['start_date']) && isset($input['end_date'])) {
-            $query->whereBetween('updated_at', [date('Y-m-d 00:00:00', strtotime($input['start_date'])), date('Y-m-d 23:59:59', strtotime($input['end_date']))]);
+            if ($request->machine_id === 'So01') {
+                $query->whereDate('thoi_gian_ket_thuc', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('thoi_gian_ket_thuc', '<=', date('Y-m-d', strtotime($input['end_date'])));
+            } else {
+                $query->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($input['end_date'])));
+            }
         } else {
-            $query->whereBetween('updated_at', [date('Y-m-d 00:00:00'), date('Y-m-d 23:59:59')]);
+            $query->whereDate('ngay_sx', date('Y-m-d'));
         }
-        $info_cong_doan = $query->orderByRaw("FIELD(phan_dinh, " . implode(',', $customOrder) . ")")->get();
+        $info_cong_doan = $query->get();
         $data = [
-            'sl_kiem_tra' => $info_cong_doan->sum('sl_dau_ra_hang_loat'),
-            'sl_ok' => $info_cong_doan->sum('sl_dau_ra_hang_loat') - $info_cong_doan->sum('sl_ng_qc') - $info_cong_doan->sum('sl_qc_sx'),
-            'sl_ng' => $info_cong_doan->sum('sl_ng_qc') + $info_cong_doan->sum('sl_qc_sx'),
+            'sl_kiem_tra' => count($info_cong_doan),
+            'sl_ok' => $info_cong_doan->where('phan_dinh', 1)->count(),
+            'sl_ng' => $info_cong_doan->where('phan_dinh', 2)->count() + $info_cong_doan->where('sl_ng_qc', '>', 0)->count(),
         ];
-        $data['ti_le'] = $data['sl_kiem_tra'] > 0 ? number_format($data['sl_ok'] / $data['sl_kiem_tra'] * 100)  . '%' : '0%';
+        $data['ti_le'] = $data['sl_kiem_tra'] > 0 ? number_format($data['sl_ng'] / $data['sl_kiem_tra'] * 100)  . '%' : '0%';
         return $this->success([$data]);
     }
 

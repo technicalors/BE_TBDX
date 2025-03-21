@@ -154,7 +154,7 @@ class KPIController extends AdminController
             //     ->groupBy('machine_id', 'log_date')
             //     ->get();
             $total_run_time = 24 * 3600 * count($machines);
-            if($date->format('Y-m-d') == date('Y-m-d')) {
+            if ($date->format('Y-m-d') == date('Y-m-d')) {
                 $total_run_time = (time() - strtotime(date('Y-m-d 00:00:00'))) * count($machines);
             }
             $machine_logs = MachineLog::selectRaw("
@@ -179,7 +179,7 @@ class KPIController extends AdminController
             $thoi_gian_chay = max(0, $thoi_gian_lam_viec - $thoi_gian_dung); // Đảm bảo không âm
             // Tính tỷ lệ vận hành
             $ty_le_van_hanh = floor(($thoi_gian_chay / max(1, $thoi_gian_lam_viec)) * 100); // Tính phần trăm
-            if($ty_le_van_hanh < 80) {
+            if ($ty_le_van_hanh < 80) {
                 $ty_le_van_hanh = rand(85, 95);
             }
             $data['categories'][] = $label;
@@ -216,33 +216,53 @@ class KPIController extends AdminController
     {
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 0);
-        $machineDan = Machine::where('line_id', 32)->get()->pluck('id')->toArray();
-        $machineXaLot = Machine::where('line_id', 33)->get()->pluck('id')->toArray();
-        $thung = InfoCongDoan::whereIn('machine_id', $machineDan)->get()->pluck('lo_sx')->unique()->toArray();
-        $lot = InfoCongDoan::whereIn('machine_id', $machineXaLot)->get()->pluck('lo_sx')->unique()->toArray();
-        
-        // return $export;
-        $inventories = WarehouseFGLog::select('so_luong', 'lo_sx')
-            ->selectRaw("
-                CASE
-                    WHEN lo_sx IN ('" . implode("','", $thung) . "') THEN 'Thùng'
-                    WHEN lo_sx IN ('" . implode("','", $lot) . "') THEN 'Lot'
-                END AS lotType,
+
+        // Truy vấn ID của các máy theo line_id
+        $machineIds = Machine::whereIn('line_id', [32, 33])
+            ->get(['id', 'line_id'])
+            ->groupBy('line_id');
+
+        $machineDan = isset($machineIds[32]) ? $machineIds[32]->pluck('id')->toArray() : [];
+        $machineXaLot = isset($machineIds[33]) ? $machineIds[33]->pluck('id')->toArray() : [];
+
+        // Truy vấn chỉ lấy lo_sx một lần duy nhất
+        $loSXData = InfoCongDoan::whereIn('machine_id', array_merge($machineDan, $machineXaLot))
+            ->distinct()
+            ->get(['machine_id', 'lo_sx'])
+            ->groupBy(function ($item) use ($machineDan, $machineXaLot) {
+                return in_array($item->machine_id, $machineDan) ? 'Thùng' : 'Lot';
+            });
+
+        $thung = isset($loSXData['Thùng']) ? $loSXData['Thùng']->pluck('lo_sx')->toArray() : [];
+        $lot = isset($loSXData['Lot']) ? $loSXData['Lot']->pluck('lo_sx')->toArray() : [];
+
+        // Truy vấn WarehouseFGLog một lần duy nhất
+        $inventories = WarehouseFGLog::select([
+            'so_luong',
+            'lo_sx',
+            DB::raw("DATEDIFF(NOW(), created_at) AS days_since_latest"),
+            DB::raw("
                 CASE
                     WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) <= 30 THEN '1 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 31 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 60 THEN '2 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 61 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 90 THEN '3 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 91 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 120 THEN '4 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) BETWEEN 31 AND 60 THEN '2 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) BETWEEN 61 AND 90 THEN '3 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) BETWEEN 91 AND 120 THEN '4 tháng'
                     ELSE '> 5 tháng'
-                END AS time_range,
-                DATEDIFF(NOW(), created_at) AS days_since_latest
+                END AS time_range
             ")
+        ])
             ->where('type', 1)
-            ->doesntHave('exportRecord')
-            ->get() // Loại bỏ các `lo_sx` đã xuất
-            ->groupBy(['lotType', function ($item) {
-                return $item->time_range;
-            }], preserveKeys: true);
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('export_records')
+                    ->whereColumn('export_records.warehouse_fg_log_id', 'warehouse_fg_logs.id');
+            }) // Loại bỏ các `lo_sx` đã xuất
+            ->get()
+            ->groupBy(function ($item) use ($thung, $lot) {
+                return in_array($item->lo_sx, $thung) ? 'Thùng' : (in_array($item->lo_sx, $lot) ? 'Lot' : null);
+            });
+
+        // Định nghĩa các tháng
         $months = [
             '1 tháng' => 0,
             '2 tháng' => 0,
@@ -250,26 +270,23 @@ class KPIController extends AdminController
             '4 tháng' => 0,
             '> 5 tháng' => 0,
         ];
+
+        // Xử lý dữ liệu series
         $series = [];
         foreach ($inventories as $lotType => $inventory) {
-            if (!$lotType) {
-                continue;
-            }
-            $seriesItem = [];
-            $seriesItem['name'] = $lotType;
-            $seriesItem['data'] = [];
+            if (!$lotType) continue;
+
+            $seriesItem = ['name' => $lotType, 'data' => []];
             foreach ($months as $key => $month) {
-                if (isset($inventory[$key])) {
-                    $seriesItem['data'][] = (int)$inventory[$key]->sum('so_luong');
-                } else {
-                    $seriesItem['data'][] = 0;
-                }
+                $seriesItem['data'][] = isset($inventory[$key]) ? (int)$inventory[$key]->sum('so_luong') : 0;
             }
             $series[] = $seriesItem;
         }
-        $data['categories'] = array_keys($months);
-        $data['series'] = $series;
-        return $this->success($data);
+
+        return $this->success([
+            'categories' => array_keys($months),
+            'series' => $series
+        ]);
     }
 
     public function kpiTyLeLoiMay(Request $request)

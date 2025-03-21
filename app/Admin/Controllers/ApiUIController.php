@@ -5155,44 +5155,16 @@ class ApiUIController extends AdminController
         return 'ok';
     }
 
-    public function deleteDuplicate()
+    public function deleteDuplicateWarehouseFGLog()
     {
-        // $infos = InfoCongDoan::with('plan')->whereIn('machine_id', ['Pr06', 'So01', 'Pr15', 'Pr12', 'Pr11', 'Pr16', 'Da06', 'Da05', 'CH02', 'CH03'])->whereNull('order_id')->chunk(1000, function ($infos) {
-        {
-            $group_ids = [];
-            $duplicates = DB::table('warehouse_fg_logs')
-                ->select(
-                    'locator_id',
-                    'pallet_id',
-                    'lo_sx',
-                    'so_luong',
-                    'type',
-                    'created_by',
-                    'order_id',
-                    'delivery_note_id',
-                    'created_at',
-                    'nhap_du',
-                    DB::raw('COUNT(*) AS duplicate_count'),
-                    DB::raw("GROUP_CONCAT(id ORDER BY id SEPARATOR ',') AS grouped_ids")
-                )
-                ->groupBy(
-                    'locator_id',
-                    'pallet_id',
-                    'lo_sx',
-                    'so_luong',
-                    'type',
-                    'created_by',
-                    'order_id',
-                    'delivery_note_id',
-                    'nhap_du'
-                )
-                ->having('duplicate_count', '>', 1)
-                ->get()->each(function ($item) use (&$group_ids) {
-                    $group_ids[] = array_slice(explode(',', $item->grouped_ids), 1);
-                });
-            WarehouseFGLog::whereIn('id', array_merge(...$group_ids))->delete();
-            return 'ok';
-        }
+        $group_ids = [];
+        $duplicateRecords = DB::table('warehouse_fg_logs')
+        ->select('pallet_id', 'lo_sx', 'so_luong', 'order_id', DB::raw('COUNT(*) as total_records'))
+        ->where('type', 2)
+        ->groupBy('pallet_id', 'lo_sx', 'so_luong', 'order_id')
+        ->havingRaw('COUNT(*) > 1')
+        ->get();
+        return $duplicateRecords;
         return 'ok';
     }
 

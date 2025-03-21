@@ -744,7 +744,7 @@ Route::group([
     $router->get('getTableSystemUsageRate', [MESUsageRateController::class, 'getTableSystemUsageRate']);
     $router->get('cronjob', [MESUsageRateController::class, 'cronjob']);
     $router->get('retriveData', [MESUsageRateController::class, 'retriveData']);
-    $router->get('deleteDuplicate', [ApiUIController::class, 'deleteDuplicate']);
+    $router->get('deleteDuplicate', [ApiUIController::class, 'deleteDuplicateWarehouseFGLog']);
     $router->post('capNhatTonKhoTPExcel', [ApiUIController::class, 'capNhatTonKhoTPExcel']);
     $router->get('reorderInfoCongDoan', [ApiController::class, 'reorderInfoCongDoan']);
 });

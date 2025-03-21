@@ -252,11 +252,7 @@ class KPIController extends AdminController
             ")
         ])
             ->where('type', 1)
-            ->whereNotExists(function ($query) {
-                $query->select(DB::raw(1))
-                    ->from('export_records')
-                    ->whereColumn('export_records.warehouse_fg_log_id', 'warehouse_fg_logs.id');
-            }) // Loại bỏ các `lo_sx` đã xuất
+            ->doesntHave('exportRecord') // Loại bỏ các `lo_sx` đã xuất
             ->get()
             ->groupBy(function ($item) use ($thung, $lot) {
                 return in_array($item->lo_sx, $thung) ? 'Thùng' : (in_array($item->lo_sx, $lot) ? 'Lot' : null);

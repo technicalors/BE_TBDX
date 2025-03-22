@@ -18,6 +18,7 @@ use App\Models\ProductionPlan;
 use App\Models\Vehicle;
 use App\Models\VOCRegister;
 use App\Models\VOCType;
+use App\Models\WareHouseFGKpiData;
 use App\Models\WarehouseFGLog;
 use App\Models\WareHouseLog;
 use App\Models\WarehouseMLTLog;
@@ -154,7 +155,7 @@ class KPIController extends AdminController
             //     ->groupBy('machine_id', 'log_date')
             //     ->get();
             $total_run_time = 24 * 3600 * count($machines);
-            if ($date->format('Y-m-d') == date('Y-m-d')) {
+            if($date->format('Y-m-d') == date('Y-m-d')) {
                 $total_run_time = (time() - strtotime(date('Y-m-d 00:00:00'))) * count($machines);
             }
             $machine_logs = MachineLog::selectRaw("
@@ -179,7 +180,7 @@ class KPIController extends AdminController
             $thoi_gian_chay = max(0, $thoi_gian_lam_viec - $thoi_gian_dung); // Đảm bảo không âm
             // Tính tỷ lệ vận hành
             $ty_le_van_hanh = floor(($thoi_gian_chay / max(1, $thoi_gian_lam_viec)) * 100); // Tính phần trăm
-            if ($ty_le_van_hanh < 80) {
+            if($ty_le_van_hanh < 80) {
                 $ty_le_van_hanh = rand(85, 95);
             }
             $data['categories'][] = $label;
@@ -212,53 +213,35 @@ class KPIController extends AdminController
         return $this->success($data);
     }
 
-    public function kpiTonKhoTP(Request $request)
-    {
+    public function updateKPIData(){
+        Log::info('Updating KPI Warehouse FG Data');
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 0);
-
-        // Truy vấn ID của các máy theo line_id
-        $machineIds = Machine::whereIn('line_id', [32, 33])
-            ->get(['id', 'line_id'])
-            ->groupBy('line_id');
-
-        $machineDan = isset($machineIds[32]) ? $machineIds[32]->pluck('id')->toArray() : [];
-        $machineXaLot = isset($machineIds[33]) ? $machineIds[33]->pluck('id')->toArray() : [];
-
-        // Truy vấn chỉ lấy lo_sx một lần duy nhất
-        $loSXData = InfoCongDoan::whereIn('machine_id', array_merge($machineDan, $machineXaLot))
-            ->distinct()
-            ->get(['machine_id', 'lo_sx'])
-            ->groupBy(function ($item) use ($machineDan, $machineXaLot) {
-                return in_array($item->machine_id, $machineDan) ? 'Thùng' : 'Lot';
-            });
-
-        $thung = isset($loSXData['Thùng']) ? $loSXData['Thùng']->pluck('lo_sx')->toArray() : [];
-        $lot = isset($loSXData['Lot']) ? $loSXData['Lot']->pluck('lo_sx')->toArray() : [];
-
-        // Truy vấn WarehouseFGLog một lần duy nhất
-        $inventories = WarehouseFGLog::select([
-            'so_luong',
-            'lo_sx',
-            DB::raw("DATEDIFF(NOW(), created_at) AS days_since_latest"),
-            DB::raw("
+        $machineDan = Machine::where('line_id', 32)->get()->pluck('id')->toArray();
+        $machineXaLot = Machine::where('line_id', 33)->get()->pluck('id')->toArray();
+        $thung = InfoCongDoan::whereIn('machine_id', $machineDan)->get()->pluck('lo_sx')->unique()->toArray();
+        $lot = InfoCongDoan::whereIn('machine_id', $machineXaLot)->get()->pluck('lo_sx')->unique()->toArray();
+        
+        // return $export;
+        $inventories = WarehouseFGLog::select('so_luong', 'lo_sx')
+            ->selectRaw("
                 CASE
                     WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) <= 30 THEN '1 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) BETWEEN 31 AND 60 THEN '2 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) BETWEEN 61 AND 90 THEN '3 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) BETWEEN 91 AND 120 THEN '4 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 31 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 60 THEN '2 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 61 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 90 THEN '3 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 91 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 120 THEN '4 tháng'
                     ELSE '> 5 tháng'
-                END AS time_range
+                END AS time_range,
+                DATEDIFF(NOW(), created_at) AS days_since_latest
             ")
-        ])
             ->where('type', 1)
-            ->doesntHave('exportRecord') // Loại bỏ các `lo_sx` đã xuất
-            ->get()
-            ->groupBy(function ($item) use ($thung, $lot) {
-                return in_array($item->lo_sx, $thung) ? 'Thùng' : (in_array($item->lo_sx, $lot) ? 'Lot' : null);
-            });
-
-        // Định nghĩa các tháng
+            ->doesntHave('exportRecord')
+            ->get() // Loại bỏ các `lo_sx` đã xuất
+            ->groupBy([function($item) use($thung){
+                return in_array($item->lo_sx, $thung) ? 'Thùng' : (in_array($item->lo_sx, $thung) ? 'Lót' : "");
+            }, function ($item) {
+                return $item->time_range;
+            }], preserveKeys: true);
         $months = [
             '1 tháng' => 0,
             '2 tháng' => 0,
@@ -266,23 +249,45 @@ class KPIController extends AdminController
             '4 tháng' => 0,
             '> 5 tháng' => 0,
         ];
-
-        // Xử lý dữ liệu series
         $series = [];
         foreach ($inventories as $lotType => $inventory) {
-            if (!$lotType) continue;
-
-            $seriesItem = ['name' => $lotType, 'data' => []];
+            if (!$lotType) {
+                continue;
+            }
+            $seriesItem = [];
+            $seriesItem['name'] = $lotType;
+            $seriesItem['data'] = [];
             foreach ($months as $key => $month) {
-                $seriesItem['data'][] = isset($inventory[$key]) ? (int)$inventory[$key]->sum('so_luong') : 0;
+                if (isset($inventory[$key])) {
+                    $seriesItem['data'][] = (int)$inventory[$key]->sum('so_luong');
+                } else {
+                    $seriesItem['data'][] = 0;
+                }
             }
             $series[] = $seriesItem;
         }
+        $data['categories'] = array_keys($months);
+        $data['series'] = $series;
+        Log::info('KPI Data Updated');
+        Log::info($data);
+        WareHouseFGKpiData::updateOrCreate(
+            ['id' => 1],
+            ['data' => $data]
+        );
+        return $data;
+    }
 
-        return $this->success([
-            'categories' => array_keys($months),
-            'series' => $series
-        ]);
+    public function kpiTonKhoTP(Request $request)
+    {
+        $kpiTonKho = WareHouseFGKpiData::find(1);
+        $data = [
+            'categories' => [], // Trục hoành (ngày)
+            'series' => [],  // Số lượng tất cả công đoạn
+        ];
+        if($kpiTonKho){
+            $data = $kpiTonKho->data;
+        }
+        return $this->success($data);
     }
 
     public function kpiTyLeLoiMay(Request $request)
@@ -341,5 +346,12 @@ class KPIController extends AdminController
             $data['ty_le_ng'][] = $ty_le;
         }
         return $this->success($data);
+    }
+
+    public function cronjob()
+    {
+        $date = Carbon::now();
+        $this->updateKPIData();
+        return 'done';
     }
 }

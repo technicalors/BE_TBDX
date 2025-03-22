@@ -747,4 +747,5 @@ Route::group([
     $router->get('deleteDuplicate', [ApiUIController::class, 'deleteDuplicateWarehouseFGLog']);
     $router->post('capNhatTonKhoTPExcel', [ApiUIController::class, 'capNhatTonKhoTPExcel']);
     $router->get('reorderInfoCongDoan', [ApiController::class, 'reorderInfoCongDoan']);
+    $router->get('kpi-cronjob', [KPIController::class, 'cronjob']);
 });

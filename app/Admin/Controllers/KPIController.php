@@ -237,8 +237,8 @@ class KPIController extends AdminController
             ->where('type', 1)
             ->doesntHave('exportRecord')
             ->get() // Loại bỏ các `lo_sx` đã xuất
-            ->groupBy([function($item) use($thung){
-                return in_array($item->lo_sx, $thung) ? 'Thùng' : (in_array($item->lo_sx, $thung) ? 'Lót' : "");
+            ->groupBy([function($item) use($thung, $lot){
+                return in_array($item->lo_sx, $thung) ? 'Thùng' : (in_array($item->lo_sx, $lot) ? 'Lót' : "");
             }, function ($item) {
                 return $item->time_range;
             }], preserveKeys: true);

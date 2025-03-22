@@ -4203,7 +4203,7 @@ class ApiController extends AdminController
         //     $delivery_query->where('id', $request->delivery_note_id);
         // }
         $delivery_query->whereHas('exporters', function ($q) use ($request) {
-            if ($request->user()->username !== 'admin') {
+            if ($request->user()->username !== 'admin' && $request->user()->username !== 'vodanh') {
                 $q->where('admin_user_id', $request->user()->id);
             }
         });
@@ -4297,14 +4297,13 @@ class ApiController extends AdminController
 
         try {
             DB::beginTransaction();
-            $pallet_quantity = 0;
             foreach ($input as $lo) {
                 $lsx_pallet = LSXPallet::where('pallet_id', $lo['pallet_id'])->where('lo_sx', $lo['lo_sx'])->first();
                 if ($lsx_pallet->remain_quantity < $lo['so_luong']) {
                     return $this->failure('', 'Số lượng còn lại của lô ' . $lo['lo_sx'] . ' không đủ');
                 }
                 $inp['created_by'] = $request->user()->id;
-                $inp['locator_id'] = $vi_tri;
+                $inp['locator_id'] = (count($lsx_pallet->warehouseFGLog) > 0 ? $lsx_pallet->warehouseFGLog[0]->locator_id : "") ?? $vi_tri;
                 $inp['so_luong'] = $lo['so_luong'];
                 $inp['lo_sx'] = $lo['lo_sx'];
                 $inp['pallet_id'] = $lo['pallet_id'];
@@ -4319,10 +4318,10 @@ class ApiController extends AdminController
                 }
                 if ($lsx_pallet) {
                     $remain = ($lsx_pallet->remain_quantity - $lo['so_luong']);
-                    $pallet_quantity += $remain > 0 ? $remain : 0;
                     $lsx_pallet->update(['remain_quantity' => $remain > 0 ? $remain : 0]);
                 }
             }
+            $pallet_quantity = LSXPallet::where('pallet_id', $input[0]['pallet_id'])->sum('remain_quantity');
             if (!$pallet_quantity) {
                 LocatorFGMap::where('pallet_id', $input[0]['pallet_id'] ?? null)->delete();
             }
@@ -4533,7 +4532,15 @@ class ApiController extends AdminController
             $inp['order_id'] = $input['order_id'];
             $inp['delivery_note_id'] = $input['delivery_note_id'] ?? null;
             WarehouseFGLog::create($inp);
-            LocatorFGMap::where('pallet_id', $input['pallet_id'])->delete();
+            $lsx_pallet = LSXPallet::where('pallet_id', $input['pallet_id'])->where('lo_sx', $input['lo_sx'])->first();
+            if ($lsx_pallet) {
+                $remain = ($lsx_pallet->remain_quantity - $input['sl_xuat']);
+                $lsx_pallet->update(['remain_quantity' => $remain > 0 ? $remain : 0]);
+            }
+            $pallet_quantity = LSXPallet::where('pallet_id', $input['pallet_id'])->sum('remain_quantity');
+            if (!$pallet_quantity) {
+                LocatorFGMap::where('pallet_id', $input['pallet_id'] ?? null)->delete();
+            }
             DB::commit();
             return $this->success([], 'Xuất kho thành công');
         } catch (\Throwable $e) {

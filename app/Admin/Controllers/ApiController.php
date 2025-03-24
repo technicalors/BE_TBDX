@@ -79,6 +79,7 @@ use App\Models\ShiftAssignment;
 use App\Models\Supplier;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use SebastianBergmann\CodeCoverage\Report\PHP;
 
 class ApiController extends AdminController
 {
@@ -1796,7 +1797,8 @@ class ApiController extends AdminController
         if (str_contains($test_criteria->nguyen_tac, '>')) {
             $dinh_muc = filter_var(explode('>', $test_criteria->nguyen_tac)[1], FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
             $test_criteria->min = 0;
-            $test_criteria->max = (float)$dinh_muc;
+            // $test_criteria->max = (float)$dinh_muc;
+            $test_criteria->max = PHP_INT_MAX;
         }
         return $test_criteria;
     }

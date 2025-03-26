@@ -1922,6 +1922,9 @@ class ApiController extends AdminController
         try {
             DB::beginTransaction();
             $info_cong_doan = InfoCongDoan::where('machine_id', $input['machine_id'])->where('lo_sx', $input['lo_sx'])->first();
+            if(!$info_cong_doan) {
+                return $this->failure('', 'Không tìm thấy lô sản xuất');
+            }
             $lsx_log = QCLog::where('machine_id', $input['machine_id'])->where('lo_sx', $input['lo_sx'])->first();
             if (!$lsx_log) {
                 $lsx_log = new QCLog();
@@ -1984,6 +1987,9 @@ class ApiController extends AdminController
                 if ($is_ng === 0 && $counter === 2) {
                     $phan_dinh = 1;
                 }
+            }
+            if(isset($input['data']['phan_dinh'])) {
+                $phan_dinh = $input['data']['phan_dinh'];
             }
             $log['phan_dinh'] = $phan_dinh;
             $lsx_log->info = $log;
@@ -2192,6 +2198,9 @@ class ApiController extends AdminController
                 $phan_dinh = 1;
                 break;
             }
+        }
+        if(isset($input['data']['phan_dinh'])) {
+            $phan_dinh = $input['data']['phan_dinh'];
         }
         $log['phan_dinh'] = $phan_dinh;
         try {

@@ -55,9 +55,11 @@ class LSXPalletController extends AdminController
         }
         if(isset($request->status)){
             if($request->status == 0){
-                $query->doesntHave('is_imported');
+                $query->where('remain_quantity', 0)->whereColumn('created_at', '=', 'updated_at');
             }else{
-                $query->has('is_imported');
+                $query->where(function($sub_query){
+                    $sub_query->where('remain_quantity', '>', 0)->orWhere('remain_quantity', 0)->whereColumn('created_at', '!=', 'updated_at');
+                });
             }
         }
         //search by order

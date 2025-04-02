@@ -54,11 +54,10 @@ class LSXPalletController extends AdminController
             });
         }
         if(isset($request->status)){
-            $loggedLoSX = WarehouseFGLog::pluck('pallet_id')->unique()->toArray();
             if($request->status == 0){
-                $query->whereNotIn('pallet_id', $loggedLoSX);
+                $query->doesntHave('warehouseFGLog');
             }else{
-                $query->whereIn('pallet_id', $loggedLoSX);
+                $query->has('warehouseFGLog');
             }
         }
         //search by order

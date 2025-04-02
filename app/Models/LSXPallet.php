@@ -31,4 +31,7 @@ class LSXPallet extends Model
     public function warehouseFGLog(){
         return $this->hasMany(WarehouseFGLog::class, ['lo_sx', 'pallet_id'], ['lo_sx', 'pallet_id']);
     }
+    public function is_imported(){
+        return $this->hasOne(WarehouseFGLog::class, 'lo_sx', 'lo_sx');
+    }
 }

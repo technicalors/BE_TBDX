@@ -748,5 +748,5 @@ Route::group([
     $router->post('capNhatTonKhoTPExcel', [ApiUIController::class, 'capNhatTonKhoTPExcel']);
     $router->get('reorderInfoCongDoan', [ApiController::class, 'reorderInfoCongDoan']);
     $router->get('kpi-cronjob', [KPIController::class, 'cronjob']);
-    $router->get('update-thoi-gian-bat-dau', [ApiController::class, 'updateThoiGianBatDau']);
+    $router->get('update-thoi-gian-bat-dau', [ApiUIController::class, 'updateThoiGianBatDau']);
 });

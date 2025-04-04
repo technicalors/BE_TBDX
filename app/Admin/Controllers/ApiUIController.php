@@ -5247,4 +5247,20 @@ class ApiUIController extends AdminController
         }
         return $array;
     }
+
+    public function updateThoiGianBatDau() {
+        $infos = InfoCongDoan::where('thoi_gian_bat_dau', null)->where('thoi_gian_ket_thuc', '!=', null)->get();
+        try {
+            DB::beginTransaction();
+            foreach ($infos as $key => $info) {
+                $info->update([
+                    'thoi_gian_bat_dau' => $info->thoi_gian_ket_thuc,
+                ]);
+            }
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            throw $th;
+        }
+    }
 }

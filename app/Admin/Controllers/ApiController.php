@@ -658,6 +658,7 @@ class ApiController extends AdminController
                 if ($next_batch) {
                     if (($request['Pre_Counter'] - $tracking->pre_counter)  >= $info_cong_doan_in->dinh_muc) {
                         $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'status' => 2,
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
                             'sl_dau_ra_hang_loat' => $info_cong_doan_in->dinh_muc
@@ -673,6 +674,7 @@ class ApiController extends AdminController
                         $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
                     } else {
                         $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'sl_dau_ra_hang_loat' => $request['Pre_Counter'] - $tracking->pre_counter,
                             'status' => 1
                         ]);
@@ -682,6 +684,7 @@ class ApiController extends AdminController
                 } else {
                     if ($request['Pre_Counter'] < $info_cong_doan_in->sl_dau_ra_hang_loat) {
                         $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
                             'status' => 2,
                         ]);
@@ -698,6 +701,7 @@ class ApiController extends AdminController
                         $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
                     } else {
                         $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'sl_dau_ra_hang_loat' => $request['Pre_Counter'] - $tracking->pre_counter,
                             'status' => 1
                         ]);
@@ -737,6 +741,7 @@ class ApiController extends AdminController
                 if ($next_batch) {
                     if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
                         $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'status' => 2,
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
                         ]);
@@ -749,6 +754,7 @@ class ApiController extends AdminController
                         $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
                     } else {
                         $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
                             'status' => 1
                         ]);
@@ -760,6 +766,7 @@ class ApiController extends AdminController
                 } else {
                     if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
                         $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
                             'status' => 2,
                         ]);
@@ -771,6 +778,7 @@ class ApiController extends AdminController
                         $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
                     } else {
                         $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
                             'status' => 1
                         ]);
@@ -807,6 +815,7 @@ class ApiController extends AdminController
             if ($next_batch) {
                 if (($request['Pre_Counter'] - $tracking->pre_counter)  >= $info_cong_doan_dan->dinh_muc) {
                     $info_cong_doan_dan->update([
+                        'thoi_gian_bat_dau' => $info_cong_doan_dan->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                         'status' => 2,
                         'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
                         'sl_dau_ra_hang_loat' => $info_cong_doan_dan->dinh_muc
@@ -822,6 +831,7 @@ class ApiController extends AdminController
                     $broadcast = ['info_cong_doan' => $info_cong_doan_dan, 'reload' => true];
                 } elseif ($request['Pre_Counter'] < $info_cong_doan_dan->sl_dau_ra_hang_loat) {
                     $info_cong_doan_dan->update([
+                        'thoi_gian_bat_dau' => $info_cong_doan_dan->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                         'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
                         'status' => 2,
                     ]);
@@ -837,6 +847,7 @@ class ApiController extends AdminController
                     $broadcast = ['info_cong_doan' => $info_cong_doan_dan, 'reload' => true];
                 } else {
                     $info_cong_doan_dan->update([
+                        'thoi_gian_bat_dau' => $info_cong_doan_dan->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                         'sl_dau_ra_hang_loat' => $request['Pre_Counter'] - $tracking->pre_counter,
                         'status' => 1
                     ]);
@@ -846,6 +857,7 @@ class ApiController extends AdminController
             } else {
                 if ($request['Pre_Counter'] < $info_cong_doan_dan->sl_dau_ra_hang_loat) {
                     $info_cong_doan_dan->update([
+                        'thoi_gian_bat_dau' => $info_cong_doan_dan->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                         'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
                         'status' => 2,
                     ]);
@@ -862,6 +874,7 @@ class ApiController extends AdminController
                     $broadcast = ['info_cong_doan' => $info_cong_doan_dan, 'reload' => true];
                 } else {
                     $info_cong_doan_dan->update([
+                        'thoi_gian_bat_dau' => $info_cong_doan_dan->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                         'sl_dau_ra_hang_loat' => $request['Pre_Counter'] - $tracking->pre_counter,
                         'status' => 1
                     ]);

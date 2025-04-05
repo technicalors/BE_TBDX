@@ -478,15 +478,24 @@ class ApiController extends AdminController
                 'thoi_gian_bat_dau' => $info->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                 'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
             ]);
-            $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
+            $tracking = Tracking::where('machine_id', $info->machine_id)->first();
             if ($tracking) {
-                $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
+                $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])
+                ->where('lo_sx', '!=', $info->lo_sx)
+                ->where('machine_id', $tracking->machine_id)
+                ->orderBy('updated_at', 'DESC')
+                ->orderBy('order_id')
+                ->first();
                 $tracking->update([
                     'lo_sx' => $next_batch->lo_sx ?? null,
                     'so_ra' => $next_batch->so_ra ?? 0,
                     'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien ?? 0,
                     'sl_kh' => $next_batch->dinh_muc ?? 0,
                 ]);
+                if($next_batch){
+                    $next_batch->update(['status'=>1]);
+                }
+                
             }
         }
 
@@ -4059,12 +4068,18 @@ class ApiController extends AdminController
     public function checkLosx(Request $request)
     {
         $input = $request->all();
-        $info = InfoCongDoan::with('tem', 'plan', 'lsxpallet', 'warehouseFGLog')->where('lo_sx', $input['lo_sx'])->orderBy('created_at', 'DESC')->first();
+        $info = InfoCongDoan::with('tem', 'plan', 'lsxpallet', 'warehouseFGLog', 'machine')->where('lo_sx', $input['lo_sx'])->orderBy('updated_at', 'DESC')->first();
         if (!$info) {
             return $this->failure([], 'Lô chưa được quét vào sản xuất');
         }
+        if($info->status <= 1){
+            return $this->failure([], 'Lô ' . $info->lo_sx . ' chưa sản xuất xong');
+        }
         if ($info->step !== 0) {
             return $this->failure([], 'Lô ' . $info->lo_sx . ' chưa sẵn sàng nhập kho');
+        }
+        if(!$info->machine || !($info->machine->line_id == '32' || $info->machine->line_id == '33')){
+            return $this->failure([], 'Công đoạn cuối không phải Dán hoặc Xả lót, chưa thể nhập kho');
         }
         $previousQCLog = QCLog::where('lo_sx', $request->lo_sx)->orderBy('updated_at', 'DESC')->first();
         if ($previousQCLog) {

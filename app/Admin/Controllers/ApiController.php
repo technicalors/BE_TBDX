@@ -2986,7 +2986,7 @@ class ApiController extends AdminController
             }
             $obj = new stdClass;
             $obj->stt = $key + 1;
-            $obj->ngay_sx = $info_cong_doan->created_at ? date('d/m/Y', strtotime($info_cong_doan->created_at)) : "";
+            $obj->ngay_sx = $info_cong_doan->thoi_gian_bat_dau ? date('d/m/Y', strtotime($info_cong_doan->thoi_gian_bat_dau)) : "";
             $obj->machine_id = $info_cong_doan->machine_id;
             $obj->khach_hang = $order->short_name ?? "";
             $obj->mdh = $order->mdh ?? "";

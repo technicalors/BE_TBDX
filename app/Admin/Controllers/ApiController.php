@@ -4068,7 +4068,7 @@ class ApiController extends AdminController
     public function checkLosx(Request $request)
     {
         $input = $request->all();
-        $info = InfoCongDoan::with('tem', 'plan', 'lsxpallet', 'warehouseFGLog', 'machine')->where('lo_sx', $input['lo_sx'])->orderBy('updated_at', 'DESC')->first();
+        $info = InfoCongDoan::with('tem', 'plan', 'lsxpallet', 'warehouseFGLog', 'machine')->where('lo_sx', $input['lo_sx'])->orderBy('created_at', 'DESC')->first();
         if (!$info) {
             return $this->failure([], 'Lô chưa được quét vào sản xuất');
         }
@@ -8191,6 +8191,8 @@ class ApiController extends AdminController
                 ->from('warehouse_mlt_logs')
                 ->groupBy('material_id');
         })->orderByraw('CHAR_LENGTH(material_id) DESC')->orderBy('material_id');
+        $query->whereDate('warehouse_mlt_logs.tg_nhap', '>=', '2025-01-01')
+            ->whereDate('warehouse_mlt_logs.tg_nhap', '<=', date('Y-m-d'));
         if (isset($input['loai_giay']) || isset($input['kho_giay']) || isset($input['dinh_luong']) || isset($input['ma_cuon_ncc']) || isset($input['ma_vat_tu']) || isset($input['so_kg']) || isset($input['so_cuon'])) {
             $query->whereHas('material', function ($q) use ($input) {
                 if (isset($input['loai_giay'])) $q->where('loai_giay', 'like', "%" . $input['loai_giay'] . "%");

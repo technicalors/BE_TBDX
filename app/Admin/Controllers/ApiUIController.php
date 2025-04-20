@@ -4112,6 +4112,7 @@ class ApiUIController extends AdminController
 
     public function importMaterial(Request $request)
     {
+        set_time_limit(0);
         $extension = pathinfo($_FILES['file']['name'], PATHINFO_EXTENSION);
         if ($extension == 'csv') {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Csv();
@@ -4126,7 +4127,7 @@ class ApiUIController extends AdminController
         $materials = [];
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 2
-            if ($key > 4) {
+            if ($key > 8) {
                 $ngay_nhap = explode('/', $row['J']);
                 $input = [];
                 $input['id'] = $row['B'];
@@ -4140,11 +4141,11 @@ class ApiUIController extends AdminController
                 $input['kho_giay'] = (float)$row['F'];
                 $input['dinh_luong'] = (float)$row['G'];
                 $input['ma_vat_tu'] = $input['loai_giay'] . '(' . $input['dinh_luong'] . ')' . $input['kho_giay']; //Loai giay + (dinh luong) + kho giay
-                $input['ma_cuon_ncc'] = $row['L'];
-                $input['so_kg'] = (float)str_replace(',', '', ($row['N'] ?? $row['I']));
-                $input['so_kg_dau'] = (float)str_replace(',', '', $row['I']);
-                $input['ngay_nhap'] = $row['J'];
-                $input['location_id'] = $row['O'];
+                $input['ma_cuon_ncc'] = $row['K'];
+                $input['so_kg'] = (float)str_replace(',', '', ($row['M'] ?? $row['H']));
+                $input['so_kg_dau'] = (float)str_replace(',', '', $row['H']);
+                $input['ngay_nhap'] = $row['I'];
+                $input['location_id'] = $row['N'];
                 if ($input['so_kg'] && $input['kho_giay'] && $input['dinh_luong']) {
                     $input['so_m_toi'] = floor(($input['so_kg'] / ($input['kho_giay'] / 100)) / ($input['dinh_luong'] / 1000));
                 }
@@ -4182,8 +4183,9 @@ class ApiUIController extends AdminController
                         'so_kg_nhap' => $input['so_kg'],
                     ]);
                 } else {
+                    $export_log = WarehouseMLTLog::where('material_id', $input['id'])->whereNotNull('tg_xuat')->orderBy('created_at', "DESC")->first();
                     WarehouseMLTLog::create([
-                        'tg_nhap' => $this->transformDate($input['ngay_nhap']),
+                        'tg_nhap' => $export_log->tg_xuat ?? $this->transformDate($input['ngay_nhap']),
                         'locator_id' => $input['location_id'],
                         'material_id' => $input['id'],
                         'so_kg_nhap' => $input['so_kg'],

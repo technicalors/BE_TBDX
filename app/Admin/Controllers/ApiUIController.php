@@ -4177,15 +4177,15 @@ class ApiUIController extends AdminController
                 Supplier::firstOrCreate(['id' => $input['loai_giay'], 'name' => $input['supplier']]);
                 $log = WarehouseMLTLog::where('material_id', $input['id'])->orderBy('created_at', "DESC")->first();
                 if ($log && !$log->tg_xuat) {
+                    $export_log = WarehouseMLTLog::where('material_id', $input['id'])->whereNotNull('tg_xuat')->orderBy('created_at', "DESC")->first();
                     $log->update([
-                        'tg_nhap' => $this->transformDate($input['ngay_nhap']),
+                        'tg_nhap' => $export_log->tg_xuat ?? $this->transformDate($input['ngay_nhap']),
                         'locator_id' => $input['location_id'],
                         'so_kg_nhap' => $input['so_kg'],
                     ]);
                 } else {
-                    $export_log = WarehouseMLTLog::where('material_id', $input['id'])->whereNotNull('tg_xuat')->orderBy('created_at', "DESC")->first();
                     WarehouseMLTLog::create([
-                        'tg_nhap' => $export_log->tg_xuat ?? $this->transformDate($input['ngay_nhap']),
+                        'tg_nhap' => $log->tg_xuat ?? $this->transformDate($input['ngay_nhap']),
                         'locator_id' => $input['location_id'],
                         'material_id' => $input['id'],
                         'so_kg_nhap' => $input['so_kg'],

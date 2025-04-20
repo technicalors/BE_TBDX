@@ -18,6 +18,7 @@ use App\Models\ProductionPlan;
 use App\Models\Vehicle;
 use App\Models\VOCRegister;
 use App\Models\VOCType;
+use App\Models\WareHouseFGKpiData;
 use App\Models\WarehouseFGLog;
 use App\Models\WareHouseLog;
 use App\Models\WarehouseMLTLog;
@@ -212,8 +213,8 @@ class KPIController extends AdminController
         return $this->success($data);
     }
 
-    public function kpiTonKhoTP(Request $request)
-    {
+    public function updateKPIData(){
+        Log::info('Updating KPI Warehouse FG Data');
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 0);
         $machineDan = Machine::where('line_id', 32)->get()->pluck('id')->toArray();
@@ -224,10 +225,6 @@ class KPIController extends AdminController
         // return $export;
         $inventories = WarehouseFGLog::select('so_luong', 'lo_sx')
             ->selectRaw("
-                CASE
-                    WHEN lo_sx IN ('" . implode("','", $thung) . "') THEN 'Thùng'
-                    WHEN lo_sx IN ('" . implode("','", $lot) . "') THEN 'Lot'
-                END AS lotType,
                 CASE
                     WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) <= 30 THEN '1 tháng'
                     WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 31 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 60 THEN '2 tháng'
@@ -240,7 +237,9 @@ class KPIController extends AdminController
             ->where('type', 1)
             ->doesntHave('exportRecord')
             ->get() // Loại bỏ các `lo_sx` đã xuất
-            ->groupBy(['lotType', function ($item) {
+            ->groupBy([function($item) use($thung, $lot){
+                return in_array($item->lo_sx, $thung) ? 'Thùng' : (in_array($item->lo_sx, $lot) ? 'Lót' : "");
+            }, function ($item) {
                 return $item->time_range;
             }], preserveKeys: true);
         $months = [
@@ -269,6 +268,25 @@ class KPIController extends AdminController
         }
         $data['categories'] = array_keys($months);
         $data['series'] = $series;
+        Log::info('KPI Data Updated');
+        Log::info($data);
+        WareHouseFGKpiData::updateOrCreate(
+            ['id' => 1],
+            ['data' => $data]
+        );
+        return $data;
+    }
+
+    public function kpiTonKhoTP(Request $request)
+    {
+        $kpiTonKho = WareHouseFGKpiData::find(1);
+        $data = [
+            'categories' => [], // Trục hoành (ngày)
+            'series' => [],  // Số lượng tất cả công đoạn
+        ];
+        if($kpiTonKho){
+            $data = $kpiTonKho->data;
+        }
         return $this->success($data);
     }
 
@@ -328,5 +346,12 @@ class KPIController extends AdminController
             $data['ty_le_ng'][] = $ty_le;
         }
         return $this->success($data);
+    }
+
+    public function cronjob()
+    {
+        $date = Carbon::now();
+        $this->updateKPIData();
+        return 'done';
     }
 }

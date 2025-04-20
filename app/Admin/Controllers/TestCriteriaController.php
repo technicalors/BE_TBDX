@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Traits\API;
 use App\Models\Line;
+use Exception;
 use Illuminate\Support\Facades\DB;
 
 class TestCriteriaController extends AdminController
@@ -352,7 +353,7 @@ class TestCriteriaController extends AdminController
                 ),
             ),
         ];
-        $header = ['Công đoạn', 'Mã lỗi', 'Tiêu chí', 'Hạng mục', 'Chỉ tiêu', 'Dung sai', 'Phân định', 'Tham chiếu TCKT công đoạn'];
+        $header = ['Công đoạn', 'Mã lỗi', 'Tiêu chí', 'Hạng mục', 'Chỉ tiêu', 'Tiêu chuẩn', 'Phân định', 'Tham chiếu TCKT công đoạn'];
         $table_key = [
             'A'=>'line_name',
             'B'=>'id',
@@ -488,35 +489,34 @@ class TestCriteriaController extends AdminController
             //Lấy dứ liệu từ dòng thứ 2
             if ($key > 2) {
                 $input = [];
-                if(!$row['B']){
-                    continue;
+                if(!$row['A'] || !$row['B'] || !$row['C'] || !$row['D']){
+                    throw new Exception('Thiếu thông tin hàng ' . $key, 1);
                 }
-                if(isset($line_arr[Str::slug($row['B'])])){
-                    $input['line_id'] = $line_arr[Str::slug($row['B'])];
+                if(isset($line_arr[Str::slug($row['A'])])){
+                    $input['line_id'] = $line_arr[Str::slug($row['A'])];
                 }
-                $input['id'] = $row['D'];
-                $input['name'] = $row['E'];
-                $input['tieu_chuan'] = $row['H'];
-                $input['nguyen_tac'] = $row['I'];
-                $input['phan_dinh'] = $row['F'];
-                $input['hang_muc'] = $row['C'] === 'Tính năng' ? 'tinh_nang' : 'ngoai_quan';
-                $validated = TestCriteria::validateUpdate($input);
-                if ($validated->fails()) {
-                    return $this->failure('', 'Lỗi dòng thứ '.($key).': '.$validated->errors()->first());
-                }
+                $input['id'] = $row['B'];
+                $input['name'] = $row['C'];
+                $input['hang_muc'] = $row['D'];
+                $input['chi_tieu'] = $row['E'];
+                $input['tieu_chuan'] = $row['F'];
+                $input['phan_dinh'] = $row['G'];
+                // $validated = TestCriteria::validateUpdate($input);
+                // if ($validated->fails()) {
+                //     return $this->failure('', 'Lỗi dòng thứ '.($key).': '.$validated->errors()->first());
+                // }
                 $data[] = $input;
             }
         }
         try {
             DB::beginTransaction();
-            TestCriteria::query()->where('id', 'not like', 'I%')->delete();
             foreach ($data as $key => $input) {
-                // $test_criteria = TestCriteria::where('line_id', $input['line_id'])->where('phan_loai', $input['phan_loai'])->where('name', $input['name'])->first();
-                // if($test_criteria) {
-                //     $test_criteria->update($input);
-                // }else{
+                $test_criteria = TestCriteria::find($input['id']);
+                if($test_criteria) {
+                    $test_criteria->update($input);
+                }else{
                     $test_criteria = TestCriteria::create($input);
-                // }
+                }
             }
             DB::commit();
         } catch (\Throwable $th) {

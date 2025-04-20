@@ -204,6 +204,13 @@ class OrderController extends AdminController
         if (isset($request->xuong_giao)) {
             $query->where('xuong_giao', $request->xuong_giao);
         }
+        if (isset($request->is_planned) && $request->is_planned != 0) {
+            if($request->is_planned == 1) {
+                $query->has('group_plan_order');
+            } else {
+                $query->doesntHave('group_plan_order');
+            }
+        }
         $count = $query->count();
         $totalPage = $count;
         $role_ids = $request->user()->roles()->pluck('id')->toArray();

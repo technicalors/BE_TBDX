@@ -563,6 +563,8 @@ Route::group([
     $router->patch('users/update', [App\Admin\Controllers\CustomAdminController::class, 'updateUsers']);
     $router->post('users/create', [App\Admin\Controllers\CustomAdminController::class, 'createUsers']);
     $router->post('users/delete', [App\Admin\Controllers\CustomAdminController::class, 'deleteUsers']);
+    $router->post('users/disable', [App\Admin\Controllers\CustomAdminController::class, 'disableUsers']);
+    $router->post('users/enable', [App\Admin\Controllers\CustomAdminController::class, 'enableUsers']);
     $router->get('users/export', [App\Admin\Controllers\CustomAdminController::class, 'exportUsers']);
     $router->post('users/import', [App\Admin\Controllers\CustomAdminController::class, 'importUsers']);
 

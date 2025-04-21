@@ -121,6 +121,9 @@ class ApiMobileController extends AdminController
         $credentials = $request->only(["username", 'password']);
         if (Admin::guard()->attempt($credentials)) {
             $user = Admin::user();
+            if($user->deleted_at != null){
+                return $this->failure([], 'Tài khoản đã bị vô hiệu!');
+            }
             $user = $this->user->find($user->id);
             // $user->tokens()->delete();
             $user->update(['login_times_in_day'=>$user->login_times_in_day + 1, 'last_use_at'=>Carbon::now()]);

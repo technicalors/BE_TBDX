@@ -199,8 +199,34 @@ class CustomAdminController extends AdminController
     public function deleteUsers(Request $request)
     {
         $input = $request->all();
-        CustomUser::whereIn('id', $input)->update(['deleted_at' => now()]);
+        $user = CustomUser::find($input['id']);
+        if(!$user){
+            return $this->failure('', 'Không tìm thấy tài khoản này');
+        }
+        $user->delete();
         return $this->success('Xoá thành công');
+    }
+
+    public function disableUsers(Request $request)
+    {
+        $input = $request->all();
+        $user = CustomUser::find($input['id']);
+        if(!$user){
+            return $this->failure('', 'Không tìm thấy tài khoản này');
+        }
+        $user->update(['deleted_at' => now()]);
+        return $this->success('Đã vô hiệu hoá');
+    }
+
+    public function enableUsers(Request $request)
+    {
+        $input = $request->all();
+        $user = CustomUser::find($input['id']);
+        if(!$user){
+            return $this->failure('', 'Không tìm thấy tài khoản này');
+        }
+        $user->update(['deleted_at' => null]);
+        return $this->success('Đã vô hiệu hoá');
     }
 
     public function exportUsers(Request $request)

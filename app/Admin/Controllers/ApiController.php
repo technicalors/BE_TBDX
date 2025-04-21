@@ -3792,7 +3792,7 @@ class ApiController extends AdminController
     public function listMaterialImport(Request $request)
     {
         $input = $request->all();
-        $query = WareHouseMLTImport::with('supplier');
+        $query = WareHouseMLTImport::with('supplier')->whereNotNull('goods_receipt_note_id');
         if (isset($input['start_date']) && $input['end_date']) {
             $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($input['start_date'])))
                 ->whereDate('created_at', '<=', date('Y-m-d', strtotime($input['end_date'])));

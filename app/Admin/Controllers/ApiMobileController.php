@@ -3729,8 +3729,12 @@ class ApiMobileController extends AdminController
                 }
             }
             $formula = DB::table('formulas')->where('phan_loai_1', $plan->order->phan_loai_1 ?? null)->where('phan_loai_2', $plan->order->phan_loai_2 ?? null)->first();
-            $input['sl_kh'] = $plan->orders->sum('sl');
-            $input['sl_kh'] += ($input['loss_quantity'] * $plan->order->so_ra) / ($formula->he_so ?? 1);
+            if($plan->machine->line_id == 31 || $plan->machine->line_id == 32) {
+                $input['sl_kh'] += ($input['loss_quantity'] * $plan->order->so_ra) / ($formula->he_so ?? 1);
+            }else{
+                $input['sl_kh'] = $plan->orders->sum('sl');
+                $input['sl_kh'] += ($input['loss_quantity'] * $plan->order->so_ra) / ($formula->he_so ?? 1);
+            }
             $update = $plan->update($input);
             $lo_sx_log = LSXLog::where('lo_sx', $plan->lo_sx)->update(['thu_tu_uu_tien' => $input['thu_tu_uu_tien']]);
             $plan->infoCongDoan()->update([

@@ -1525,7 +1525,7 @@ class ApiController extends AdminController
 
     public function manualList(Request $request)
     {
-        $info_lo_sx = InfoCongDoan::with('tem.order', 'user', 'plan.order')
+        $info_lo_sx = InfoCongDoan::with('tem.order', 'user', 'plan.order', 'order')
             ->where('machine_id', $request->machine_id)
             ->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))
             ->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)))
@@ -1556,6 +1556,7 @@ class ApiController extends AdminController
             $obj->quy_cach = $obj->order ? $obj->order->dai . 'x' . $obj->order->rong . ($obj->order->cao ? ('x' . $obj->order->cao) : "") : "";
             $obj->quy_cach_kh = $obj->order ? (!$obj->order->kich_thuoc ? ($obj->order->length . 'x' . $obj->order->width . ($obj->order->height ? ('x' . $obj->order->height) : "")) : $obj->order->kich_thuoc) : "";
             $obj->khach_hang = $obj->order->short_name ?? "-";
+            $obj->mdh = $obj->order->mdh ?? "-";
             $obj->mql = $obj->order->mql ?? "-";
             $obj->xuong_giao = $obj->order->xuong_giao ?? "-";
             $json = ['lo_sx' => $info->lo_sx, 'so_luong' => $obj->sl_ok];

@@ -3729,7 +3729,8 @@ class ApiMobileController extends AdminController
                 }
             }
             $formula = DB::table('formulas')->where('phan_loai_1', $plan->order->phan_loai_1 ?? null)->where('phan_loai_2', $plan->order->phan_loai_2 ?? null)->first();
-            if($plan->machine->line_id == 31 || $plan->machine->line_id == 32) {
+            $machine_in_dan = Machine::whereIn('line_id', [31, 32])->pluck('id')->toArray();
+            if(in_array($plan->machine_id, $machine_in_dan)) {
                 $input['sl_kh'] += ($input['loss_quantity'] * $plan->order->so_ra) / ($formula->he_so ?? 1);
             }else{
                 $input['sl_kh'] = $plan->orders->sum('sl');

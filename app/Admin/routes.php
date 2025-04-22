@@ -751,4 +751,5 @@ Route::group([
     $router->get('reorderInfoCongDoan', [ApiController::class, 'reorderInfoCongDoan']);
     $router->get('kpi-cronjob', [KPIController::class, 'cronjob']);
     $router->get('update-thoi-gian-bat-dau', [ApiUIController::class, 'updateThoiGianBatDau']);
+    $router->post('delete-duplicate-role-users', [ApiUIController::class, 'deleteDuplicateRoleUsers']);
 });

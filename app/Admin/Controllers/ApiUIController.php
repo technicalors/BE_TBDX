@@ -5265,4 +5265,16 @@ class ApiUIController extends AdminController
             throw $th;
         }
     }
+
+    public function deleteDuplicateRoleUsers(){
+        $role_users = DB::table('admin_role_users')->select('role_id', 'user_id', DB::raw('COUNT(*) as total_records'))
+            ->groupBy('role_id', 'user_id')
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+        // return $role_users;
+        foreach ($role_users as $key => $value) {
+            $duplicate = DB::table('admin_role_users')->where('role_id', $value->role_id)->where('user_id', $value->user_id)->limit(1)->delete();
+        }
+        return 'ok';
+    }
 }

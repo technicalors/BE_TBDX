@@ -5271,7 +5271,7 @@ class ApiUIController extends AdminController
             ->groupBy('role_id', 'user_id')
             ->havingRaw('COUNT(*) > 1')
             ->get();
-        // return $role_users;
+        return $role_users;
         foreach ($role_users as $key => $value) {
             $duplicate = DB::table('admin_role_users')->where('role_id', $value->role_id)->where('user_id', $value->user_id)->limit(1)->delete();
         }

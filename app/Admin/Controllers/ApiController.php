@@ -4135,7 +4135,7 @@ class ApiController extends AdminController
             $input['id'] = 'PL' . date('ymd') . str_pad($pallet_id + 1, 4, '0', STR_PAD_LEFT);
             $pallet = Pallet::create($input);
             $so_luong = 0;
-            // $machine_dan = Machine::where('line_id', '32')->pluck('id')->toArray();
+            $machine_dan = Machine::where('line_id', '32')->pluck('id')->toArray();
             foreach ($input['inp_arr'] as $key => $value) {
                 $info = InfoCongDoan::with('plan.order')->where('lo_sx', $value['lo_sx'])->orderBy('created_at', 'DESC')->first();
                 if ($info->step !== 0) {
@@ -4148,11 +4148,11 @@ class ApiController extends AdminController
                 $inp['lo_sx'] = $value['lo_sx'];
                 $inp['pallet_id'] = $input['id'];
                 $inp['so_luong'] = $value['so_luong'];
-                // if(in_array($info->machine_id, $machine_dan)){
-                //     $inp['type'] = LSXPallet::DAN;
-                // }else{
-                //     $inp['type'] = LSXPallet::DAN;
-                // }
+                if(in_array($info->machine_id, $machine_dan)){
+                    $inp['type'] = LSXPallet::DAN;
+                }else{
+                    $inp['type'] = LSXPallet::DAN;
+                }
                 $so_luong += $value['so_luong'];
                 LSXPallet::create($inp);
                 $obj = new stdClass();

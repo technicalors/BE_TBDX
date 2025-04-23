@@ -4136,6 +4136,7 @@ class ApiController extends AdminController
             $pallet = Pallet::create($input);
             $so_luong = 0;
             $machine_dan = Machine::where('line_id', '32')->pluck('id')->toArray();
+            $machine_xa_lot = Machine::where('line_id', '33')->pluck('id')->toArray();
             foreach ($input['inp_arr'] as $key => $value) {
                 $info = InfoCongDoan::with('plan.order')->where('lo_sx', $value['lo_sx'])->orderBy('created_at', 'DESC')->first();
                 if ($info->step !== 0) {
@@ -4150,8 +4151,8 @@ class ApiController extends AdminController
                 $inp['so_luong'] = $value['so_luong'];
                 if(in_array($info->machine_id, $machine_dan)){
                     $inp['type'] = LSXPallet::DAN;
-                }else{
-                    $inp['type'] = LSXPallet::DAN;
+                }else if(in_array($info->machine_id, $machine_xa_lot)){
+                    $inp['type'] = LSXPallet::XA_LOT;
                 }
                 $so_luong += $value['so_luong'];
                 LSXPallet::create($inp);

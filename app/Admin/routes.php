@@ -752,4 +752,5 @@ Route::group([
     $router->get('kpi-cronjob', [KPIController::class, 'cronjob']);
     $router->get('update-thoi-gian-bat-dau', [ApiUIController::class, 'updateThoiGianBatDau']);
     $router->post('delete-duplicate-role-users', [ApiUIController::class, 'deleteDuplicateRoleUsers']);
+    $router->post('update-type-lsx-pallet', [ApiUIController::class, 'updateTypeLSXPallet']);
 });

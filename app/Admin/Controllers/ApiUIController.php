@@ -49,6 +49,7 @@ use App\Models\LocatorFG;
 use App\Models\LocatorFGMap;
 use App\Models\LocatorMLT;
 use App\Models\LocatorMLTMap;
+use App\Models\LSX;
 use App\Models\LSXLog;
 use App\Models\LSXPallet;
 use App\Models\LSXPalletClone;
@@ -5276,5 +5277,29 @@ class ApiUIController extends AdminController
             $duplicate = DB::table('admin_role_users')->where('role_id', $value->role_id)->where('user_id', $value->user_id)->limit(1)->delete();
         }
         return 'ok';
+    }
+
+    public function updateTypeLSXPallet(Request $request){
+        $lsx_pallet = LSXPallet::with('infoCongDoan')
+        ->where('type', null)
+        ->whereDate('created_at', $request->date)
+        ->get();
+        // return $lsx_pallet->count();
+        if(count($lsx_pallet) <= 0){
+            return $this->success('không tìm thấy dữ liệu');
+        }
+        $machine_dan = Machine::where('line_id', 32)->pluck('id')->toArray();
+        $machine_xa_lot = Machine::where('line_id', 33)->pluck('id')->toArray();
+        $counter = 0;
+        foreach ($lsx_pallet as $key => $value) {
+            if(isset($value->infoCongDoan) && in_array($value->infoCongDoan->machine_id, $machine_dan)){
+                $value->update(['type' => LSXPallet::DAN]);
+                $counter++;
+            } else if(isset($value->infoCongDoan) && in_array($value->infoCongDoan->machine_id, $machine_xa_lot)) {
+                $value->update(['type' => LSXPallet::XA_LOT]);
+                $counter++;
+            }
+        }
+        return $this->success('done ' . $counter . "/" . $lsx_pallet->count() . ' record');
     }
 }

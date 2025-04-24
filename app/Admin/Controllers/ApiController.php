@@ -8267,8 +8267,7 @@ class ApiController extends AdminController
                 //Nếu ko có bản ghi xuất mới nhất thì số kg đầu giữ nguyên, số kg cuối = số kg nhập
                 $so_kg_cuoi = $lastImportLog->so_kg_nhap;
             }else{
-                $record->so_kg_nhap = $lastImportLog->so_kg_nhap;
-                $so_kg_cuoi = $lastImportLog->so_kg_nhap;
+                // $so_kg_cuoi = $lastImportLog->so_kg_nhap;
                 $so_kg_nhap = $lastImportLog->so_kg_nhap;
             }
             $record->ten_ncc = ($record->material && $record->material->supplier) ? $record->material->supplier->name : '';

@@ -9,6 +9,7 @@ use App\Models\GroupPlanOrder;
 use App\Models\InfoCongDoan;
 use App\Models\Line;
 use App\Models\LocatorMLTMap;
+use App\Models\LSXPallet;
 use App\Models\Machine;
 use App\Models\MachineLog;
 use App\Models\MachineParameterLogs;
@@ -223,26 +224,44 @@ class KPIController extends AdminController
         // $lot = InfoCongDoan::whereIn('machine_id', $machineXaLot)->get()->pluck('lo_sx')->unique()->toArray();
         
         // return $export;
-        $inventories = WarehouseFGLog::select('so_luong', 'lo_sx')
-            ->selectRaw("
-                CASE
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) <= 30 THEN '1 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 31 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 60 THEN '2 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 61 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 90 THEN '3 tháng'
-                    WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 91 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 120 THEN '4 tháng'
-                    ELSE '> 5 tháng'
-                END AS time_range,
-                DATEDIFF(NOW(), created_at) AS days_since_latest
-            ")
-            ->where('type', 1)
-            ->doesntHave('exportRecord')
-            ->with('lsx_pallet')
-            // ->whereHas('lo_sx_pallet', function($query) {
-            //     $query->whereNotNull('type');
-            // })
-            ->get() // Loại bỏ các `lo_sx` đã xuất
-            ;
-            return $inventories;
+        // $inventories = WarehouseFGLog::select('so_luong', 'lo_sx')
+        //     ->selectRaw("
+        //         CASE
+        //             WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) <= 30 THEN '1 tháng'
+        //             WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 31 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 60 THEN '2 tháng'
+        //             WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 61 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 90 THEN '3 tháng'
+        //             WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 91 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 120 THEN '4 tháng'
+        //             ELSE '> 5 tháng'
+        //         END AS time_range,
+        //         DATEDIFF(NOW(), created_at) AS days_since_latest
+        //     ")
+        //     ->where('type', 1)
+        //     ->doesntHave('exportRecord')
+        //     ->with('lsx_pallet')
+        //     // ->whereHas('lo_sx_pallet', function($query) {
+        //     //     $query->whereNotNull('type');
+        //     // })
+        //     ->get() // Loại bỏ các `lo_sx` đã xuất
+        //     ;
+        $lsx_pallet = LSXPallet::whereIn('type', [1, 2])
+        ->join('warehouse_fg_logs as wlog', function ($join) {
+            $join->on('lsx_pallets.pallet_id', '=', 'wlog.pallet_id')
+                 ->on('lsx_pallets.lo_sx', '=', 'wlog.lo_sx')
+                 ->where('wlog.type', 1); // nhập kho
+        })
+        ->selectRaw("
+            DATEDIFF(NOW(), wlog.created_at) AS days_in_stock,
+            CASE
+                WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 30 THEN '1 tháng'
+                WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 60 THEN '2 tháng'
+                WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 90 THEN '3 tháng'
+                WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 120 THEN '4 tháng'
+                ELSE '> 5 tháng'
+            END AS time_range
+        ")
+        ->with('warehouseFGLog')
+        ->get()->groupBy('type');
+        return $lsx_pallet;
         $months = [
             '1 tháng' => 0,
             '2 tháng' => 0,
@@ -251,12 +270,12 @@ class KPIController extends AdminController
             '> 5 tháng' => 0,
         ];
         $series = [];
-        foreach ($inventories as $lotType => $inventory) {
+        foreach ($lsx_pallet as $lotType => $inventory) {
             if (!$lotType) {
                 continue;
             }
             $seriesItem = [];
-            $seriesItem['name'] = $lotType;
+            $seriesItem['name'] = $lotType == 1 ? 'Thùng' : 'Lót';
             $seriesItem['data'] = [];
             foreach ($months as $key => $month) {
                 if (isset($inventory[$key])) {
@@ -352,7 +371,7 @@ class KPIController extends AdminController
     public function cronjob()
     {
         $date = Carbon::now();
-        $this->updateKPIData();
+        return $this->updateKPIData();
         return 'done';
     }
 }

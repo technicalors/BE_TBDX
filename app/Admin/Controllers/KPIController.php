@@ -243,13 +243,15 @@ class KPIController extends AdminController
         //     // })
         //     ->get() // Loại bỏ các `lo_sx` đã xuất
         //     ;
-        $lsx_pallet = LSXPallet::whereIn('type', [1, 2])
+        $lsx_pallet = LSXPallet::whereIn('lsx_pallet.type', [1, 2])
         ->join('warehouse_fg_logs as wlog', function ($join) {
-            $join->on('lsx_pallets.pallet_id', '=', 'wlog.pallet_id')
-                 ->on('lsx_pallets.lo_sx', '=', 'wlog.lo_sx')
+            $join->on('lsx_pallet.pallet_id', '=', 'wlog.pallet_id')
+                 ->on('lsx_pallet.lo_sx', '=', 'wlog.lo_sx')
                  ->where('wlog.type', 1); // nhập kho
         })
         ->selectRaw("
+            lsx_pallet.so_luong,
+            lsx_pallet.type as lot_type,
             DATEDIFF(NOW(), wlog.created_at) AS days_in_stock,
             CASE
                 WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 30 THEN '1 tháng'
@@ -260,8 +262,9 @@ class KPIController extends AdminController
             END AS time_range
         ")
         ->with('warehouseFGLog')
-        ->get()->groupBy('type');
-        return $lsx_pallet;
+        ->get()->groupBy(['lot_type', function ($item) {
+            return $item->time_range;
+        }], preserveKeys: true);
         $months = [
             '1 tháng' => 0,
             '2 tháng' => 0,

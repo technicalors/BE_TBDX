@@ -8717,83 +8717,82 @@ class ApiController extends AdminController
         $input = array_filter($input);
         $order_test = [];
         if (count($input) > 0) {
-            $order_query = Order::withTrashed();
-            if (isset($input['customer_id'])) {
-                $order_query->where('customer_id', 'like', "%" . $input['customer_id'] . "%");
-            }
-            if (isset($input['short_name'])) {
-                $order_query->where('short_name', 'like', "%" . $input['short_name'] . "%");
-            }
-            if (isset($input['ngay_dat_hang'])) {
-                $order_query->whereDate('ngay_dat_hang', date('Y-m-d', strtotime($input['ngay_dat_hang'])));
-            }
-            if (isset($input['start_date']) && isset($input['end_date'])) {
-                $order_query->whereDate('ngay_dat_hang', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('ngay_dat_hang', '<=', date('Y-m-d', strtotime($input['end_date'])));
-            }
-            if (isset($input['mdh'])) {
-                if (is_array($input['mdh'])) {
-                    $order_query->whereIn('mdh', $input['mdh']);
-                } else {
-                    $order_query->where('mdh', $input['mdh']);
+            $query->whereHas('order', function($order_query)use($input){
+                if (isset($input['customer_id'])) {
+                    $order_query->where('customer_id', 'like', "%" . $input['customer_id'] . "%");
                 }
-            }
-            if (isset($input['order'])) {
-                $order_query->where('order', 'like', "%" . $input['order'] . "%");
-            }
-            if (isset($input['mql'])) {
-                if (is_array($input['mql'])) {
-                    $order_query->whereIn('mql', $input['mql']);
-                } else {
-                    $order_query->where('mql', $input['mql']);
+                if (isset($input['short_name'])) {
+                    $order_query->where('short_name', 'like', "%" . $input['short_name'] . "%");
                 }
-            }
-            if (isset($input['kich_thuoc'])) {
-                $order_query->where('kich_thuoc', 'like', "%" . $input['kich_thuoc'] . "%");
-            }
-            if (isset($input['length'])) {
-                $order_query->where('length', 'like', $input['length']);
-            }
-            if (isset($input['width'])) {
-                $order_query->where('width', 'like', $input['width']);
-            }
-            if (isset($input['height'])) {
-                $order_query->where('height', 'like', $input['height']);
-            }
-            if (isset($input['po'])) {
-                $order_query->where('po', 'like', "%" . $input['po'] . "%");
-            }
-            if (isset($input['style'])) {
-                $order_query->where('style', 'like', "%" . $input['style'] . "%");
-            }
-            if (isset($input['style_no'])) {
-                $order_query->where('style_no', 'like', "%" . $input['style_no'] . "%");
-            }
-            if (isset($input['color'])) {
-                $order_query->where('color', 'like', "%" . $input['color'] . "%");
-            }
-            if (isset($input['item'])) {
-                $order_query->where('item', 'like', "%" . $input['item'] . "%");
-            }
-            if (isset($input['rm'])) {
-                $order_query->where('rm', 'like', "%" . $input['rm'] . "%");
-            }
-            if (isset($input['size'])) {
-                $order_query->where('size', 'like', "%" . $input['size'] . "%");
-            }
-            if (isset($input['note_2'])) {
-                $order_query->where('note_2', 'like', "%" . $input['note_2'] . "%");
-            }
-            if (isset($input['han_giao'])) {
-                $order_query->whereDate('han_giao', date('Y-m-d', strtotime($input['han_giao'])));
-            }
-            if (isset($input['dot'])) {
-                $order_query->where('dot', $input['dot']);
-            }
-            if (isset($input['tmo'])) {
-                $order_query->where('tmo', $input['tmo']);
-            }
-            $orders = $order_query->pluck('id')->toArray();
-            if (count($orders)) $query->whereIn('order_id', $orders);
+                if (isset($input['ngay_dat_hang'])) {
+                    $order_query->whereDate('ngay_dat_hang', date('Y-m-d', strtotime($input['ngay_dat_hang'])));
+                }
+                if (isset($input['start_date']) && isset($input['end_date'])) {
+                    $order_query->whereDate('ngay_dat_hang', '>=', date('Y-m-d', strtotime($input['start_date'])))->whereDate('ngay_dat_hang', '<=', date('Y-m-d', strtotime($input['end_date'])));
+                }
+                if (isset($input['mdh'])) {
+                    if (is_array($input['mdh'])) {
+                        $order_query->whereIn('mdh', $input['mdh']);
+                    } else {
+                        $order_query->where('mdh', $input['mdh']);
+                    }
+                }
+                if (isset($input['order'])) {
+                    $order_query->where('order', 'like', "%" . $input['order'] . "%");
+                }
+                if (isset($input['mql'])) {
+                    if (is_array($input['mql'])) {
+                        $order_query->whereIn('mql', $input['mql']);
+                    } else {
+                        $order_query->where('mql', $input['mql']);
+                    }
+                }
+                if (isset($input['kich_thuoc'])) {
+                    $order_query->where('kich_thuoc', 'like', "%" . $input['kich_thuoc'] . "%");
+                }
+                if (isset($input['length'])) {
+                    $order_query->where('length', 'like', $input['length']);
+                }
+                if (isset($input['width'])) {
+                    $order_query->where('width', 'like', $input['width']);
+                }
+                if (isset($input['height'])) {
+                    $order_query->where('height', 'like', $input['height']);
+                }
+                if (isset($input['po'])) {
+                    $order_query->where('po', 'like', "%" . $input['po'] . "%");
+                }
+                if (isset($input['style'])) {
+                    $order_query->where('style', 'like', "%" . $input['style'] . "%");
+                }
+                if (isset($input['style_no'])) {
+                    $order_query->where('style_no', 'like', "%" . $input['style_no'] . "%");
+                }
+                if (isset($input['color'])) {
+                    $order_query->where('color', 'like', "%" . $input['color'] . "%");
+                }
+                if (isset($input['item'])) {
+                    $order_query->where('item', 'like', "%" . $input['item'] . "%");
+                }
+                if (isset($input['rm'])) {
+                    $order_query->where('rm', 'like', "%" . $input['rm'] . "%");
+                }
+                if (isset($input['size'])) {
+                    $order_query->where('size', 'like', "%" . $input['size'] . "%");
+                }
+                if (isset($input['note_2'])) {
+                    $order_query->where('note_2', 'like', "%" . $input['note_2'] . "%");
+                }
+                if (isset($input['han_giao'])) {
+                    $order_query->whereDate('han_giao', date('Y-m-d', strtotime($input['han_giao'])));
+                }
+                if (isset($input['dot'])) {
+                    $order_query->where('dot', $input['dot']);
+                }
+                if (isset($input['tmo'])) {
+                    $order_query->where('tmo', $input['tmo']);
+                }
+            });
         }
         $query->whereHas('lsxpallets', function ($q) use ($request) {
             $q->selectRaw('SUM(remain_quantity) as sl_ton');

@@ -5439,6 +5439,10 @@ class ApiController extends AdminController
                 if (isset($input['loai_giay'])) $q->where('loai_giay', 'like', '%' . $input['loai_giay'] . '%');
             });
         }
+        if (isset($input['export_shift'])) {
+            $shift_users = ShiftAssignment::where('shift_id', $input['export_shift'])->pluck('user_id')->toArray();
+            $query->whereIn('exporter_id', $shift_users);
+        }
         $records = $query->get();
         $data = [];
         foreach ($records as $key => $record) {

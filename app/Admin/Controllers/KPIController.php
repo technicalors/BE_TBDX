@@ -217,10 +217,10 @@ class KPIController extends AdminController
         Log::info('Updating KPI Warehouse FG Data');
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 0);
-        $machineDan = Machine::where('line_id', 32)->get()->pluck('id')->toArray();
-        $machineXaLot = Machine::where('line_id', 33)->get()->pluck('id')->toArray();
-        $thung = InfoCongDoan::whereIn('machine_id', $machineDan)->get()->pluck('lo_sx')->unique()->toArray();
-        $lot = InfoCongDoan::whereIn('machine_id', $machineXaLot)->get()->pluck('lo_sx')->unique()->toArray();
+        // $machineDan = Machine::where('line_id', 32)->get()->pluck('id')->toArray();
+        // $machineXaLot = Machine::where('line_id', 33)->get()->pluck('id')->toArray();
+        // $thung = InfoCongDoan::whereIn('machine_id', $machineDan)->get()->pluck('lo_sx')->unique()->toArray();
+        // $lot = InfoCongDoan::whereIn('machine_id', $machineXaLot)->get()->pluck('lo_sx')->unique()->toArray();
         
         // return $export;
         $inventories = WarehouseFGLog::select('so_luong', 'lo_sx')
@@ -236,12 +236,13 @@ class KPIController extends AdminController
             ")
             ->where('type', 1)
             ->doesntHave('exportRecord')
+            ->with('lsx_pallet')
+            // ->whereHas('lo_sx_pallet', function($query) {
+            //     $query->whereNotNull('type');
+            // })
             ->get() // Loại bỏ các `lo_sx` đã xuất
-            ->groupBy([function($item) use($thung, $lot){
-                return in_array($item->lo_sx, $thung) ? 'Thùng' : (in_array($item->lo_sx, $lot) ? 'Lót' : "");
-            }, function ($item) {
-                return $item->time_range;
-            }], preserveKeys: true);
+            ;
+            return $inventories;
         $months = [
             '1 tháng' => 0,
             '2 tháng' => 0,

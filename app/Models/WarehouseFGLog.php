@@ -67,4 +67,9 @@ class WarehouseFGLog extends Model
     {
         return $this->hasMany(WarehouseFGLog::class, ['lo_sx', 'pallet_id'], ['lo_sx', 'pallet_id'])->where('type', 2)->orderBy('created_at', 'DESC'); // Bản ghi xuất
     }
+
+    public function lsx_pallet()
+    {
+        return $this->belongsTo(LSXPallet::class, 'lo_sx', 'lo_sx');
+    }
 }

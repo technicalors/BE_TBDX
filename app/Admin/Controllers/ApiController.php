@@ -2929,7 +2929,11 @@ class ApiController extends AdminController
             // $obj->quy_cach = $order ? (!$order->kich_thuoc ? ($order->length . 'x' . $order->width . ($order->height ? ('x' . $order->height) : $order->kich_thuoc)) : "") : "";
             $obj->sl_dau_vao_kh = $order->sl ?? "";
             $obj->sl_dau_ra_kh = $order->sl ?? "";
-            $obj->sl_ok = $info_cong_doan->sl_dau_ra_hang_loat - $info_cong_doan->sl_ng_qc - $info_cong_doan->sl_ng_sx;
+            if($info_cong_doan->machine_id === 'So01'){
+                $obj->sl_ok = $info_cong_doan->sl_dau_ra_hang_loat;
+            }else{
+                $obj->sl_ok = $info_cong_doan->sl_dau_ra_hang_loat - $info_cong_doan->sl_ng_qc - $info_cong_doan->sl_ng_sx;
+            }
             $obj->sl_phe = $info_cong_doan->sl_ng_qc + $info_cong_doan->sl_ng_sx;
             $obj->ty_le_dau_ra_vao = $info_cong_doan->sl_dau_vao_hang_loat ? floor($info_cong_doan->sl_dau_ra_hang_loat / $info_cong_doan->sl_dau_vao_hang_loat * 100) : 0;
             $obj->ngay_sx = $info_cong_doan->thoi_gian_bat_dau ? date('d/m/Y', strtotime($info_cong_doan->thoi_gian_bat_dau)) : "";

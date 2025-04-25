@@ -111,6 +111,9 @@ class OrderController extends AdminController
                 $query->onlyTrashed();
             }
         }
+        if (isset($input['id'])) {
+            $query->where('id', 'like', "%" . $input['id'] . "%");
+        }
         if (isset($request->customer_id)) {
             $query->where('customer_id', 'like', "%" . $request->customer_id . "%");
         }

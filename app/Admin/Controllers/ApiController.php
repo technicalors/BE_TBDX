@@ -8449,33 +8449,33 @@ class ApiController extends AdminController
         if (isset($input['lo_sx'])) {
             $query->where('lo_sx', 'like', $input['lo_sx'] . "%");
         }
+        if (isset($input['order_id'])) {
+            $query->where('order_id', 'like', "%" . $input['order_id'] . "%");
+        }
         if (!empty($input['khach_hang']) || !empty($input['mdh']) || !empty($input['mql']) || !empty($input['kich_thuoc']) || !empty($input['length']) || !empty($input['width']) || !empty($input['height'])) {
-            $order_query = Order::withTrashed();
-            if (isset($input['khach_hang'])) {
-                $order_query->where('short_name', $input['khach_hang']);
-            }
-            if (isset($input['mdh'])) {
-                $order_query->where('mdh', 'like',  "%" . $input['mdh'] . "%");
-            }
-            if (isset($input['mql'])) {
-                $order_query->where('mql', $input['mql']);
-            }
-            if (isset($input['kich_thuoc'])) {
-                $order_query->where('kich_thuoc', $input['kich_thuoc']);
-            }
-            if (isset($input['length'])) {
-                $order_query->where('length', $input['length']);
-            }
-            if (isset($input['width'])) {
-                $order_query->where('width', $input['width']);
-            }
-            if (isset($input['height'])) {
-                $order_query->where('height', $input['height']);
-            }
-            $orders = $order_query->pluck('id')->toArray();
-            // if (count($orders) > 0) {
-            $query->whereIn('order_id', $orders);
-            // }
+            $query->whereHas('order', function($order_query){
+                if (isset($input['khach_hang'])) {
+                    $order_query->where('short_name', $input['khach_hang']);
+                }
+                if (isset($input['mdh'])) {
+                    $order_query->where('mdh', 'like',  "%" . $input['mdh'] . "%");
+                }
+                if (isset($input['mql'])) {
+                    $order_query->where('mql', $input['mql']);
+                }
+                if (isset($input['kich_thuoc'])) {
+                    $order_query->where('kich_thuoc', $input['kich_thuoc']);
+                }
+                if (isset($input['length'])) {
+                    $order_query->where('length', $input['length']);
+                }
+                if (isset($input['width'])) {
+                    $order_query->where('width', $input['width']);
+                }
+                if (isset($input['height'])) {
+                    $order_query->where('height', $input['height']);
+                }
+            });
         }
         if (isset($input['sl_ton_min']) || isset($input['sl_ton_max']) || isset($input['so_ngay_ton_min']) || isset($input['so_ngay_ton_max'])) {
             $query->doesntHave('exportRecord');
@@ -8720,6 +8720,9 @@ class ApiController extends AdminController
         $order_test = [];
         if (count($input) > 0) {
             $query->whereHas('order', function($order_query)use($input){
+                if (isset($input['order_id'])) {
+                    $order_query->where('id', 'like', "%" . $input['order_id'] . "%");
+                }
                 if (isset($input['customer_id'])) {
                     $order_query->where('customer_id', 'like', "%" . $input['customer_id'] . "%");
                 }

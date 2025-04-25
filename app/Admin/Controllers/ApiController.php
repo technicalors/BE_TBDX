@@ -8453,7 +8453,7 @@ class ApiController extends AdminController
             $query->where('order_id', 'like', "%" . $input['order_id'] . "%");
         }
         if (!empty($input['khach_hang']) || !empty($input['mdh']) || !empty($input['mql']) || !empty($input['kich_thuoc']) || !empty($input['length']) || !empty($input['width']) || !empty($input['height'])) {
-            $query->whereHas('order', function($order_query){
+            $query->whereHas('order', function($order_query)use($input){
                 if (isset($input['khach_hang'])) {
                     $order_query->where('short_name', $input['khach_hang']);
                 }

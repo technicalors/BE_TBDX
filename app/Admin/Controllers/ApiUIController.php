@@ -5306,7 +5306,7 @@ class ApiUIController extends AdminController
 
     public function restoreLostMaterial(){
         $import = WareHouseMLTImport::doesntHave('material')->has('warehouse_mtl_log')->whereNotNull('material_id')->orderBy('created_at', 'DESC')->get();
-        return $import->count();
+        // return $import->count();
         foreach ($import as $key => $value) {
             $log = WarehouseMLTLog::where('material_id', $value->material_id)->orderBy('tg_nhap', 'DESC')->first();
             $so_kg_hien_tai = 0;

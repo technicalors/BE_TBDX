@@ -55,11 +55,9 @@ class LSXPalletController extends AdminController
         }
         if(isset($request->status)){
             if($request->status == 0){
-                $query->where('remain_quantity', 0)->whereColumn('created_at', '=', 'updated_at');
+                $query->doesntHave('warehouseFGLog');
             }else{
-                $query->where(function($sub_query){
-                    $sub_query->where('remain_quantity', '>', 0)->orWhere('remain_quantity', 0)->whereColumn('created_at', '!=', 'updated_at');
-                });
+                $query->has('warehouseFGLog');
             }
         }
         //search by order

@@ -4369,7 +4369,7 @@ class ApiController extends AdminController
                 }
                 if ($lsx_pallet) {
                     $remain = ($lsx_pallet->remain_quantity - $lo['so_luong']);
-                    $lsx_pallet->update(['remain_quantity' => $remain > 0 ? $remain : 0]);
+                    $lsx_pallet->update(['remain_quantity' => $remain > 0 ? $remain : 0, 'status'=> LSXPallet::EXPORTED]);
                 }
             }
             $pallet_quantity = LSXPallet::where('pallet_id', $input[0]['pallet_id'])->sum('remain_quantity');
@@ -4709,7 +4709,7 @@ class ApiController extends AdminController
                 $inp['order_id'] = $lsx->order_id;
                 $inp['nhap_du'] = $this->calculateNhapDu($lsx->so_luong, $lsx->order_id);
                 WarehouseFGLog::create($inp);
-                $lsx->update(['remain_quantity' => $lsx->so_luong]);
+                $lsx->update(['remain_quantity' => $lsx->so_luong, 'status'=> LSXPallet::IMPORTED]);
             }
             DB::commit();
         } catch (\Throwable $th) {

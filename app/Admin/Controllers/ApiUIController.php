@@ -5304,6 +5304,32 @@ class ApiUIController extends AdminController
         return $this->success('done ' . $counter . "/" . $lsx_pallet->count() . ' record');
     }
 
+    public function updateStatusLSXPallet(Request $request){
+        $lsx_pallet = LSXPallet::with('warehouseFGLog')
+        ->whereDate('created_at', $request->date)
+        ->get();
+        // return $lsx_pallet->count();
+        if(count($lsx_pallet) <= 0){
+            return $this->success('không tìm thấy dữ liệu');
+        }
+        $counter = 0;
+        foreach ($lsx_pallet as $key => $value) {
+            if(count($value->warehouseFGLog) > 0){
+                $logs = $value->warehouseFGLog->toArray() ?? [];
+                $check_exported = in_array(2, array_column($logs, 'type'));
+                if($check_exported){
+                    $value->update(['status' => LSXPallet::EXPORTED]);
+                }else{
+                    $value->update(['status' => LSXPallet::IMPORTED]);
+                }
+                $counter++;
+            }else{
+                continue;
+            }
+        }
+        return $this->success('done ' . $counter . "/" . $lsx_pallet->count() . ' record');
+    }
+
     public function restoreLostMaterial(){
         $import = WareHouseMLTImport::doesntHave('material')->has('warehouse_mtl_log')->whereNotNull('material_id')->orderBy('created_at', 'DESC')->get();
         // return $import->count();

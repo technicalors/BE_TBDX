@@ -12,9 +12,11 @@ class LSXPallet extends Model
     use HasFactory;
     public $incrementing = false;
     protected $table = 'lsx_pallet';
-    protected $fillable = ['lo_sx', 'so_luong', 'pallet_id', 'mdh', 'mql', 'customer_id', 'order_id', 'created_at', 'remain_quantity', 'type'];
+    protected $fillable = ['lo_sx', 'so_luong', 'pallet_id', 'mdh', 'mql', 'customer_id', 'order_id', 'created_at', 'remain_quantity', 'type', 'status'];
     const DAN = 1;
     const XA_LOT = 2;
+    const IMPORTED = 1;
+    const EXPORTED = 2;
     public function pallet()
     {
         return $this->belongsTo(Pallet::class);

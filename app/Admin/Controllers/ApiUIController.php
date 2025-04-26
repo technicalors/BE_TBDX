@@ -4170,6 +4170,7 @@ class ApiUIController extends AdminController
                 $import_input = $input;
                 unset($import_input['id']);
                 $import_input['iqc'] = 1;
+                $import_input['so_kg'] = $input['so_kg_dau'];
                 if (!$import) {
                     WareHouseMLTImport::create($import_input);
                 } else {
@@ -5301,5 +5302,38 @@ class ApiUIController extends AdminController
             }
         }
         return $this->success('done ' . $counter . "/" . $lsx_pallet->count() . ' record');
+    }
+
+    public function restoreLostMaterial(){
+        $import = WareHouseMLTImport::doesntHave('material')->has('warehouse_mtl_log')->whereNotNull('material_id')->orderBy('created_at', 'DESC')->get();
+        return $import->count();
+        foreach ($import as $key => $value) {
+            $log = WarehouseMLTLog::where('material_id', $value->material_id)->orderBy('tg_nhap', 'DESC')->first();
+            $so_kg_hien_tai = 0;
+            if($log->tg_xuat){
+                $so_kg_hien_tai = $log->so_kg_nhap - $log->so_kg_xuat;
+            }else{
+                $so_kg_hien_tai = $log->so_kg_nhap;
+            }
+            if($so_kg_hien_tai <= 0){
+                continue;
+            }
+            Material::updateOrCreate(
+            [             
+                'id' => $value->material_id,
+            ],
+            [
+                'so_kg' => $so_kg_hien_tai,
+                'so_kg_dau' => $value->so_kg,
+                'loai_giay' => $value->loai_giay,
+                'kho_giay' => $value->kho_giay,
+                'dinh_luong' => $value->dinh_luong,
+                'fsc' => $value->fsc,
+                'ma_cuon_ncc' => $value->ma_cuon_ncc,
+                'ma_vat_tu' => $value->ma_vat_tu,
+                'so_m_toi' => floor(($value->so_kg / ($value->kho_giay / 100)) / ($value->dinh_luong / 1000)) ?? 0
+            ]);
+        }
+        return 'ok';
     }
 }

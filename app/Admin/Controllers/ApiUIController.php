@@ -5315,7 +5315,7 @@ class ApiUIController extends AdminController
             }else{
                 $so_kg_hien_tai = $log->so_kg_nhap;
             }
-            if($so_kg_hien_tai <= 0){
+            if($so_kg_hien_tai < 0){
                 continue;
             }
             Material::updateOrCreate(

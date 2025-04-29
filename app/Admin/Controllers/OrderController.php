@@ -304,9 +304,9 @@ class OrderController extends AdminController
                         try {
                             $input = array_merge($input, eval($function));
                             $input['so_met_toi'] = round($input['dai_tam'] * $input['so_dao'] / 100);
-                            if($$input['phan_loai_2'] === 'thung-1-manh' && $input['dai_tam'] > 315){
-                                $input['phan_loai_2'] = 'thung-2-manh';
-                            }
+                            // if($$input['phan_loai_2'] === 'thung-1-manh' && $input['dai_tam'] > 315){
+                            //     $input['phan_loai_2'] = 'thung-2-manh';
+                            // }
                         } catch (\Throwable $th) {
                             throw $th;
                         }

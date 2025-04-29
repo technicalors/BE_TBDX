@@ -229,7 +229,10 @@ class OrderController extends AdminController
             $pageSize = $request->pageSize;
             $query->offset($page * $pageSize)->limit($pageSize ?? 10);
         }
-        $records = $query->select('*', 'sl as sl_dinh_muc')->get();
+        $records = $query->select('*', 'sl as sl_dinh_muc')->get()->map(function($item){
+            $item->red_text = ($item->phan_loai_2 === 'thung-1-manh' && $item->dai_tam > 315) ? true : false;
+            return $item;
+        });
         $res = [
             "data" => $records,
             "totalPage" => $totalPage,

@@ -248,6 +248,7 @@ class KPIController extends AdminController
         //     ;
         $lsx_pallet = LSXPallet::whereIn('lsx_pallet.type', [1, 2])
             ->join('warehouse_fg_logs as wlog', 'lsx_pallet.id', '=', 'wlog.lsx_pallet_id')
+            ->where('remain_quantity', 0)
             ->where('status', 1)
             ->selectRaw("
                 lsx_pallet.so_luong,

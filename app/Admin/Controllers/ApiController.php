@@ -4361,6 +4361,7 @@ class ApiController extends AdminController
                 $inp['type'] = 2;
                 $inp['order_id'] = $lsx_pallet->order_id;
                 $inp['delivery_note_id'] = $lo['delivery_note_id'];
+                $inp['lsx_pallet_id'] = $lsx_pallet->id;
                 $log = WarehouseFGLog::where($inp)->get();
                 if (!$lsx_pallet->remain_quantity) {
                     return $this->failure('', 'Đã xuất kho');
@@ -4708,6 +4709,7 @@ class ApiController extends AdminController
                 $inp['created_by'] = $request->user()->id;
                 $inp['order_id'] = $lsx->order_id;
                 $inp['nhap_du'] = $this->calculateNhapDu($lsx->so_luong, $lsx->order_id);
+                $inp['lsx_pallet_id'] = $lsx->id;
                 WarehouseFGLog::create($inp);
                 $lsx->update(['remain_quantity' => $lsx->so_luong, 'status'=> LSXPallet::IMPORTED]);
             }

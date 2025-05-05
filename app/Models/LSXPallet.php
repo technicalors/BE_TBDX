@@ -38,4 +38,7 @@ class LSXPallet extends Model
     public function infoCongDoan(){
         return $this->hasOne(InfoCongDoan::class, 'lo_sx', 'lo_sx')->orderBy('created_at', 'desc');
     }
+    public function warehouse_fg_log(){
+        return $this->hasMany(WarehouseFGLog::class, 'lsx_pallet_id', 'id')->orderBy('created_at', 'desc');
+    }
 }

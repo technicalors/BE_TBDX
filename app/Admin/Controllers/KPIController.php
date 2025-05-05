@@ -216,7 +216,7 @@ class KPIController extends AdminController
         return $this->success($data);
     }
 
-    public function updateKPIData()
+    public function kpiTonKhoTP()
     {
         Log::info('Updating KPI Warehouse FG Data');
         ini_set('memory_limit', '1024M');
@@ -247,24 +247,20 @@ class KPIController extends AdminController
         //     ->get() // Loại bỏ các `lo_sx` đã xuất
         //     ;
         $lsx_pallet = LSXPallet::whereIn('lsx_pallet.type', [1, 2])
-            ->join('warehouse_fg_logs as wlog', function ($join) {
-                $join->on('lsx_pallet.pallet_id', '=', 'wlog.pallet_id')
-                    ->on('lsx_pallet.lo_sx', '=', 'wlog.lo_sx')
-                    ->where('wlog.type', 1); // nhập kho
-            })
-            ->whereDate('wlog.created_at', '>=', '2025-01-01')
+            ->join('warehouse_fg_logs as wlog', 'lsx_pallet.id', '=', 'wlog.lsx_pallet_id')
+            ->where('status', 1)
             ->selectRaw("
-            lsx_pallet.so_luong,
-            lsx_pallet.type as lot_type,
-            DATEDIFF(NOW(), wlog.created_at) AS days_in_stock,
-            CASE
-                WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 30 THEN '1 tháng'
-                WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 60 THEN '2 tháng'
-                WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 90 THEN '3 tháng'
-                WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 120 THEN '4 tháng'
-                ELSE '> 5 tháng'
-            END AS time_range
-        ")
+                lsx_pallet.so_luong,
+                lsx_pallet.type as lot_type,
+                DATEDIFF(NOW(), wlog.created_at) AS days_in_stock,
+                CASE
+                    WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 30 THEN '1 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 60 THEN '2 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 90 THEN '3 tháng'
+                    WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 120 THEN '4 tháng'
+                    ELSE '> 5 tháng'
+                END AS time_range
+            ")
             ->get()->groupBy(['lot_type', function ($item) {
                 return $item->time_range;
             }], preserveKeys: true);
@@ -294,27 +290,27 @@ class KPIController extends AdminController
         }
         $data['categories'] = array_keys($months);
         $data['series'] = $series;
-        Log::info('KPI Data Updated');
-        Log::info($data);
-        WareHouseFGKpiData::updateOrCreate(
-            ['id' => 1],
-            ['data' => $data]
-        );
-        return $data;
-    }
-
-    public function kpiTonKhoTP(Request $request)
-    {
-        $kpiTonKho = WareHouseFGKpiData::find(1);
-        $data = [
-            'categories' => [], // Trục hoành (ngày)
-            'series' => [],  // Số lượng tất cả công đoạn
-        ];
-        if ($kpiTonKho) {
-            $data = $kpiTonKho->data;
-        }
+        // Log::info('KPI Data Updated');
+        // Log::info($data);
+        // WareHouseFGKpiData::updateOrCreate(
+        //     ['id' => 1],
+        //     ['data' => $data]
+        // );
         return $this->success($data);
     }
+
+    // public function kpiTonKhoTP(Request $request)
+    // {
+    //     $kpiTonKho = WareHouseFGKpiData::find(1);
+    //     $data = [
+    //         'categories' => [], // Trục hoành (ngày)
+    //         'series' => [],  // Số lượng tất cả công đoạn
+    //     ];
+    //     if ($kpiTonKho) {
+    //         $data = $kpiTonKho->data;
+    //     }
+    //     return $this->success($data);
+    // }
 
     public function kpiTyLeLoiMay(Request $request)
     {
@@ -378,9 +374,9 @@ class KPIController extends AdminController
 
     public function cronjob($date = null)
     {
-        if($date){
+        if ($date) {
             $snapshotDate = Carbon::parse($date)->format('Y-m-d');
-        }else{
+        } else {
             $snapshotDate = now()->toDateString();
         }
         $charts = KpiChart::with('metrics.metric')->get();

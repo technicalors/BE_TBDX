@@ -5362,4 +5362,98 @@ class ApiUIController extends AdminController
         }
         return 'ok';
     }
+
+    public function updateLSXPalletIdWarehouseLog(Request $request){
+        $logs = WarehouseFGLog::whereDate('created_at', $request->date)
+        ->with('lo_sx_pallet')
+        ->whereNull('lsx_pallet_id')
+        ->get();
+        $counter = 0;
+        if($logs->count() <= 0){
+            return $this->success('không tìm thấy dữ liệu');
+        }
+        foreach ($logs as $key => $value) {
+            if($value->lo_sx_pallet){
+                $value->update(['lsx_pallet_id' => $value->lo_sx_pallet->id ?? null]);
+                $counter++;
+            }else{
+                continue;
+            }
+        }
+        return $this->success('done ' . $counter . "/" . $logs->count() . ' record');
+    }
+
+    public function exportAllFGBeforeDate(Request $request){
+        $lsx_pallet = LSXPallet::with('warehouse_fg_log')
+        ->whereHas('warehouse_fg_log', function($q) use($request) {
+            $q->where('type', 1)
+              ->whereDate('created_at', $request->date)
+              ->whereDate('created_at', '<', '2025-01-01');
+        })
+        // 2) Không có log type = 2 trong cùng ngày
+        ->whereDoesntHave('warehouse_fg_log', function($q) use($request) {
+            $q->where('type', 2)
+              ->whereDate('created_at', $request->date);
+        })
+        ->get();
+        // return $lsx_pallet->count();
+        if(count($lsx_pallet) <= 0){
+            return $this->success('không tìm thấy dữ liệu');
+        }
+        $counter = 0;
+        foreach ($lsx_pallet as $key => $value) {
+            if(count($value->warehouse_fg_log) > 0){
+                $logs = $value->warehouse_fg_log->toArray() ?? [];
+                $check_exported = in_array(2, array_column($logs, 'type'));
+                if($check_exported){
+                    $value->update(['status' => LSXPallet::EXPORTED, 'remain_quantity' => 0]);
+                }else{
+                    $log = WarehouseFGLog::create([
+                        'lo_sx' => $value->lo_sx,
+                        'pallet_id' => $value->pallet_id,
+                        'so_luong' => $value->so_luong,
+                        'type' => 2,
+                        'created_by' => null,
+                        'created_at' => $value->created_at,
+                        'lsx_pallet_id' => $value->id,
+                        'order_id' => $value->order_id,
+                        'delivery_note_id' => null,
+                        'locator_id' => $value->pallet->locator_fg_map->locator_id ?? null,
+                        'nhap_du' => 0,
+                    ]);
+                    $value->update(['status' => LSXPallet::EXPORTED, 'remain_quantity' => 0]);
+                }
+                $counter++;
+            }else{
+                $import = WarehouseFGLog::create([
+                    'lo_sx' => $value->lo_sx,
+                    'pallet_id' => $value->pallet_id,
+                    'so_luong' => $value->so_luong,
+                    'type' => 1,
+                    'created_by' => null,
+                    'created_at' => $value->created_at,
+                    'lsx_pallet_id' => $value->id,
+                    'order_id' => $value->order_id,
+                    'delivery_note_id' => null,
+                    'locator_id' => $value->pallet->locator_fg_map->locator_id ?? null,
+                    'nhap_du' => 0,
+                ]);
+                $export = WarehouseFGLog::create([
+                    'lo_sx' => $value->lo_sx,
+                    'pallet_id' => $value->pallet_id,
+                    'so_luong' => $value->so_luong,
+                    'type' => 2,
+                    'created_by' => null,
+                    'created_at' => $value->created_at,
+                    'lsx_pallet_id' => $value->id,
+                    'order_id' => $value->order_id,
+                    'delivery_note_id' => null,
+                    'locator_id' => $value->pallet->locator_fg_map->locator_id ?? null,
+                    'nhap_du' => 0,
+                ]);
+                $value->update(['status' => LSXPallet::EXPORTED, 'remain_quantity' => 0]);
+            }
+        }
+        return $this->success('done ' . $counter . "/" . $lsx_pallet->count() . ' record');
+    }
 }

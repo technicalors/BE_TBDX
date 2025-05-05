@@ -755,4 +755,6 @@ Route::group([
     $router->post('update-type-lsx-pallet', [ApiUIController::class, 'updateTypeLSXPallet']);
     $router->post('update-status-lsx-pallet', [ApiUIController::class, 'updateStatusLSXPallet']);
     $router->post('restore-lost-material', [ApiUIController::class, 'restoreLostMaterial']);
+    $router->post('updateLSXPalletIdWarehouseLog', [ApiUIController::class, 'updateLSXPalletIdWarehouseLog']);
+    $router->post('exportAllFGBeforeDate', [ApiUIController::class, 'exportAllFGBeforeDate']);
 });

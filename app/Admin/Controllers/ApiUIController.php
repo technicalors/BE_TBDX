@@ -5467,19 +5467,19 @@ class ApiUIController extends AdminController
 
     public function getDuplicateWarehouseFGLog(Request $request)
     {
-        // $dupGroups = WarehouseFGLog::select('lsx_pallet_id', 'so_luong', DB::raw('COUNT(*) as cnt'))
-        //     ->where('type', 2)
-        //     ->groupBy('lsx_pallet_id', 'so_luong')
-        //     ->having('cnt', '>', 1);
+        $dupGroups = WarehouseFGLog::select('lsx_pallet_id', 'so_luong', DB::raw('COUNT(*) as cnt'))
+            ->where('type', 2)
+            ->groupBy('lsx_pallet_id', 'so_luong')
+            ->having('cnt', '>', 1);
 
-        // // 2) Join sub-query này để lấy tất cả bản ghi trùng
-        // $duplicates = WarehouseFGLog::joinSub($dupGroups, 'dup', function ($join) {
-        //     $join->on('warehouse_fg_logs.lsx_pallet_id', '=', 'dup.lsx_pallet_id')
-        //         ->on('warehouse_fg_logs.so_luong',       '=', 'dup.so_luong');
-        // })
-        //     ->where('warehouse_fg_logs.type', 2)
-        //     ->get();
-        // return $duplicates;
+        // 2) Join sub-query này để lấy tất cả bản ghi trùng
+        $duplicates = WarehouseFGLog::joinSub($dupGroups, 'dup', function ($join) {
+            $join->on('warehouse_fg_logs.lsx_pallet_id', '=', 'dup.lsx_pallet_id')
+                ->on('warehouse_fg_logs.so_luong',       '=', 'dup.so_luong');
+        })
+            ->where('warehouse_fg_logs.type', 2)
+            ->get();
+        return $duplicates;
 
         // DB::transaction(function() {
             // 1) Lấy danh sách các nhóm (lsx_pallet_id, so_luong) có >1 record type=2

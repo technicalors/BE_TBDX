@@ -5481,7 +5481,7 @@ class ApiUIController extends AdminController
         //     ->get();
         // return $duplicates;
 
-        DB::transaction(function() {
+        // DB::transaction(function() {
             // 1) Lấy danh sách các nhóm (lsx_pallet_id, so_luong) có >1 record type=2
             $groups = WarehouseFGLog::where('type', 2)
                 ->select('lsx_pallet_id','so_luong')
@@ -5519,7 +5519,7 @@ class ApiUIController extends AdminController
         
                 WarehouseFGLog::whereIn('id', $toDelete)->delete();
             }
-        });
+        // });
         return 'done';
     }
 }

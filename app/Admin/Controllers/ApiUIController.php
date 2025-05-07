@@ -5384,14 +5384,14 @@ class ApiUIController extends AdminController
     }
 
     public function exportAllFGBeforeDate(Request $request){
-        $lsx_pallet = LSXPallet::with('warehouse_fg_log')
-        ->whereHas('warehouse_fg_log', function($q) use($request) {
+        $lsx_pallet = LSXPallet::with('warehouse_fg_logs')
+        ->whereHas('warehouse_fg_logs', function($q) use($request) {
             $q->where('type', 1)
               ->whereDate('created_at', $request->date)
               ->whereDate('created_at', '<', '2025-01-01');
         })
         // 2) Không có log type = 2 trong cùng ngày
-        ->whereDoesntHave('warehouse_fg_log', function($q) use($request) {
+        ->whereDoesntHave('warehouse_fg_logs', function($q) use($request) {
             $q->where('type', 2)
               ->whereDate('created_at', $request->date);
         })

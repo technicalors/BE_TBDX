@@ -5402,8 +5402,8 @@ class ApiUIController extends AdminController
         }
         $counter = 0;
         foreach ($lsx_pallet as $key => $value) {
-            if(count($value->warehouse_fg_log) > 0){
-                $logs = $value->warehouse_fg_log->toArray() ?? [];
+            if(count($value->warehouse_fg_logs) > 0){
+                $logs = $value->warehouse_fg_logs->toArray() ?? [];
                 $check_exported = in_array(2, array_column($logs, 'type'));
                 if($check_exported){
                     $value->update(['status' => LSXPallet::EXPORTED, 'remain_quantity' => 0]);

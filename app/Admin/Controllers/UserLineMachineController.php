@@ -36,6 +36,18 @@ class UserLineMachineController extends AdminController
         if(isset($input['name'])){
             $query->where('name', 'like', "%".$input['name']."%");
         }
+        if(isset($input['machine_id'])){
+            $query->whereHas('user_machine', function($q) use ($input){
+                $q->where('machine_id', $input['machine_id']);
+            });
+        }
+        if(isset($input['line_name'])){
+            $query->whereHas('user_line', function($q) use ($input) {
+                $q->whereHas('line', function($q2) use ($input) {
+                    $q2->whereIn('name', (array) $input['line_name']);
+                });
+            });
+        }
         $totalPage = $query->count();
         if(isset($input['page']) && isset($input['pageSize'])){
             $query->offset(($input['page'] - 1) * $input['pageSize'])->limit($input['pageSize']);

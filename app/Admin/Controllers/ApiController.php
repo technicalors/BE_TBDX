@@ -8801,16 +8801,16 @@ class ApiController extends AdminController
                 }
             });
         }
-        $query->whereHas('lsxpallets', function ($q) use ($request) {
-            $q->selectRaw('SUM(remain_quantity) as sl_ton');
-            $q->having('sl_ton', '>', 0);
-            if (isset($request->sl_ton_min)) {
-                $q->having('sl_ton', '>=', $request->sl_ton_min);
-            }
-            if (isset($request->sl_ton_max)) {
-                $q->having('sl_ton', '<=', $request->sl_ton_max);
-            }
-        });
+        // $query->whereHas('lsxpallets', function ($q) use ($request) {
+        //     $q->selectRaw('SUM(remain_quantity) as sl_ton');
+        //     $q->having('sl_ton', '>', 0);
+        //     if (isset($request->sl_ton_min)) {
+        //         $q->having('sl_ton', '>=', $request->sl_ton_min);
+        //     }
+        //     if (isset($request->sl_ton_max)) {
+        //         $q->having('sl_ton', '<=', $request->sl_ton_max);
+        //     }
+        // });
         $count = $query->count();
         $totalPage = $count;
         if (isset($request->page) && isset($request->pageSize)) {

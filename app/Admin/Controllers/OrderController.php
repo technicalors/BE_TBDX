@@ -103,7 +103,7 @@ class OrderController extends AdminController
 
     public function getOrders(Request $request)
     {
-        $query = Order::with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name'])->orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
+        $query = Order::orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
         if (isset($request->status)) {
             if ($request->status === 'all') {
                 $query->withTrashed();
@@ -111,8 +111,8 @@ class OrderController extends AdminController
                 $query->onlyTrashed();
             }
         }
-        if (isset($input['id'])) {
-            $query->where('id', 'like', "%" . $input['id'] . "%");
+        if (isset($request->id)) {
+            $query->where('id', 'like', "%" . $request->id . "%");
         }
         if (isset($request->customer_id)) {
             $query->where('customer_id', 'like', "%" . $request->customer_id . "%");
@@ -229,7 +229,7 @@ class OrderController extends AdminController
             $pageSize = $request->pageSize;
             $query->offset($page * $pageSize)->limit($pageSize ?? 10);
         }
-        $records = $query->select('*', 'sl as sl_dinh_muc')->get()->map(function($item){
+        $records = $query->with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name'])->select('*', 'sl as sl_dinh_muc')->get()->map(function($item){
             $item->red_text = ($item->phan_loai_2 === 'thung-1-manh' && $item->dai_tam > 315) ? true : false;
             return $item;
         });

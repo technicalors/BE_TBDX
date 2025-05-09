@@ -208,7 +208,7 @@ class OrderController extends AdminController
             $query->where('xuong_giao', $request->xuong_giao);
         }
         if (isset($request->is_planned) && $request->is_planned != 0) {
-            if($request->is_planned == 1) {
+            if ($request->is_planned == 1) {
                 $query->has('group_plan_order');
             } else {
                 $query->doesntHave('group_plan_order');
@@ -229,7 +229,7 @@ class OrderController extends AdminController
             $pageSize = $request->pageSize;
             $query->offset($page * $pageSize)->limit($pageSize ?? 10);
         }
-        $records = $query->with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name'])->select('*', 'sl as sl_dinh_muc')->get()->map(function($item){
+        $records = $query->with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name'])->select('*', 'sl as sl_dinh_muc')->get()->map(function ($item) {
             $item->red_text = ($item->phan_loai_2 === 'thung-1-manh' && $item->dai_tam > 315) ? true : false;
             return $item;
         });
@@ -273,45 +273,47 @@ class OrderController extends AdminController
                         }
                     }
                 }
-                $input['so_luong'] = $input['sl'];
-                if (isset($input['dai']) && isset($input['rong']) && isset($input['so_luong']) && (!($input['so_ra'] ?? "") || !($input['kho_tong'] ?? "") || !($input['kho'] ?? "") || !($input['dai_tam'] ?? ""))) {
-                    $khuon_link = KhuonLink::with('khuon')
-                        ->where('customer_id', $order->short_name)
-                        ->where(DB::raw('CONCAT_WS("", dai, rong, cao)'), ($input['dai'] ?? "") . ($input['rong'] ?? "") . ($input['cao'] ?? ""))
-                        // ->where('dai', $input['dai'] ?? null)
-                        // ->where('rong', $input['rong'] ?? null)
-                        // ->where('cao', $input['cao'] ?? null)
-                        ->where('phan_loai_1', $input['phan_loai_1'] ?? null)
-                        ->where('buyer_id', $input['buyer_id'] ?? null)
-                        ->where('pad_xe_ranh', $input['note_3'] ?? null)
-                        ->first();
-                    // return [$input['dai'], $input['rong'], $input['cao']];
-                    // return $khuon_link;
-                    $input['khuon_id'] = $khuon_link->khuon_id ?? null;
-                    $formula = DB::table('formulas')->where('phan_loai_1', $input['phan_loai_1'] ?? "")->where('phan_loai_2', $input['phan_loai_2'] ?? "")->first();
-                    if ((!in_array($input['phan_loai_2'], ['thung-be', 'pad-be']) && $formula) || ($formula && in_array($input['phan_loai_2'], ['thung-be', 'pad-be']) && $khuon_link && $khuon_link->dai_khuon && $khuon_link->kho_khuon && $khuon_link->so_con)) {
-                        $input['kho_giay_array'] = range(0, 200, 5);
-                        $input['kho_giay_array'] = array_merge($input['kho_giay_array'], [88, 92]);
-                        $input['n1_except'] = [5, 7, 10, 11, 13, 14, 17, 19, 22, 23, 25, 26, 29, 31, 33, 34, 35, 38, 39];
-                        $function = str_replace('$input_dai', $input['dai'], $formula->function);
-                        $function = str_replace('$input_cao', $input['cao'] ?? 0, $function);
-                        $function = str_replace('$input_rong', $input['rong'], $function);
-                        $function = str_replace('$input_so_luong', $input['so_luong'], $function);
-                        $function = str_replace('$input_kho_giay', json_encode($input['kho_giay_array']), $function);
-                        $function = str_replace('$input_n1_except', json_encode($input['n1_except']), $function);
-                        if ($khuon_link && $khuon_link->dai_khuon && $khuon_link->kho_khuon && $khuon_link->so_con) {
-                            $function = str_replace('$kho_khuon_input', $khuon_link->kho_khuon, $function);
-                            $function = str_replace('$dai_khuon_input', $khuon_link->dai_khuon, $function);
-                            $function = str_replace('$so_con_input', $khuon_link->so_con, $function);
-                        }
-                        try {
-                            $input = array_merge($input, eval($function));
-                            $input['so_met_toi'] = round($input['dai_tam'] * $input['so_dao'] / 100);
-                            // if($$input['phan_loai_2'] === 'thung-1-manh' && $input['dai_tam'] > 315){
-                            //     $input['phan_loai_2'] = 'thung-2-manh';
-                            // }
-                        } catch (\Throwable $th) {
-                            throw $th;
+                if (isset($input['sl'])) {
+                    $input['so_luong'] = $input['sl'];
+                    if (isset($input['dai']) && isset($input['rong']) && isset($input['so_luong']) && (!($input['so_ra'] ?? "") || !($input['kho_tong'] ?? "") || !($input['kho'] ?? "") || !($input['dai_tam'] ?? ""))) {
+                        $khuon_link = KhuonLink::with('khuon')
+                            ->where('customer_id', $order->short_name)
+                            ->where(DB::raw('CONCAT_WS("", dai, rong, cao)'), ($input['dai'] ?? "") . ($input['rong'] ?? "") . ($input['cao'] ?? ""))
+                            // ->where('dai', $input['dai'] ?? null)
+                            // ->where('rong', $input['rong'] ?? null)
+                            // ->where('cao', $input['cao'] ?? null)
+                            ->where('phan_loai_1', $input['phan_loai_1'] ?? null)
+                            ->where('buyer_id', $input['buyer_id'] ?? null)
+                            ->where('pad_xe_ranh', $input['note_3'] ?? null)
+                            ->first();
+                        // return [$input['dai'], $input['rong'], $input['cao']];
+                        // return $khuon_link;
+                        $input['khuon_id'] = $khuon_link->khuon_id ?? null;
+                        $formula = DB::table('formulas')->where('phan_loai_1', $input['phan_loai_1'] ?? "")->where('phan_loai_2', $input['phan_loai_2'] ?? "")->first();
+                        if ((!in_array($input['phan_loai_2'], ['thung-be', 'pad-be']) && $formula) || ($formula && in_array($input['phan_loai_2'], ['thung-be', 'pad-be']) && $khuon_link && $khuon_link->dai_khuon && $khuon_link->kho_khuon && $khuon_link->so_con)) {
+                            $input['kho_giay_array'] = range(0, 200, 5);
+                            $input['kho_giay_array'] = array_merge($input['kho_giay_array'], [88, 92]);
+                            $input['n1_except'] = [5, 7, 10, 11, 13, 14, 17, 19, 22, 23, 25, 26, 29, 31, 33, 34, 35, 38, 39];
+                            $function = str_replace('$input_dai', $input['dai'], $formula->function);
+                            $function = str_replace('$input_cao', $input['cao'] ?? 0, $function);
+                            $function = str_replace('$input_rong', $input['rong'], $function);
+                            $function = str_replace('$input_so_luong', $input['so_luong'], $function);
+                            $function = str_replace('$input_kho_giay', json_encode($input['kho_giay_array']), $function);
+                            $function = str_replace('$input_n1_except', json_encode($input['n1_except']), $function);
+                            if ($khuon_link && $khuon_link->dai_khuon && $khuon_link->kho_khuon && $khuon_link->so_con) {
+                                $function = str_replace('$kho_khuon_input', $khuon_link->kho_khuon, $function);
+                                $function = str_replace('$dai_khuon_input', $khuon_link->dai_khuon, $function);
+                                $function = str_replace('$so_con_input', $khuon_link->so_con, $function);
+                            }
+                            try {
+                                $input = array_merge($input, eval($function));
+                                $input['so_met_toi'] = round($input['dai_tam'] * $input['so_dao'] / 100);
+                                // if($$input['phan_loai_2'] === 'thung-1-manh' && $input['dai_tam'] > 315){
+                                //     $input['phan_loai_2'] = 'thung-2-manh';
+                                // }
+                            } catch (\Throwable $th) {
+                                throw $th;
+                            }
                         }
                     }
                 }
@@ -324,7 +326,7 @@ class OrderController extends AdminController
                 if (isset($input['ids'])) {
                     foreach ($input['ids'] as $key => $id) {
                         $record = Order::find($id);
-                        if ($input['so_ra']) {
+                        if (isset($input['so_ra']) && $input['so_ra'] > 0) {
                             $input['so_dao'] = ceil(($record->sl * $he_so) / $input['so_ra']);
                             if ($input['dai_tam']) {
                                 $input['so_met_toi'] = round($input['dai_tam'] * $input['so_dao'] / 100);
@@ -776,7 +778,7 @@ class OrderController extends AdminController
                         Log::error($id);
                         throw $th;
                     }
-                    
+
                     return 0; // Đơn hàng đầu tiên không có hậu tố
                 })
                 ->max();

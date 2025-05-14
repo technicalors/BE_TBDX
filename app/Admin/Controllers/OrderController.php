@@ -214,6 +214,16 @@ class OrderController extends AdminController
                 $query->doesntHave('group_plan_order');
             }
         }
+        if(isset($request->layout_type)){
+            if($request->layout_type === 'is_null'){
+                $query->whereNull('layout_type');
+            }else{
+                $query->where('layout_type', $request->layout_type);
+            }
+        }
+        if(isset($request->layout_id)){
+            $query->where('layout_id', 'like', '%'.$request->layout_id.'%');
+        }
         $count = $query->count();
         $totalPage = $count;
         $role_ids = $request->user()->roles()->pluck('id')->toArray();

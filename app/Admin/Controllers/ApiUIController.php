@@ -3856,24 +3856,6 @@ class ApiUIController extends AdminController
                 // if ($input['id']) {
                 //     $locator_fg[] = $input;
                 // }
-                // $input['id'] = $row['A'];
-                // $input['ten_quy_cach'] = $row['B'];
-                // $input['ct_dai'] = 'return '.$row['C'].';';
-                // $input['ct_rong'] = 'return '.$row['D'].';';
-                // if($row['E'] === "[C]"){
-                //     $ct_cao = 'return [C];';
-                // }else{
-                //     $ct_cao = str_replace('CASE WHEN', 'if(', $row['E']);
-                //     $ct_cao = str_replace('=', '===', $ct_cao);
-                //     $ct_cao = str_replace('THEN', '){ return ', $ct_cao);
-                //     $ct_cao = str_replace('WHEN', ';} else if(', $ct_cao);
-                //     $ct_cao = str_replace('ELSE', ';}else{ return', $ct_cao);
-                //     $ct_cao = str_replace('END', ';}', $ct_cao);
-                // }
-                // $input['ct_cao'] = $ct_cao;
-                // if($input['id']){
-                //     $quy_cach[] = $input;
-                // }
                 $input['customer_id'] = $row['B'];
                 $input['phan_loai_1'] = Str::slug($row['C']);
                 $input['drc_id'] = $row['E'];

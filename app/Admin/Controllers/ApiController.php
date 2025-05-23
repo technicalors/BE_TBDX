@@ -5953,19 +5953,19 @@ class ApiController extends AdminController
                 $query->where('mdh', 'like', "%$request->mdh%");
             }
         }
-        if (isset($request->dot)) {
+        if (isset($request->dot) && !empty($request->dot)) {
             $query->where('dot', 'like', '%'.$request->dot.'%');
         }
-        if (isset($request->po)) {
+        if (isset($request->po) && !empty($request->po)) {
             $query->where('po', 'like', '%'.$request->po.'%');
         }
-        if (isset($request->kich_thuoc)) {
+        if (isset($request->kich_thuoc) && !empty($request->kich_thuoc)) {
             $query->where('kich_thuoc', 'like', '%'.$request->kich_thuoc.'%');
         }
-        if (isset($request->layout_type)) {
+        if (isset($request->layout_type) && !empty($request->layout_type)) {
             $query->where('layout_type', 'like', '%'.$request->layout_type.'%');
         }
-        if (isset($request->layout_id)) {
+        if (isset($request->layout_id) && !empty($request->layout_id)) {
             $query->where('layout_id', 'like', '%'.$request->layout_id.'%');
         }
         $machine = Machine::find($request->machine_id);

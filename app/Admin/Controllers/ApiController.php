@@ -5873,6 +5873,11 @@ class ApiController extends AdminController
         if (isset($request->machine_id)) {
             $query->where('tem.machine_id', $request->machine_id);
         }
+        if (isset($request->dot)) {
+            $query->whereHas('order', function ($query) use ($request) {
+                $query->where('dot', 'like', "%$request->dot%");
+            });
+        }
         $records = $query->get();
         $data = [];
         foreach ($records as $key => $record) {

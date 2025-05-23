@@ -5960,7 +5960,10 @@ class ApiController extends AdminController
             $query->where('po', 'like', '%'.$request->po.'%');
         }
         if (isset($request->kich_thuoc) && !empty($request->kich_thuoc)) {
-            $query->where('kich_thuoc', 'like', '%'.$request->kich_thuoc.'%');
+            $query->where(function ($custom_query) use ($request) {
+                $custom_query->where('kich_thuoc', 'like', '%'.$request->kich_thuoc.'%')
+                ->orWhere('kich_thuoc_chuan', 'like', '%'.$request->kich_thuoc.'%');
+            });
         }
         if (isset($request->layout_type) && !empty($request->layout_type)) {
             $query->where('layout_type', 'like', '%'.$request->layout_type.'%');

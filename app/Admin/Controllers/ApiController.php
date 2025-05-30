@@ -4820,7 +4820,7 @@ class ApiController extends AdminController
         }
         // file path
         $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
-        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+        $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, false, true);
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 3
             if ($key > 8) {

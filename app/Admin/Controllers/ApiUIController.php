@@ -683,43 +683,62 @@ class ApiUIController extends AdminController
         foreach ($lines as $line_id) {
             $line = Line::find($line_id);
             $machine_ids = Machine::where('line_id', $line_id)->where('is_iot', 1)->pluck('id')->toArray();
+            $now = Carbon::now();
+            $start_date = Carbon::now()->setTime(7, 0, 0);
+            $end_date = Carbon::now()->addDay()->setTime(7, 0, 0);
 
+            // Nếu thời điểm hiện tại < 7h sáng, lấy dữ liệu từ 7h hôm trước đến 7h hôm nay
+            if ($now->lessThan($start_date)) {
+                $start_date = Carbon::now()->subDay()->setTime(7, 0, 0);
+                $end_date = Carbon::now()->setTime(7, 0, 0);
+            }
 
             $ke_hoach_ca = 0;
             switch ((string)$line_id) {
                 case '30':
                     $song_info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids);
-                    $ke_hoach_ca = (clone $song_info_plan_query)->where(function ($q) {
-                        $q->whereDate('ngay_sx', date('Y-m-d'))
-                            ->orWhereIn('id', InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray());
-                    })->sum('dinh_muc');
-                    $sl_hien_tai = (clone $song_info_plan_query)->where('thoi_gian_bat_dau', '>=', date('Y-m-d 07:00:00'))->sum('sl_dau_ra_hang_loat');
-                    // $sl_muc_tieu = (int)(($ke_hoach_ca / 8) * (int)((strtotime(date('Y-m-d H:i:s')) - strtotime(date('Y-m-d 07:30:00'))) / 3600));
+                    // Lấy kế hoạch trong ngày
+                    $ke_hoach_ca = (clone $song_info_plan_query)
+                        ->where(function ($q) {
+                            $q->whereDate('ngay_sx', date('Y-m-d'))
+                                ->orWhereIn('id', InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray());
+                        })
+                        ->sum('dinh_muc');
+                    
+                    // Lấy số lượng hiện tại trong khoảng thời gian từ 7h đến 7h hôm sau
+                    $sl_hien_tai = (clone $song_info_plan_query)
+                        ->whereBetween('thoi_gian_bat_dau', [$start_date, $end_date])
+                        ->sum('sl_dau_ra_hang_loat');
+                    
                     $sl_muc_tieu = $ke_hoach_ca;
                     break;
                 case '31':
                 case '32':
-                    $info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->where(function ($q) {
-                        $q->whereDate('ngay_sx', date('Y-m-d'))->orWhereDate('thoi_gian_bat_dau', date('Y-m-d'));
-                    });
-                    $infos = $info_plan_query->get();
-                    $sl_hien_tai = $infos->sum('sl_dau_ra_hang_loat');
-                    $ke_hoach_ca = $infos->sum('dinh_muc');
+                    $info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids)
+                        ->where(function ($q) {
+                            $q->whereDate('ngay_sx', date('Y-m-d'))
+                                ->orWhereDate('thoi_gian_bat_dau', date('Y-m-d'));
+                        })->get();
+                    
+                    // Lấy kế hoạch trong ngày
+                    $ke_hoach_ca = $info_plan_query->sum('dinh_muc');
+                    
+                    // Lấy số lượng hiện tại trong khoảng thời gian từ 7h đến 7h hôm sau
+                    $sl_hien_tai = $info_plan_query->sum('sl_dau_ra_hang_loat');
+                    
                     $sl_muc_tieu = $ke_hoach_ca;
-                default:
-                    # code...
                     break;
             }
+
             $ti_le = $ke_hoach_ca ? ($sl_hien_tai / $ke_hoach_ca) * 100 : 0;
             if ($ti_le >= 95) {
                 $status = 1;
-            }
-            if ($ti_le >= 90 && $ti_le < 95) {
+            } elseif ($ti_le >= 90 && $ti_le < 95) {
                 $status = 2;
-            }
-            if ($ti_le < 90) {
+            } else {
                 $status = 3;
             }
+
             $tm = [
                 "cong_doan" => mb_strtoupper($line->name, 'UTF-8'),
                 "ke_hoach_ca" => $ke_hoach_ca,
@@ -730,7 +749,7 @@ class ApiUIController extends AdminController
             ];
             $res[] = $tm;
         }
-        return  $this->success($res);
+        return $this->success($res);
     }
 
     private function machineErrorTable($mark_err, $machine_log)
@@ -2516,7 +2535,7 @@ class ApiUIController extends AdminController
         $sheet->getRowDimension($header1_row)->setRowHeight(42);
         foreach ($sheet->getColumnIterator() as $column) {
             if ($column->getColumnIndex() !== 'A') {
-                $sheet->getColumnDimension($column->getColumnIndex())->setWidth(12);
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
                 $sheet->getStyle($column->getColumnIndex() . ($start1_row + 1) . ':' . $column->getColumnIndex() . ($table1_row - 1))->applyFromArray($border);
             }
         }
@@ -2653,7 +2672,7 @@ class ApiUIController extends AdminController
         $sheet->getRowDimension($header2_row)->setRowHeight(42);
         foreach ($sheet->getColumnIterator() as $column) {
             if ($column->getColumnIndex() !== 'A') {
-                $sheet->getColumnDimension($column->getColumnIndex())->setWidth(12);
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
                 $sheet->getStyle($column->getColumnIndex() . ($start2_row + 1) . ':' . $column->getColumnIndex() . ($table2_row - 1))->applyFromArray($border);
             }
         }
@@ -2863,7 +2882,7 @@ class ApiUIController extends AdminController
             $table3_row += 1;
         }
         foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setWidth(12);
+            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
             $sheet->getStyle($column->getColumnIndex() . ($start3_row + 2) . ':' . $column->getColumnIndex() . ($table3_row - 1))->applyFromArray($border);
         }
         header("Content-Description: File Transfer");
@@ -5479,7 +5498,7 @@ class ApiUIController extends AdminController
                         ['so_luong',      $g->so_luong],
                     ])->get();
         
-                // 3) Phân tách record “đủ cả 2” và “thiếu”
+                // 3) Phân tách record "đủ cả 2" và "thiếu"
                 $valid = $logs->filter(fn($r) =>
                     $r->created_by !== null
                     && $r->delivery_note_id !== null
@@ -5487,7 +5506,7 @@ class ApiUIController extends AdminController
         
                 // 4) Xác định record giữ lại
                 if ($valid->isNotEmpty()) {
-                    // nếu có ít nhất 1 record “đủ cả 2” → giữ id cao nhất trong valid
+                    // nếu có ít nhất 1 record "đủ cả 2" → giữ id cao nhất trong valid
                     $keep = $valid->sortByDesc('id')->first();
                 } else {
                     // ngược lại → giữ id cao nhất cả nhóm

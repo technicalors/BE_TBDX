@@ -624,7 +624,7 @@ class OrderController extends AdminController
         $sheet->setCellValue([1, 1], 'ĐƠN HÀNG')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
         $sheet->getRowDimension(1)->setRowHeight(40);
 
-        $spreadsheet->getActiveSheet()->fromArray($orders, NULL, 'A3');
+        $spreadsheet->getActiveSheet()->fromArray($orders, NULL, 'A3', true);
         
         // Auto-size columns
         foreach ($sheet->getColumnIterator() as $column) {

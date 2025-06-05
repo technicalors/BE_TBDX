@@ -101,8 +101,7 @@ class OrderController extends AdminController
         return true;
     }
 
-    public function getOrders(Request $request)
-    {
+    function queryOrder($request){
         $query = Order::orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
         if (isset($request->status)) {
             if ($request->status === 'all') {
@@ -224,6 +223,12 @@ class OrderController extends AdminController
         if(isset($request->layout_id)){
             $query->where('layout_id', 'like', '%'.$request->layout_id.'%');
         }
+        return $query;
+    }
+
+    public function getOrders(Request $request)
+    {
+        $query = $this->queryOrder($request);
         $count = $query->count();
         $totalPage = $count;
         $role_ids = $request->user()->roles()->pluck('id')->toArray();
@@ -453,76 +458,67 @@ class OrderController extends AdminController
 
     public function exportOrders(Request $request)
     {
-        $query = Order::orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
-        if (isset($request->customer_id)) {
-            $query->where('customer_id', 'like', "%" . $request->customer_id . "%");
+        $query = $this->queryOrder($request);
+        $records = $query->with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name'])->get();
+        $orders = [];
+        foreach ($records as $key => $value) {
+            $orders[] = [
+                'stt' => $key + 1,
+                'customer_id' => $value->customer_id,
+                'short_name' => $value->short_name,
+                'mdh' => $value->mdh,
+                'mql' => $value->mql,
+                'kich_thuoc' => $value->kich_thuoc,
+                'length' => $value->length,
+                'width' => $value->width,
+                'height' => $value->height,
+                'sl' => $value->sl,
+                'unit' => $value->unit,
+                'kich_thuoc_chuan' => $value->kich_thuoc_chuan,
+                'phan_loai_1' => $value->phan_loai_1,
+                'quy_cach_drc' => $value->quy_cach_drc,
+                'buyer_id' => $value->buyer_id,
+                'phan_loai_2' => $value->phan_loai_2,
+                'khuon_id' => $value->khuon_id,
+                'note_3' => $value->note_3,
+                'dai' => $value->dai,
+                'rong' => $value->rong,
+                'cao' => $value->cao,
+                'so_ra' => $value->so_ra,
+                'kho' => $value->kho,
+                'kho_tong' => $value->kho_tong,
+                'dai_tam' => $value->dai_tam,
+                'so_dao' => $value->so_dao,
+                'so_met_toi' => $value->so_met_toi,
+                'toc_do' => $value->toc_do,
+                'tg_doi_model' => $value->tg_doi_model,
+                'layout_type' => $value->layout_type,
+                'layout_id' => $value->layout_id,
+                'order' => $value->order,
+                'slg' => $value->slg,
+                'slt' => $value->slt,
+                'tmo' => $value->tmo,
+                'po' => $value->po,
+                'style' => $value->style,
+                'style_no' => $value->style_no,
+                'color' => $value->color,
+                'item' => $value->item,
+                'rm' => $value->rm,
+                'size' => $value->size,
+                'price' => $value->price,
+                'into_money' => $value->into_money,
+                'xuong_giao' => $value->xuong_giao,
+                'note_1' => $value->note_1,
+                'han_giao' => $value->han_giao,
+                'han_giao_sx' => $value->han_giao_sx,
+                'nguoi_dat_hang' => $value->nguoi_dat_hang,
+                'ngay_dat_hang' => $value->ngay_dat_hang,
+                'note_2' => $value->note_2,
+                'dot' => $value->dot,
+                'ngay_kh' => $value->ngay_kh,
+                'creator' => $value->creator->name ?? "",
+            ];
         }
-        if (isset($request->short_name)) {
-            $query->where('short_name', 'like', "%" . $request->short_name . "%");
-        }
-        if (isset($request->start_date) && isset($request->end_date)) {
-            $query->whereDate('ngay_dat_hang', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('ngay_dat_hang', '<=', date('Y-m-d', strtotime($request->end_date)));
-        }
-        if (isset($request->mdh)) {
-            if (is_array($request->mdh)) {
-                $query->where(function ($custom_query) use ($request) {
-                    foreach ($request->mdh as $mdh) {
-                        $custom_query->orWhere('mdh', 'like', "%$mdh%");
-                    }
-                });
-            } else {
-                $query->where('mdh', 'like', "%$request->mdh%");
-            }
-        }
-        if (isset($request->order)) {
-            $query->where('order', 'like', "%$request->order%");
-        }
-        if (isset($request->mql)) {
-            $query->where('mql', $request->mql);
-        }
-        if (isset($request->kich_thuoc)) {
-            $query->where('kich_thuoc', 'like', "%$request->kich_thuoc%");
-        }
-        if (isset($request->length)) {
-            $query->where('length', 'like', $request->length);
-        }
-        if (isset($request->width)) {
-            $query->where('width', 'like', $request->width);
-        }
-        if (isset($request->height)) {
-            $query->where('height', 'like', $request->height);
-        }
-        if (isset($request->po)) {
-            $query->where('po', 'like', "%$request->po%");
-        }
-        if (isset($request->dot)) {
-            $query->where('dot', $request->dot);
-        }
-        if (isset($request->style)) {
-            $query->where('style', 'like', "%$request->style%");
-        }
-        if (isset($request->style_no)) {
-            $query->where('style_no', 'like', "%$request->style_no%");
-        }
-        if (isset($request->color)) {
-            $query->where('color', 'like', "%$request->color%");
-        }
-        if (isset($request->item)) {
-            $query->where('item', 'like', "%$request->item%");
-        }
-        if (isset($request->rm)) {
-            $query->where('rm', 'like', "%$request->rm%");
-        }
-        if (isset($request->size)) {
-            $query->where('size', 'like', "%$request->size%");
-        }
-        if (isset($request->note_2)) {
-            $query->where('note_2', 'like', "%$request->note_2%");
-        }
-        if (isset($request->han_giao)) {
-            $query->whereDate('han_giao', date('Y-m-d', strtotime($request->han_giao)));
-        }
-        $orders = $query->select(DB::raw('ROW_NUMBER() OVER(ORDER BY ID ASC) AS Row'), 'ngay_dat_hang', 'short_name', 'customer_id', 'nguoi_dat_hang', 'mdh', 'order', 'mql', 'length', 'width', 'height', 'kich_thuoc', 'unit', 'layout_type', 'sl', 'slg', 'slt', 'tmo', 'po', 'style', 'style_no', 'color', 'item', 'rm', 'size', 'price', 'into_money', 'dot', 'xuong_giao', 'note_1', 'han_giao', 'note_2', 'xuat_tai_kho', 'han_giao_sx')->get()->toArray();
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $start_row = 2;
@@ -549,43 +545,68 @@ class OrderController extends AdminController
         $titleStyle = array_merge($centerStyle, [
             'font' => ['size' => 16, 'bold' => true],
         ]);
+        $border = [
+            'borders' => array(
+                'allBorders' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
         $header = [
             'STT',
-            'Ngày ĐH',
-            'Khách hàng',
             'Mã khách hàng',
-            'Người ĐH',
+            'Khách hàng',
             'MĐH',
-            'Order',
             'MQL',
+            'Kích thước ĐH',
             'L',
             'W',
             'H',
-            'Kích thước',
-            'Đơn vị tính',
-            'Máy + P8',
             'SL',
+            'Đơn vị tính',
+            'Kích thước chuẩn',
+            'Phân loại 1',
+            'Quy cách DRC',
+            'Mã buyer',
+            'Phân loại 2',
+            'Mã khuôn',
+            'Ghi chú sóng',
+            'Dài',
+            'Rộng',
+            'Cao',
+            'Số ra',
+            'Khổ',
+            'Khổ tổng',
+            'Dài tấm',
+            'Số dao',
+            'Số mét tới',
+            'Tốc độ',
+            'Thời gian thay model',
+            'Chia máy + p8',
+            'Mã layout',
+            'Order',
             'SLG',
             'SLT',
             'TMO',
             'PO',
             'Style',
-            'Style no',
+            'Style NO',
             'Color',
             'Item',
             'RM',
             'Size',
-            'Giá thành',
+            'Đơn giá',
             'Thành tiền',
+            'Xưởng giao',
+            'Ghi chú khách hàng',
+            'Ngày giao hàng SX',
+            'Người đặt hàng',
+            'Ngày đặt hàng',
+            'Ghi chú của TBDX',
             'Đợt',
-            'Fac',
-            'Ghi chú',
-            'Hạn giao',
-            'Ghi chú 2',
-            'Xuất tại kho',
-            'Ngày giao',
-            'Xe giao',
-            'Xuất hàng'
+            'Người thực hiện KH',
+            'Người tạo'
         ];
         foreach ($header as $key => $cell) {
             if (!is_array($cell)) {
@@ -604,6 +625,13 @@ class OrderController extends AdminController
         $sheet->getRowDimension(1)->setRowHeight(40);
 
         $spreadsheet->getActiveSheet()->fromArray($orders, NULL, 'A3');
+        
+        // Auto-size columns
+        foreach ($sheet->getColumnIterator() as $column) {
+            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            $sheet->getStyle($column->getColumnIndex().($start_row).':'.$column->getColumnIndex().($start_row + count($orders)))->applyFromArray(array_merge($centerStyle, $border));
+        }
+        
         header("Content-Description: File Transfer");
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="Đơn hàng.xlsx"');

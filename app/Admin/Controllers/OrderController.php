@@ -159,7 +159,10 @@ class OrderController extends AdminController
             }
         }
         if (isset($request->kich_thuoc)) {
-            $query->where('kich_thuoc', 'like', "%$request->kich_thuoc%");
+            $query->where(function ($custom_query) use ($request) {
+                $custom_query->where('kich_thuoc', 'like', '%'.$request->kich_thuoc.'%')
+                ->orWhere('kich_thuoc_chuan', 'like', '%'.$request->kich_thuoc.'%');
+            });
         }
         if (isset($request->length)) {
             $query->where('length', 'like', $request->length);
@@ -215,7 +218,9 @@ class OrderController extends AdminController
         }
         if(isset($request->layout_type)){
             if($request->layout_type === 'is_null'){
-                $query->whereNull('layout_type');
+                $query->where(function($q){
+                    $q->whereNull('layout_type')->orWhere('layout_type', '');
+                });
             }else{
                 $query->where('layout_type', $request->layout_type);
             }

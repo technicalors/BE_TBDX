@@ -2698,10 +2698,10 @@ class ApiController extends AdminController
             $value->so_pallet = $value->ordering ?? "";
             $obj->lo_sx = $value->lo_sx;
             $obj->so_luong = $value->sl_kh;
-            $obj->mql = count($value->orders) > 0 ? implode(',', $value->orders->pluck('mql')->toArray()) : $value->mql;
+            $obj->mql = count($value->orders) > 0 ? implode(',', $value->orders->pluck('mql')->toArray()) : ($order->mql ?? '');
             $value->qr_code = json_encode($obj);
             $data[$key] = array_merge($value->toArray(), $order ? $order->toArray() : []);
-            $data[$key]['mql'] = count($value->orders) > 0 ? implode(',', $value->orders->pluck('mql')->toArray()) : $value->mql;
+            $data[$key]['mql'] = count($value->orders) > 0 ? implode(',', $value->orders->pluck('mql')->toArray()) : ($order->mql ?? '');
             $data[$key]['so_dao'] = $data[$key]['so_ra'] ? ceil($data[$key]['sl_kh'] * ($formula->he_so ?? 1) / $data[$key]['so_ra']) : $data[$key]['so_dao'];
             $data[$key]['id'] = $value->id;
         }

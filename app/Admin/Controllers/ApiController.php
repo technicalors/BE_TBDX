@@ -2701,7 +2701,7 @@ class ApiController extends AdminController
             $obj->mql = $value->orders ? implode(',', $value->orders->pluck('mql')->toArray()) : '';
             $value->qr_code = json_encode($obj);
             $data[$key] = array_merge($value->toArray(), $order ? $order->toArray() : []);
-            $data[$key]['mql'] = $value->orders ? implode(',', $value->orders->pluck('mql')->toArray()) : '';
+            $data[$key]['mql'] = $value->orders ? implode(',', $value->orders->pluck('mql')->toArray()) : $value->mql;
             $data[$key]['so_dao'] = $data[$key]['so_ra'] ? ceil($data[$key]['sl_kh'] * ($formula->he_so ?? 1) / $data[$key]['so_ra']) : $data[$key]['so_dao'];
             $data[$key]['id'] = $value->id;
         }

@@ -118,4 +118,9 @@ class CustomUser extends Model
     {
         return $this->belongsTo(Department::class, 'department_id');
     }
+
+    public function chats()
+    {
+        return $this->hasManyThrough(Chat::class, ChatUser::class);
+    }
 }

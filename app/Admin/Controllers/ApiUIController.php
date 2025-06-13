@@ -59,6 +59,7 @@ use App\Models\Material;
 use App\Models\Order;
 use App\Models\Pallet;
 use App\Models\QCLog;
+use App\Models\RequestLog;
 use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\Tem;
@@ -5522,5 +5523,10 @@ class ApiUIController extends AdminController
             }
         // });
         return 'done';
+    }
+
+    public function clearRequestLogs(){
+        RequestLog::truncate();
+        return 'request logs removed all';
     }
 }

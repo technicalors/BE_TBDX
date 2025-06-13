@@ -82,7 +82,7 @@ class DeliveryNoteController extends AdminController
                 'id' => date('d/m/y-') . ($number_id + 1),
                 'created_by' => $request->user()->id,
                 'vehicle_id' => $input['vehicle_id'],
-                'exporter_id' => $input['exporter_id'],
+                'exporter_id' => $input['exporter_id'] ?? null,
                 'driver_id' => $input['driver_id'],
             ]);
             if ($note) {
@@ -96,8 +96,7 @@ class DeliveryNoteController extends AdminController
         } catch (\Throwable $th) {
             //throw $th;
             DB::rollBack();
-            ErrorLog::saveError($request, $th);
-            return $this->failure($th, 'Đã xảy ra lỗi');
+            throw $th;
         }
         return $this->success('', 'Tạo thành công');
     }

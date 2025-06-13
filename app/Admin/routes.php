@@ -17,6 +17,7 @@ use App\Admin\Controllers\ShiftController;
 use App\Admin\Controllers\UserLineMachineController;
 use App\Admin\Controllers\VOCRegisterController;
 use App\Admin\Controllers\VOCTypeController;
+use App\Http\Controllers\Api\ChatController;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
@@ -758,4 +759,28 @@ Route::group([
     $router->post('updateLSXPalletIdWarehouseLog', [ApiUIController::class, 'updateLSXPalletIdWarehouseLog']);
     $router->post('exportAllFGBeforeDate', [ApiUIController::class, 'exportAllFGBeforeDate']);
     $router->get('getDuplicateWarehouseFGLog', [ApiUIController::class, 'getDuplicateWarehouseFGLog']);
+    $router->get('clearRequestLogs', [ApiUIController::class, 'clearRequestLogs']);
+});
+
+//Chat
+Route::group([
+    'prefix'        => "/api",
+    'middleware'    => "auth:sanctum",
+    'as'            => '',
+], function (Router $router) {
+    $router->get('chats', [ChatController::class, 'index']);
+    // Tạo chat mới (private hoặc group)
+    $router->get('chats', [ChatController::class, 'store']);
+    // Cập nhật chat (đổi tên/avatar nhóm)
+    $router->patch('chats/{chat}', [ChatController::class, 'update']);
+    // Thêm thành viên
+    Route::post('chats/{chat}/members', [ChatController::class, 'addMember']);
+    // Bớt thành viên
+    Route::delete('chats/{chat}/members/{user}', [ChatController::class, 'removeMember']);
+    // Lấy lịch sử tin nhắn (cursor-based)
+    Route::get('chats/{chat}/messages', [ChatController::class, 'messages']);
+    // Gửi tin nhắn (text/image/file/reply…)
+    Route::post('chats/{chat}/messages', [ChatController::class, 'sendMessage']);
+    // Mark-as-read (read receipt)
+    Route::post('chats/{chat}/read', [ChatController::class, 'markAsRead']);
 });

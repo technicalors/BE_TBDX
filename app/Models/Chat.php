@@ -3,15 +3,17 @@
 
 namespace App\Models;
 
+use App\Traits\UUID;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Chat extends Model
 {
-    use HasFactory;
+    use HasFactory, UUID;
 
     protected $fillable = [
         'type',        // 'private' | 'group'
@@ -33,9 +35,9 @@ class Chat extends Model
      */
     public function participants(): BelongsToMany
     {
-        return $this->belongsToMany(User::class)
+        return $this->belongsToMany(CustomUser::class, 'chat_user', 'chat_id', 'user_id')
                     ->using(ChatUser::class)
-                    ->withPivot(['last_read_message_id','last_read_at'])
+                    ->withPivot(['last_read_message_id', 'last_read_at'])
                     ->withTimestamps();
     }
 
@@ -45,5 +47,14 @@ class Chat extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);
+    }
+
+    public function lastMessage(): HasOne
+    {
+        // Với Laravel 8+
+        return $this->hasOne(Message::class)->orderBy('send_at', 'desc');
+        
+        // Nếu Laravel <8, dùng:
+        // return $this->hasOne(Message::class)->orderBy('created_at', 'desc');
     }
 }

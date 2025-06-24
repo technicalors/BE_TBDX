@@ -121,6 +121,6 @@ class CustomUser extends Model
 
     public function chats()
     {
-        return $this->hasManyThrough(Chat::class, ChatUser::class);
+        return $this->hasManyThrough(Chat::class, ChatUser::class, 'user_id', 'id', 'id', 'chat_id');
     }
 }

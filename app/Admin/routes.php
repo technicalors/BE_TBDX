@@ -17,7 +17,8 @@ use App\Admin\Controllers\ShiftController;
 use App\Admin\Controllers\UserLineMachineController;
 use App\Admin\Controllers\VOCRegisterController;
 use App\Admin\Controllers\VOCTypeController;
-use App\Http\Controllers\Api\ChatController;
+use App\Admin\Controllers\ChatController;
+use App\Models\Attachment;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
@@ -340,6 +341,7 @@ Route::group([
     $router->post('manufacture/resume-plan', [ApiController::class, 'resumePlan']);
     $router->post('manufacture/update-quantity-info-cong-doan', [ApiController::class, 'updateQuantityInfoCongDoan'])->middleware('prevent-duplicate-requests');
     $router->post('manufacture/delete-paused-plan-list', [ApiController::class, 'deletePausedPlanList']);
+    $router->post('manufacture/update-so-du', [ApiController::class, 'updateSodu']);
 
     $router->post('manufacture/manual/input', [ApiController::class, 'manualInput']);
     $router->post('manufacture/manual/scan', [ApiController::class, 'scanManual'])->middleware('prevent-duplicate-requests');
@@ -456,6 +458,7 @@ Route::group([
     $router->get('quality/qc-history/export', [ApiController::class, 'exportQCHistory']);
     $router->get('quality/iqc-history', [ApiController::class, 'iqcHistory']);
     $router->get('quality/iqc-history/export', [ApiController::class, 'exportIQCHistory']);
+    $router->get('quality/qc-history/detail', [ApiController::class, 'getQCdetailHistory']);
 
     $router->get('equipment/performance', [ApiController::class, 'machinePerformance']);
     $router->get('equipment/error-machine-list', [ApiController::class, 'getErrorMachine']);
@@ -479,7 +482,7 @@ Route::group([
     $router->delete('warehouse/fg/export/delete/{id}', [ApiController::class, 'deleteWarehouseFGExport']);
     $router->get('warehouse/list-pallet', [ApiController::class, 'getListPalletWarehouse']);
     $router->get('warehouse/fg/export/list/export', [ApiController::class, 'exportWarehouseFGExportList']);
-    $router->post('warehouse/fg/update-export-log', [ApiController::class,'updateExportFGLog']);
+    $router->post('warehouse/fg/update-export-log', [ApiController::class, 'updateExportFGLog']);
 
     $router->get('item-menu', [ApiController::class, 'getUIItemMenu']);
     $router->get('warehouse/mtl/goods-receipt-note', [ApiController::class, 'getGoodsReceiptNote']);
@@ -650,7 +653,7 @@ Route::group([
     $router->delete('customer/delete', [App\Admin\Controllers\CustomerController::class, 'deleteCustomer']);
     $router->get('customer/export', [App\Admin\Controllers\CustomerController::class, 'exportCustomer']);
     $router->post('customer/import', [App\Admin\Controllers\CustomerController::class, 'importCustomer']);
-    $router->get('real-customer-list', [App\Admin\Controllers\CustomerController::class,'getCustomers']);
+    $router->get('real-customer-list', [App\Admin\Controllers\CustomerController::class, 'getCustomers']);
 
     $router->post('buyers/create', [ApiController::class, 'createBuyers']);
     $router->patch('buyers/update', [ApiController::class, 'updateBuyers']);
@@ -682,7 +685,7 @@ Route::group([
 
     $router->post('parameters/import', [App\Admin\Controllers\MachineController::class, 'parametersImport']);
     $router->get('update-order', [ApiUIController::class, 'updateHGOrder']);
-    
+
     $router->post('manufacture/production-plan/import', [ApiController::class, 'importKHSX']);
     $router->post('import/vehicle', [ApiUIController::class, 'importVehicle']);
     $router->post('update-tem', [ApiUIController::class, 'updateTem']);
@@ -770,17 +773,21 @@ Route::group([
 ], function (Router $router) {
     $router->get('chats', [ChatController::class, 'index']);
     // Tạo chat mới (private hoặc group)
-    $router->get('chats', [ChatController::class, 'store']);
+    $router->post('chats', [ChatController::class, 'store']);
     // Cập nhật chat (đổi tên/avatar nhóm)
     $router->patch('chats/{chat}', [ChatController::class, 'update']);
     // Thêm thành viên
-    Route::post('chats/{chat}/members', [ChatController::class, 'addMember']);
+    $router->post('chats/{chat}/members', [ChatController::class, 'addMember']);
     // Bớt thành viên
-    Route::delete('chats/{chat}/members/{user}', [ChatController::class, 'removeMember']);
+    $router->delete('chats/{chat}/members/{user}', [ChatController::class, 'removeMember']);
     // Lấy lịch sử tin nhắn (cursor-based)
-    Route::get('chats/{chat}/messages', [ChatController::class, 'messages']);
+    $router->get('chats/{chat}/messages', [ChatController::class, 'messages']);
     // Gửi tin nhắn (text/image/file/reply…)
-    Route::post('chats/{chat}/messages', [ChatController::class, 'sendMessage']);
+    $router->post('chats/{chat}/messages', [ChatController::class, 'sendMessage']);
     // Mark-as-read (read receipt)
-    Route::post('chats/{chat}/read', [ChatController::class, 'markAsRead']);
+    $router->post('chats/{chat}/read', [ChatController::class, 'markAsRead']);
+    // Upload File (text/image/file/reply…)
+    $router->post('chats/{chat}/files', [ChatController::class, 'uploadFiles']);
+
+    $router->get('/download/chat_files/{file_name}', [ChatController::class, 'downloadFile'] );
 });

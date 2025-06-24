@@ -14,14 +14,14 @@ use Illuminate\Support\Str;
 
 class MessageSent implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable, SerializesModels, InteractsWithSockets;
 
     public $message;
 
     public function __construct(Message $message)
     {
         // eager-load sender and replyTo sender
-        $this->message = $message->load(['sender', 'replyTo.sender']);
+        $this->message = $message;
     }
 
     public function broadcastOn()
@@ -29,31 +29,8 @@ class MessageSent implements ShouldBroadcast
         return new PrivateChannel('chat.' . $this->message->chat_id);
     }
 
-    public function broadcastWith()
+    public function broadcastWith(): array
     {
-        return [
-            'id'                     => $this->message->id,
-            'chat_id'                => $this->message->chat_id,
-            'sender'                 => [
-                'id'     => $this->message->sender->id,
-                'name'   => $this->message->sender->name,
-                'avatar' => $this->message->sender->avatar,
-            ],
-            'type'                   => $this->message->type,
-            'content'                => $this->message->content,
-            'metadata'               => $this->message->metadata,
-            'reply_to_message_id'    => $this->message->reply_to_message_id,
-            'reply_to'               => $this->message->replyTo
-                                        ? [
-                                            'id'      => $this->message->replyTo->id,
-                                            'sender'  => [
-                                                'id'   => $this->message->replyTo->sender->id,
-                                                'name' => $this->message->replyTo->sender->name,
-                                            ],
-                                            'content' => Str::limit($this->message->replyTo->content, 100),
-                                          ]
-                                        : null,
-            'created_at'             => $this->message->created_at->toDateTimeString(),
-        ];
+        return $this->message->toArray();
     }
 }

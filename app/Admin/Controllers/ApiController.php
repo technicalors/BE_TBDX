@@ -520,6 +520,20 @@ class ApiController extends AdminController
         }
     }
 
+    function updateSodu(Request $request)
+    {
+        $info = InfoCongDoan::find($request->info_id);
+        if(!$info){
+            return $this->failure($request->info_id, 'Không tìm thấy lô');
+        }
+        if(is_numeric($request->so_du)){
+            $info->update(['so_du'=>$request->so_du]);
+            return $this->success($request->all(), 'Đã cập nhật số dư');
+        }else{
+            return $this->failure($request->info_id, 'Cập nhật không thành công');
+        }
+    }
+
     function takeTime()
     {
         return date('Y-m-d H:i:s.') . gettimeofday()["usec"];
@@ -1558,6 +1572,7 @@ class ApiController extends AdminController
             $obj->khach_hang = $obj->order->short_name ?? "-";
             $obj->mdh = $obj->order->mdh ?? "-";
             $obj->mql = $obj->order->mql ?? "-";
+            $obj->so_du = $info->so_du ?? 0;
             $obj->xuong_giao = $obj->order->xuong_giao ?? "-";
             $json = ['lo_sx' => $info->lo_sx, 'so_luong' => $obj->sl_ok];
             $obj->qr_code = json_encode($json);
@@ -3396,6 +3411,7 @@ class ApiController extends AdminController
             if ($log) {
                 $info = $log->info;
                 unset($info['tinh_nang'], $info['ngoai_quan'], $info['sl_ng_qc'], $info['sl_tinh_nang'], $info['sl_ngoai_quan'], $info['phan_dinh']);
+                $info['recheck_attemp'] = (isset($info['recheck_attemp']) && is_numeric($info['recheck_attemp'])) ? ($info['recheck_attemp'] + 1) : 1;
                 $log->info = $info;
                 $log->save();
             }
@@ -8146,6 +8162,18 @@ class ApiController extends AdminController
         $href = '/exported_files/Chi tiết IQC.xlsx';
         return $this->success($href);
     }
+
+    function getQCdetailHistory(Request $request){
+        $info = InfoCongDoan::where('id', $request->info_id)->first();
+        if(!$info){
+            return $this->failure(null, 'Không tìm thấy lô');
+        }
+        $qc_log = QCLog::where('lo_sx', $info->lo_sx)->where('machine_id', $info->machine_id)->first();
+        if(!$qc_log){
+            return $this->failure(null, 'Không tìm thấy lịch sử QC');
+        }
+        return $this->success($qc_log);
+    }
     //End UI
 
     public function phanKhuTheoNCC(Request $request)
@@ -8885,9 +8913,10 @@ class ApiController extends AdminController
         $group_records = array_values($group_records);
         $params['khach_hang'] = $records[0]->order->customer->name ?? "";
         $mau = Customer::FORM_LIST[$records[0]->order->short_name ?? ""] ?? "";
-        if (!$mau) {
-            $mau = 'mau_1';
-        }
+        // if (!$mau) {
+        //     $mau = 'mau_1';
+        // }
+        $mau = 'mau_chung';
         $warehouse_fg_export = array_column($records->toArray(), 'warehouse_fg_export');
         $orders = array_column($records->toArray(), 'order');
         $xuong_giao = array_column($warehouse_fg_export, 'xuong_giao');
@@ -8900,7 +8929,6 @@ class ApiController extends AdminController
         $params['now'] = date('d/m/Y H:i:s');
         $params['xuat_tai_kho'] = array_values(array_filter($xuat_tai_kho))[0] ?? 'CTY CP THÁI BÌNH DƯƠNG XANH';
         $params['xuong_giao'] = array_values(array_filter($xuong_giao))[0] ?? "";
-        // return $params;
         $writer = new \Kaxiluo\PhpExcelTemplate\PhpExcelTemplate;
         $writer->save('templates/' . $mau . '.xlsx', 'templates/ExportTemplate.xlsx', $params);
         $spreadsheet = IOFactory::load('templates/ExportTemplate.xlsx');

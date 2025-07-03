@@ -463,7 +463,7 @@ class ChatController extends Controller
                 'last_read_message_id' => $msgId,
                 'last_read_at'         => now(),
             ]);
-        $request->user()->unreadNotifications()->whereIn('data->id', $msgId)->update(['read_at' => now()]);
+        $request->user()->unreadNotifications()->where('data->id', $msgId)->update(['read_at' => now()]);
         broadcast(new MessageRead($chat->id, $request->user()->id, $msgId))->toOthers();
 
         return $this->success([]);

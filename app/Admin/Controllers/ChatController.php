@@ -513,4 +513,18 @@ class ChatController extends Controller
         $notif->markAsRead();
         return $this->success([]);
     }
+
+    public function readMultipleNotifications(Request $request)
+    {
+        $ids = $request->input('ids'); // array of notification IDs
+        if (!is_array($ids) || empty($ids)) {
+            return response()->json(['message' => 'No notification IDs provided'], 400);
+        }
+
+        // Giả sử bạn có model Notification và trường 'read_at'
+        $request->user()->unreadNotifications()->whereIn('id', $ids)
+            ->update(['read_at' => now()]);
+
+        return $this->success([]);
+    }
 }

@@ -794,6 +794,6 @@ Route::group([
     $router->get('/files/{chat_id}', [ChatController::class, 'files'] );
 
     $router->get('/notifications', [ChatController::class, 'getNotifications']);
-
     $router->post('/notifications/{id}/read', [ChatController::class, 'readNotifications']);
+    $router->post('/notifications/read-multiple', [ChatController::class, 'readMultipleNotifications']);
 });

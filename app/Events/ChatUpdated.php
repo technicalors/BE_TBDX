@@ -17,7 +17,7 @@ class ChatUpdated implements ShouldBroadcast
     public function __construct(Chat $chat)
     {
         // eager-load participants
-        $this->chat = $chat->load('participants:id,name,avatar');
+        $this->chat = $chat;
     }
 
     public function broadcastOn()
@@ -25,21 +25,8 @@ class ChatUpdated implements ShouldBroadcast
         return new PrivateChannel('chat.' . $this->chat->id);
     }
 
-    public function broadcastWith()
+    public function broadcastWith(): array
     {
-        return [
-            'id'           => $this->chat->id,
-            'type'         => $this->chat->type,
-            'name'         => $this->chat->name,
-            'avatar'       => $this->chat->avatar,
-            'participants' => $this->chat->participants->map(function($u) {
-                                    return [
-                                        'id'     => $u->id,
-                                        'name'   => $u->name,
-                                        'avatar' => $u->avatar,
-                                    ];
-                                }),
-            'updated_at'   => $this->chat->updated_at->toDateTimeString(),
-        ];
+        return $this->chat->toArray();
     }
 }

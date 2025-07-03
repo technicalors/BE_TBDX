@@ -57,4 +57,17 @@ class Chat extends Model
         // Nếu Laravel <8, dùng:
         // return $this->hasOne(Message::class)->orderBy('created_at', 'desc');
     }
+
+    public function attachments()
+    {
+        // Attachment ← Message ← Chat
+        return $this->hasManyThrough(
+            Attachment::class,
+            Message::class,
+            'chat_id',      // FK trên messages
+            'message_id',   // FK trên attachments
+            'id',           // PK của chats
+            'id'            // PK của messages
+        );
+    }
 }

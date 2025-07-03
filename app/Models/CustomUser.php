@@ -11,8 +11,9 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Auth\User as Authenticatable; 
 
-class CustomUser extends Model
+class CustomUser extends Authenticatable
 {
     use HasApiTokens, Notifiable;
     protected $table = 'admin_users';

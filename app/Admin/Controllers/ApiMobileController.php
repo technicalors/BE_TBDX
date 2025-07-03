@@ -96,6 +96,7 @@ class ApiMobileController extends AdminController
         }
 
         $data =  [
+            "id" => $user->id,
             "username" => $user->username,
             "name" => $user->name,
             "avatar" => $user->avatar,

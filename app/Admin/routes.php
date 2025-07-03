@@ -20,6 +20,7 @@ use App\Admin\Controllers\VOCTypeController;
 use App\Admin\Controllers\ChatController;
 use App\Models\Attachment;
 use Encore\Admin\Facades\Admin;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 
@@ -775,19 +776,24 @@ Route::group([
     // Tạo chat mới (private hoặc group)
     $router->post('chats', [ChatController::class, 'store']);
     // Cập nhật chat (đổi tên/avatar nhóm)
-    $router->patch('chats/{chat}', [ChatController::class, 'update']);
+    $router->patch('chats/{chat_id}', [ChatController::class, 'update']);
     // Thêm thành viên
-    $router->post('chats/{chat}/members', [ChatController::class, 'addMember']);
+    $router->post('chats/{chat_id}/members', [ChatController::class, 'addMember']);
     // Bớt thành viên
-    $router->delete('chats/{chat}/members/{user}', [ChatController::class, 'removeMember']);
+    $router->delete('chats/{chat_id}/members/{user}', [ChatController::class, 'removeMember']);
     // Lấy lịch sử tin nhắn (cursor-based)
-    $router->get('chats/{chat}/messages', [ChatController::class, 'messages']);
+    $router->get('chats/{chat_id}/messages', [ChatController::class, 'messages']);
     // Gửi tin nhắn (text/image/file/reply…)
-    $router->post('chats/{chat}/messages', [ChatController::class, 'sendMessage']);
+    $router->post('chats/{chat_id}/messages', [ChatController::class, 'sendMessage']);
     // Mark-as-read (read receipt)
-    $router->post('chats/{chat}/read', [ChatController::class, 'markAsRead']);
+    $router->post('chats/{chat_id}/read', [ChatController::class, 'markAsRead']);
     // Upload File (text/image/file/reply…)
-    $router->post('chats/{chat}/files', [ChatController::class, 'uploadFiles']);
+    $router->post('chats/{chat_id}/files', [ChatController::class, 'uploadFiles']);
 
-    $router->get('/download/chat_files/{file_name}', [ChatController::class, 'downloadFile'] );
+    $router->get('/download/{location}/{file_name}', [ChatController::class, 'downloadFile'] );
+    $router->get('/files/{chat_id}', [ChatController::class, 'files'] );
+
+    $router->get('/notifications', [ChatController::class, 'getNotifications']);
+
+    $router->post('/notifications/{id}/read', [ChatController::class, 'readNotifications']);
 });

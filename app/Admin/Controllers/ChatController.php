@@ -17,8 +17,10 @@ use App\Events\ChatMemberRemoved;
 use App\Events\ChatUpdated;
 use App\Models\Attachment;
 use App\Models\CustomUser;
+use App\Notifications\NewMessageNotification;
 use App\Traits\API;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ChatController extends Controller
 {
@@ -31,14 +33,20 @@ class ChatController extends Controller
     {
         $user = CustomUser::find($request->user()->id);
 
+        // 1. Lấy last_read_message_id từ bảng chat_user
+        $readMap = DB::table('chat_user')
+            ->where('user_id', $user->id)
+            ->pluck('last_read_message_id', 'chat_id'); // [chat_id => last_read_message_id]
         $chats = $user->chats()
             ->with([
-                'participants:id,name,avatar',
-                'lastMessage.sender:id,name,avatar,username'
+                'participants:id,name,avatar,username',
+                'lastMessage.sender:id,name,avatar,username',
+                'lastMessage.attachments',
+                'creator:id,name,avatar,username'
             ])
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($chat) use ($user) {
+            ->map(function ($chat) use ($user, $readMap) {
                 if ($chat->type === 'private') {
                     // Tìm người chung phòng (không phải bản thân)
                     $otherParticipant = $chat->participants->first(function ($participant) use ($user) {
@@ -47,11 +55,18 @@ class ChatController extends Controller
                     // Gán tên người chung phòng vào tên phòng
                     $chat->name = $otherParticipant->name;
                 }
-                if($chat->lastMessage){
+                if ($chat->lastMessage) {
                     $chat->timestamp = $chat->lastMessage->created_at;
                 } else {
                     $chat->timestamp = $chat->created_at;
                 }
+                // Tính số tin nhắn chưa đọc
+                $lastReadId = $readMap[$chat->id] ?? null;
+
+                $chat->unread_count = Message::where('chat_id', $chat->id)
+                    ->where('sender_id', '!=', $user->id) // Chỉ tính tin nhắn của người khác
+                    ->when($lastReadId, fn($q) => $q->where('id', '>', $lastReadId))
+                    ->count();
                 return $chat;
             })->sortByDesc('timestamp')->values();
 
@@ -120,6 +135,24 @@ class ChatController extends Controller
         });
 
         // Phát event update chat list
+        $chat->load([
+            'participants:id,name,avatar,username',
+            'lastMessage.sender:id,name,avatar,username',
+            'creator:id,name,avatar,username'
+        ]);
+        if ($chat->type === 'private') {
+            // Tìm người chung phòng (không phải bản thân)
+            $otherParticipant = $chat->participants->first(function ($participant) use ($me) {
+                return $participant->id !== $me;
+            });
+            // Gán tên người chung phòng vào tên phòng
+            $chat->name = $otherParticipant->name;
+        }
+        if ($chat->lastMessage) {
+            $chat->timestamp = $chat->lastMessage->created_at;
+        } else {
+            $chat->timestamp = $chat->created_at;
+        }
         broadcast(new ChatUpdated($chat))->toOthers();
 
         return $this->success($chat);
@@ -129,13 +162,17 @@ class ChatController extends Controller
      * PATCH /api/chats/{chat}
      * Cập nhật tên/avatar nhóm
      */
-    public function update(Request $request, Chat $chat)
+    public function update(Request $request, $chat_id)
     {
-        $this->authorize('update', $chat);
-
+        $chat = Chat::find($chat_id);
+        if (!$chat) {
+            return $this->failure($chat_id, 'Không tìm thấy dữ liệu');
+        }
         $validator = Validator::make($request->all(), [
             'name'   => 'sometimes|required_if:type,group|string|max:100',
             'avatar' => 'nullable|string',
+            'members'   => 'sometimes|required_if:type,group|array',
+            'members.*' => 'exists:users,id',
         ]);
 
         if ($validator->fails()) {
@@ -143,8 +180,33 @@ class ChatController extends Controller
         }
 
         $data = $validator->validated();
+        $me = $request->user()->id;
         $chat->update($data);
 
+        if (isset($request->members) && $chat->type === 'group') {
+            $members = array_unique(array_merge([$me], $data['members']));
+            $chat->participants()->sync($members);
+        }
+
+        // Phát event update chat list
+        $chat->load([
+            'participants:id,name,avatar,username',
+            'lastMessage.sender:id,name,avatar,username',
+            'creator:id,name,avatar,username'
+        ]);
+        if ($chat->type === 'private') {
+            // Tìm người chung phòng (không phải bản thân)
+            $otherParticipant = $chat->participants->first(function ($participant) use ($me) {
+                return $participant->id !== $me;
+            });
+            // Gán tên người chung phòng vào tên phòng
+            $chat->name = $otherParticipant->name;
+        }
+        if ($chat->lastMessage) {
+            $chat->timestamp = $chat->lastMessage->created_at;
+        } else {
+            $chat->timestamp = $chat->updated_at;
+        }
         broadcast(new ChatUpdated($chat))->toOthers();
 
         return $this->success($chat);
@@ -213,11 +275,16 @@ class ChatController extends Controller
             $query->where('id', '<', $before);
         }
 
+        $me = $request->user()->id;
         $msgs = $query->orderBy('id', 'desc')
             ->limit($limit)
             ->get()
             ->reverse()  // để FE hiển thị từ cũ->mới
-            ->values();
+            ->values()
+            ->map(function ($msg) use ($me) {
+                $msg->isMine = $msg->sender_id == $me;
+                return $msg;
+            });
 
         return $this->success($msgs);
     }
@@ -234,7 +301,7 @@ class ChatController extends Controller
         }
         $validator = Validator::make($request->all(), [
             'chat_id'             => 'required',
-            'type'                => 'required|in:text,image,file,system',
+            // 'type'                => 'required|in:text,image,file,system',
             'content_text'             => 'nullable|string',
             'content_json'             => 'nullable|json',
             'metadata'            => 'nullable|array',
@@ -247,6 +314,7 @@ class ChatController extends Controller
             'images.*'  => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:5120', // max 5MB mỗi ảnh,
             'mentions' => 'array',
             'mentions.*' => 'exists:users,id',
+            'links' => 'array',
         ]);
 
         if ($validator->fails()) {
@@ -254,13 +322,13 @@ class ChatController extends Controller
         }
 
         $data = $request->all();
-        if(!empty($data['content_json'])){
+        if (!empty($data['content_json'])) {
             $data['content_json'] = json_decode($data['content_json'], true);
         }
         $msg = $chat->messages()->create([
             'chat_id'             => $data['chat_id'],
             'sender_id'           => $request->user()->id,
-            'type'                => $data['type'],
+            // 'type'                => $data['type'],
             'content_text'        => $data['content_text'] ?? null,
             'content_json'        => $data['content_json'] ?? null,
             'metadata'            => $data['metadata'] ?? null,
@@ -272,7 +340,7 @@ class ChatController extends Controller
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
                 // lưu file, ví dụ: storage/app/public/chat_images
-                $path = $file->store($data['type'] === 'image' ? 'chat_images' : 'chat_files', 'public');
+                $path = $file->store('chat_files', 'public');
 
                 // tạo bản ghi attachment
                 $msg->attachments()->create([
@@ -284,15 +352,29 @@ class ChatController extends Controller
             }
         }
 
+        // Nếu có ảnh upload
+        if ($request->filled('links')) {
+            foreach ($request->links as $link) {
+                $msg->attachments()->create([
+                    'file_name' => null,
+                    'file_path' => $link,
+                    'file_type' => 'text/link',
+                ]);
+            }
+        }
+
         if ($request->filled('mentions')) {
             $msg->mentions()->sync($request->mentions);
         }
 
         // Load relationships before broadcasting
-        $msg->load(['sender:id,name,avatar,username', 'replyTo.sender:id,name', 'attachments', 'mentions']);
+        $msg->load(['sender:id,name,avatar,username', 'replyTo.sender:id,name,username', 'attachments', 'mentions']);
 
         broadcast(new MessageSent($msg))->toOthers();
-
+        foreach ($chat->participants as $user) {
+            if ($user->id === $request->user()->id) continue;
+            $user->notify(new NewMessageNotification($msg));
+        }
         return $this->success($msg);
     }
 
@@ -358,9 +440,12 @@ class ChatController extends Controller
      * POST /api/chats/{chat}/read
      * Đánh dấu đã đọc tin tới message_id
      */
-    public function markAsRead(Request $request, Chat $chat)
+    public function markAsRead(Request $request, $chat_id)
     {
-        $this->authorize('view', $chat);
+        $chat = Chat::find($chat_id);
+        if (!$chat) {
+            return $this->failure($chat_id, 'Không tìm thấy đoạn chat');
+        }
 
         $validator = Validator::make($request->all(), [
             'message_id' => 'required|integer|exists:messages,id',
@@ -373,23 +458,59 @@ class ChatController extends Controller
         $msgId = $validator->validated()['message_id'];
 
         DB::table('chat_user')
-            ->where(['chat_id' => $chat->id, 'user_id' => Auth::id()])
+            ->where(['chat_id' => $chat->id, 'user_id' => $request->user()->id])
             ->update([
                 'last_read_message_id' => $msgId,
                 'last_read_at'         => now(),
             ]);
 
-        broadcast(new MessageRead($chat->id, Auth::id(), $msgId))->toOthers();
+        broadcast(new MessageRead($chat->id, $request->user()->id, $msgId))->toOthers();
 
-        return $this->success([], 'Đã đọc');
+        return $this->success([]);
     }
 
-    public function downloadFile($file_name) {
-        return $file_name;
-        $att = Attachment::where('file_path', 'chat_files/' . $file_name)->first();
+    public function downloadFile($location, $file_name)
+    {
+        $att = Attachment::where('file_path', $location . '/' . $file_name)->first();
         if (!$att) {
             abort(404);
         }
         return response()->download(storage_path('app/public/' . $att->file_path));
+    }
+
+    public function files(Request $request, $chat_id)
+    {
+        $chat = Chat::find($chat_id);
+        // Lấy thẳng attachments của chat, DB chỉ scan table attachments và messages index
+        $attachments_query = $chat->attachments()
+            ->select(['attachments.id', 'message_id', 'file_path', 'file_name', 'file_type', 'attachments.created_at'])
+            ->orderBy('created_at', 'desc');
+
+        $images = (clone $attachments_query)->where('file_type', 'like', 'image/%')->get();
+        $links = (clone $attachments_query)->where('file_type', 'text/link')->get();
+        $files = (clone $attachments_query)->whereNotIn('file_type', ['text/link', 'image/png'])->get();
+
+        $data = [
+            'images' => $images,
+            'files' => $files,
+            'links' => $links
+        ];
+
+        return $this->success($data);
+    }
+
+    function getNotifications(Request $req)
+    {
+        return $this->success([
+            'unread' => $req->user()->unreadNotifications,
+            'read'   => $req->user()->readNotifications,
+        ]);
+    }
+
+    function readNotifications($id, Request $req)
+    {
+        $notif = $req->user()->unreadNotifications()->findOrFail($id);
+        $notif->markAsRead();
+        return $this->success([]);
     }
 }

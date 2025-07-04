@@ -777,6 +777,10 @@ Route::group([
     $router->post('chats', [ChatController::class, 'store']);
     // Cập nhật chat (đổi tên/avatar nhóm)
     $router->patch('chats/{chat_id}', [ChatController::class, 'update']);
+    // Xoá chat
+    $router->delete('chats/{chat_id}', [ChatController::class, 'delete']);
+    // Rời khỏi nhóm
+    $router->post('chats/{chat_id}/leave', [ChatController::class, 'leave']);
     // Thêm thành viên
     $router->post('chats/{chat_id}/members', [ChatController::class, 'addMember']);
     // Bớt thành viên

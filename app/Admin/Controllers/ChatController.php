@@ -212,6 +212,29 @@ class ChatController extends Controller
         return $this->success($chat);
     }
 
+    public function delete(Request $request, $chat_id)
+    {
+        $chat = Chat::find($chat_id);
+        if (!$chat) {
+            return $this->failure($chat_id, 'Không tìm thấy dữ liệu');
+        }
+        $chat->delete();
+        $chat->attachments()->delete();
+        $chat->messages()->delete();
+        $chat->participants()->detach();
+        return $this->success([], 'Đã xoá chat');
+    }
+
+    public function leave(Request $request, $chat_id)
+    {
+        $chat = Chat::find($chat_id);
+        if (!$chat) {
+            return $this->failure($chat_id, 'Không tìm thấy dữ liệu');
+        }
+        $chat->participants()->detach($request->user()->id);
+        return $this->success([], 'Đã rời khỏi nhóm');
+    }
+
     /**
      * POST /api/chats/{chat}/members
      * Thêm thành viên vào nhóm
@@ -325,6 +348,7 @@ class ChatController extends Controller
         if (!empty($data['content_json'])) {
             $data['content_json'] = json_decode($data['content_json'], true);
         }
+
         $msg = $chat->messages()->create([
             'chat_id'             => $data['chat_id'],
             'sender_id'           => $request->user()->id,
@@ -335,8 +359,8 @@ class ChatController extends Controller
             'reply_to_message_id' => $data['reply_to_message_id'] ?? null,
             'send_at'             => now()->getTimestampMs(),
         ]);
-
-        // Nếu có ảnh upload
+        $message_type = 'text';
+        // Nếu có file upload
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
                 // lưu file, ví dụ: storage/app/public/chat_images
@@ -350,9 +374,18 @@ class ChatController extends Controller
                     'file_type' => $file->getMimeType(),
                 ]);
             }
+            
+            if (str_contains($file->getMimeType(), 'image/')) {
+                $message_type = 'image';
+            } else {
+                $message_type = 'file';
+            }
         }
 
-        // Nếu có ảnh upload
+        $msg->type = $message_type;
+        $msg->save();
+
+        // Nếu có kèm link
         if ($request->filled('links')) {
             foreach ($request->links as $link) {
                 $msg->attachments()->create([

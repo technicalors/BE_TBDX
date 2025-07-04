@@ -19,7 +19,7 @@ class BroadcastServiceProvider extends ServiceProvider
         // prefix 'api' nếu bạn đặt routes/api.php có prefix
         Broadcast::routes([
             'middleware' => ['auth:sanctum'], 
-            // 'prefix'     => 'api',
+            'prefix'     => 'api',
         ]);
 
         require base_path('routes/channels.php');

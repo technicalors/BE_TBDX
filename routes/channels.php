@@ -26,6 +26,10 @@ Broadcast::channel('chat.{chatId}', function ($user, $chatId) {
     return true;
 });
 
+Broadcast::channel('user.{id}', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});
+
 Broadcast::channel('presence-chat.{chatId}', function ($user, $chatId) {
     Log::info($user);
     return [

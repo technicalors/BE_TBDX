@@ -789,6 +789,12 @@ Route::group([
     $router->get('chats/{chat_id}/messages', [ChatController::class, 'messages']);
     // Gửi tin nhắn (text/image/file/reply…)
     $router->post('chats/{chat_id}/messages', [ChatController::class, 'sendMessage']);
+    //Xoá tin nhắn
+    $router->delete('chats/{chat_id}/messages/{message_id}', [ChatController::class, 'deleteMessage']);
+    //Cập nhật tin nhắn
+    $router->patch('chats/{chat_id}/messages/{message_id}', [ChatController::class, 'updateMessage']);
+    //Thu hồi tin nhắn
+    $router->post('chats/{chat_id}/messages/{message_id}/recall', [ChatController::class, 'recallMessage']);
     // Mark-as-read (read receipt)
     $router->post('chats/{chat_id}/read', [ChatController::class, 'markAsRead']);
     // Upload File (text/image/file/reply…)

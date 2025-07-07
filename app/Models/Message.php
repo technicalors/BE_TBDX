@@ -22,7 +22,8 @@ class Message extends Model
         'metadata',
         'read_at',
         'reply_to_message_id',
-        'send_at'
+        'send_at',
+        'deleted_at'
     ];
 
     protected $appends = ['from_now'];

@@ -15,6 +15,7 @@ use App\Events\MessageRead;
 use App\Events\ChatMemberAdded;
 use App\Events\ChatMemberRemoved;
 use App\Events\ChatUpdated;
+use App\Events\MessageRecall;
 use App\Models\Attachment;
 use App\Models\CustomUser;
 use App\Notifications\NewMessageNotification;
@@ -148,11 +149,6 @@ class ChatController extends Controller
             // Gán tên người chung phòng vào tên phòng
             $chat->name = $otherParticipant->name;
         }
-        if ($chat->lastMessage) {
-            $chat->timestamp = $chat->lastMessage->created_at;
-        } else {
-            $chat->timestamp = $chat->created_at;
-        }
         broadcast(new ChatUpdated($chat))->toOthers();
 
         return $this->success($chat);
@@ -201,11 +197,6 @@ class ChatController extends Controller
             });
             // Gán tên người chung phòng vào tên phòng
             $chat->name = $otherParticipant->name;
-        }
-        if ($chat->lastMessage) {
-            $chat->timestamp = $chat->lastMessage->created_at;
-        } else {
-            $chat->timestamp = $chat->updated_at;
         }
         broadcast(new ChatUpdated($chat))->toOthers();
 
@@ -335,13 +326,14 @@ class ChatController extends Controller
                     ->where('chat_id', $chat->id)
             ],
             'images.*'  => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:5120', // max 5MB mỗi ảnh,
+            'files.*'  => 'nullable|file|max:51200', // max 50MB mỗi file
             'mentions' => 'array',
             'mentions.*' => 'exists:users,id',
             'links' => 'array',
         ]);
 
         if ($validator->fails()) {
-            return $this->failure('', $validator->errors()->first());
+            return $this->failure($validator->errors(), $validator->errors()->first());
         }
 
         $data = $request->all();
@@ -402,13 +394,55 @@ class ChatController extends Controller
 
         // Load relationships before broadcasting
         $msg->load(['sender:id,name,avatar,username', 'replyTo.sender:id,name,username', 'attachments', 'mentions']);
-
         broadcast(new MessageSent($msg))->toOthers();
-        foreach ($chat->participants as $user) {
-            if ($user->id === $request->user()->id) continue;
-            $user->notify(new NewMessageNotification($msg));
-        }
+        // foreach ($chat->participants as $user) {
+        //     if ($user->id === $request->user()->id) continue;
+        //     // $user->notify(new NewMessageNotification($msg));
+        // }
         return $this->success($msg);
+    }
+
+    public function recallMessage(Request $request, $chat_id, $message_id)
+    {
+        $msg = Message::find($message_id);
+        if (!$msg) {
+            return $this->failure($message_id, 'Không tìm thấy tin nhắn');
+        }
+        // $msg->attachments()->delete();
+        $msg->update(['deleted_at' => now()]);
+        $msg->load(['sender:id,name,avatar,username']);
+        broadcast(new MessageRecall($msg));
+        return $this->success($msg, 'Đã thu hồi tin nhắn');
+    }
+
+    public function updateMessage(Request $request, $chat_id, $message_id)
+    {
+        $msg = Message::find($message_id);
+        if (!$msg) {
+            return $this->failure($message_id, 'Không tìm thấy tin nhắn');
+        }
+        $validator = Validator::make($request->all(), [
+            'content_text' => 'nullable|string',
+            'content_json' => 'nullable|json',
+            'metadata' => 'nullable|array',
+        ]);
+        if ($validator->fails()) {
+            return $this->failure('', $validator->errors()->first());
+        }
+        $data = $validator->validated();
+        $msg->update($data);
+        return $this->success($msg);
+    }
+
+    public function deleteMessage(Request $request, $chat_id, $message_id)
+    {
+        $msg = Message::find($message_id);
+        if (!$msg) {
+            return $this->failure($message_id, 'Không tìm thấy tin nhắn');
+        }
+        $msg->attachments()->delete();
+        $msg->delete();
+        return $this->success([], 'Đã xoá tin nhắn');
     }
 
     /**

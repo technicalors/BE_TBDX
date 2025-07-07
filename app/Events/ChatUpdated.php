@@ -22,7 +22,9 @@ class ChatUpdated implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        return new PrivateChannel('chat.' . $this->chat->id);
+        return collect($this->chat->participants)
+        ->map(fn ($user) => new PrivateChannel('user.' . $user->id))
+        ->all();
     }
 
     public function broadcastWith(): array

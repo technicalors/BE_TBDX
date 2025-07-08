@@ -25,6 +25,8 @@ use App\Models\MachineParameterLogs;
 use App\Models\Shift as ModelsShift;
 use App\Models\ThongSoMay;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Broadcast;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -35,6 +37,7 @@ use Illuminate\Http\Request;
 | contains the "web" middleware group. Now create something great!
 |
 */
+Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 Route::get('/preview-log', function () {
   $logs = IOTLog::orderBy('created_at', 'DESC')->get();

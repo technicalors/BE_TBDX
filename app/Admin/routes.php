@@ -22,13 +22,14 @@ use App\Models\Attachment;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
 Admin::routes();
 
 
 //API
-
+Broadcast::routes(['middleware' => ['auth:sanctum']]);
 // UI-API
 Route::group([
     'prefix'        => "/api",

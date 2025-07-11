@@ -3149,9 +3149,7 @@ class ApiController extends AdminController
         if (isset($request->mdh) || isset($request->mql)) {
             if (is_array($request->mdh)) {
                 $query->whereHas('order', function ($q) use ($request) {
-                    foreach ($request->mdh as $key => $mdh) {
-                        $q->orWhere('mdh', 'like', "%$mdh%");
-                    }
+                    $q->whereIn('mdh', $request->mdh);
                 });
             } else {
                 $query->whereHas('order', function ($q) use ($request) {
@@ -3162,9 +3160,7 @@ class ApiController extends AdminController
         if (isset($request->mql)) {
             if (is_array($request->mql)) {
                 $query->whereHas('order', function ($q) use ($request) {
-                    foreach ($request->mql as $key => $mql) {
-                        $q->orWhere('mql', 'like', "%$mql%");
-                    }
+                    $q->whereIn('mql', $request->mql);
                 });
             } else {
                 $query->whereHas('order', function ($q) use ($request) {

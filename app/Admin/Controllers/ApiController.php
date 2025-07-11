@@ -6062,7 +6062,7 @@ class ApiController extends AdminController
             default:
                 $prefix = $date;
         }
-        $plan = ProductionPlan::where('machine_id', $input['machine_id'])->where('lo_sx', 'like', $prefix . "%")->orderBy('lo_sx', 'DESC')->first();
+        $plan = ProductionPlan::where('lo_sx', 'like', $prefix . "%")->orderBy('lo_sx', 'DESC')->first();
         $index = '';
         $thu_tu_uu_tien = 1;
         if ($plan) {

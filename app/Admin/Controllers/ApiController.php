@@ -3146,57 +3146,32 @@ class ApiController extends AdminController
             $query->whereDate('created_at', '>=', date('Y-m-d'))
                 ->whereDate('created_at', '<=', date('Y-m-d'));
         }
-        if (isset($request->mdh)) {
+        if (isset($request->mdh) || isset($request->mql)) {
             if (is_array($request->mdh)) {
-                $plans = ProductionPlan::where(function ($plan_query) use ($request) {
+                $query->where(function ($q) use ($request) {
                     foreach ($request->mdh as $key => $mdh) {
-                        $plan_query->orWhere('order_id', 'like', "%$mdh%");
+                        $q->orWhere('order_id', 'like', "%$mdh%");
                     }
                 });
-                $tem = Tem::where(function ($tem_query) use ($request) {
-                    foreach ($request->mdh as $key => $mdh) {
-                        $tem_query->orWhere('mdh', 'like', "%$mdh%");
-                    }
-                });
-                $lo_sx = array_merge($plans->pluck('lo_sx')->toArray(), $tem->pluck('lo_sx')->toArray());
-                // return $plans_query->pluck('lo_sx')->toArray();
-                $query->whereIn('lo_sx', $lo_sx);
             } else {
-                $plans = ProductionPlan::where('order_id', 'like', "%$request->mdh%");
-                $tem = Tem::where('mdh', 'like', "%$request->mdh%");
-                $lo_sx = array_merge($plans->pluck('lo_sx')->toArray(), $tem->pluck('lo_sx')->toArray());
-                $query->whereIn('lo_sx', $lo_sx);
+                $query->where('order_id', 'like', "%$request->mdh%");
             }
         }
         if (isset($request->mql)) {
             if (is_array($request->mql)) {
-                $plans = ProductionPlan::where(function ($plan_query) use ($request) {
+                $query->where(function ($q) use ($request) {
                     foreach ($request->mql as $key => $mql) {
-                        $plan_query->orWhere('order_id', $mql);
+                        $q->orWhere('order_id', 'like', "%$mql%");
                     }
                 });
-                $tem = Tem::where(function ($tem_query) use ($request) {
-                    foreach ($request->mql as $key => $mql) {
-                        $tem_query->orWhere('mql', $mql);
-                    }
-                });
-                $lo_sx = array_merge($plans->pluck('lo_sx')->toArray(), $tem->pluck('lo_sx')->toArray());
-                // return $plans_query->pluck('lo_sx')->toArray();
-                $query->whereIn('lo_sx', $lo_sx);
             } else {
-                $plans = ProductionPlan::where('order_id', $request->mql);
-                $tem = Tem::where('mql', $request->mql);
-                $lo_sx = array_merge($plans->pluck('lo_sx')->toArray(), $tem->pluck('lo_sx')->toArray());
-                $query->whereIn('lo_sx', $lo_sx);
+                $query->where('order_id', 'like', "%$request->mql%");
             }
         }
         if (isset($request->customer_id)) {
-            $plan = ProductionPlan::whereHas('order', function ($order_query) use ($request) {
-                $order_query->where('short_name', 'like', "%$request->customer_id%");
+            $query->whereHas('order', function ($q) use ($request) {
+                $q->where('short_name', 'like', "%$request->customer_id%");
             });
-            $tem = Tem::where('khach_hang', 'like', "%$request->customer_id%");
-            $lo_sx = array_merge($plan->pluck('lo_sx')->toArray(), $tem->pluck('lo_sx')->toArray());
-            $query->whereIn('lo_sx', $lo_sx);
         }
         if (isset($request->lo_sx)) {
             $query->where('lo_sx', 'like', "%$request->lo_sx%");

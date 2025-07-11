@@ -3148,24 +3148,28 @@ class ApiController extends AdminController
         }
         if (isset($request->mdh) || isset($request->mql)) {
             if (is_array($request->mdh)) {
-                $query->where(function ($q) use ($request) {
+                $query->whereHas('order', function ($q) use ($request) {
                     foreach ($request->mdh as $key => $mdh) {
-                        $q->orWhere('order_id', 'like', "%$mdh%");
+                        $q->orWhere('mdh', 'like', "%$mdh%");
                     }
                 });
             } else {
-                $query->where('order_id', 'like', "%$request->mdh%");
+                $query->whereHas('order', function ($q) use ($request) {
+                    $q->where('mdh', 'like', "%$request->mdh%");
+                });
             }
         }
         if (isset($request->mql)) {
             if (is_array($request->mql)) {
-                $query->where(function ($q) use ($request) {
+                $query->whereHas('order', function ($q) use ($request) {
                     foreach ($request->mql as $key => $mql) {
-                        $q->orWhere('order_id', 'like', "%$mql%");
+                        $q->orWhere('mql', 'like', "%$mql%");
                     }
                 });
             } else {
-                $query->where('order_id', 'like', "%$request->mql%");
+                $query->whereHas('order', function ($q) use ($request) {
+                    $q->where('mql', 'like', "%$request->mql%");
+                });
             }
         }
         if (isset($request->customer_id)) {

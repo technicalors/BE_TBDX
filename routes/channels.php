@@ -31,7 +31,6 @@ Broadcast::channel('user.{id}', function ($user, $id) {
 });
 
 Broadcast::channel('presence-chat.{chatId}', function ($user, $chatId) {
-    Log::info($user);
     return [
         'id' => $user->id,
         'name' => $user->name,

@@ -26,21 +26,11 @@ class Message extends Model
         'deleted_at'
     ];
 
-    protected $appends = ['from_now'];
-
     protected $casts = [
         'metadata'            => 'array',
         'read_at'             => 'datetime',
         'content_json' => 'array'
     ];
-
-    /**
-     * Get human readable time from send_at
-     */
-    public function getFromNowAttribute()
-    {
-        return $this->send_at ? \Carbon\Carbon::createFromTimestampMs($this->send_at)->locale('vi')->diffForHumans() : null;
-    }
 
     /**
      * Chat chứa message này

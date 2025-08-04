@@ -461,6 +461,7 @@ Route::group([
     $router->get('quality/iqc-history', [ApiController::class, 'iqcHistory']);
     $router->get('quality/iqc-history/export', [ApiController::class, 'exportIQCHistory']);
     $router->get('quality/qc-history/detail', [ApiController::class, 'getQCdetailHistory']);
+    $router->get('quality/pqc-history/export', [ApiController::class, 'exportPQCHistory']);
 
     $router->get('equipment/performance', [ApiController::class, 'machinePerformance']);
     $router->get('equipment/error-machine-list', [ApiController::class, 'getErrorMachine']);
@@ -786,6 +787,8 @@ Route::group([
     $router->post('chats/{chat_id}/members', [ChatController::class, 'addMember']);
     // Bớt thành viên
     $router->delete('chats/{chat_id}/members/{user}', [ChatController::class, 'removeMember']);
+    // Thay đổi trạng thái thông báo cho người dùng
+    $router->post('chats/{chat_id}/muted/{user_id}', [ChatController::class, 'mutedChat']);
     // Lấy lịch sử tin nhắn (cursor-based)
     $router->get('chats/{chat_id}/messages', [ChatController::class, 'messages']);
     // Gửi tin nhắn (text/image/file/reply…)
@@ -798,8 +801,6 @@ Route::group([
     $router->post('chats/{chat_id}/messages/{message_id}/recall', [ChatController::class, 'recallMessage']);
     // Mark-as-read (read receipt)
     $router->post('chats/{chat_id}/read', [ChatController::class, 'markAsRead']);
-    // Upload File (text/image/file/reply…)
-    $router->post('chats/{chat_id}/files', [ChatController::class, 'uploadFiles']);
 
     $router->get('/download/{location}/{file_name}', [ChatController::class, 'downloadFile'] );
     $router->get('/files/{chat_id}', [ChatController::class, 'files'] );

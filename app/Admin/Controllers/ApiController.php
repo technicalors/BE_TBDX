@@ -5982,7 +5982,7 @@ class ApiController extends AdminController
 
                 // Loại trừ các order đã có trong GroupPlanOrder và chỉ lấy những order có buyer
                 $query->whereNotNull(['dai', 'rong'])
-                    ->whereNotIn('id', $excludedOrderIds)
+                    ->doesntHave('group_plan_order')
                     ->has('buyer');
 
                 break;

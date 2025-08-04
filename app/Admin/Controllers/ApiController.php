@@ -5945,22 +5945,22 @@ class ApiController extends AdminController
             }
         }
         if (isset($request->dot) && !empty($request->dot)) {
-            $query->where('dot', 'like', '%'.$request->dot.'%');
+            $query->where('dot', 'like', '%' . $request->dot . '%');
         }
         if (isset($request->po) && !empty($request->po)) {
-            $query->where('po', 'like', '%'.$request->po.'%');
+            $query->where('po', 'like', '%' . $request->po . '%');
         }
         if (isset($request->kich_thuoc) && !empty($request->kich_thuoc)) {
             $query->where(function ($custom_query) use ($request) {
-                $custom_query->where('kich_thuoc', 'like', '%'.$request->kich_thuoc.'%')
-                ->orWhere('kich_thuoc_chuan', 'like', '%'.$request->kich_thuoc.'%');
+                $custom_query->where('kich_thuoc', 'like', '%' . $request->kich_thuoc . '%')
+                    ->orWhere('kich_thuoc_chuan', 'like', '%' . $request->kich_thuoc . '%');
             });
         }
         if (isset($request->layout_type) && !empty($request->layout_type)) {
-            $query->where('layout_type', 'like', '%'.$request->layout_type.'%');
+            $query->where('layout_type', 'like', '%' . $request->layout_type . '%');
         }
         if (isset($request->layout_id) && !empty($request->layout_id)) {
-            $query->where('layout_id', 'like', '%'.$request->layout_id.'%');
+            $query->where('layout_id', 'like', '%' . $request->layout_id . '%');
         }
         $machine = Machine::find($request->machine_id);
         if (!$machine) {
@@ -5968,28 +5968,23 @@ class ApiController extends AdminController
         }
         $line_id = $machine->line_id;
         $orders = [];
+        // Lấy danh sách order_id đã có trong GroupPlanOrder để loại trừ
+        $excludedOrderIds = GroupPlanOrder::pluck('order_id')->toArray();
+
         switch ($line_id) {
             case Line::LINE_SONG:
-                if (isset($request->start_date) && isset($request->end_date)) {
-                    $query->whereDate('han_giao_sx', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('han_giao_sx', '<=', date('Y-m-d', strtotime($request->end_date)));
-                }
-                $group_order = GroupPlanOrder::pluck('order_id')->toArray();
-                $orders_array = array_flip($group_order);
-                $query->whereNotNull(['dai', 'rong']);
-                $orders = $query->with('buyer')->has('buyer')->get()->filter(function ($value) use ($orders_array) {
-                    return !isset($orders_array[$value->id]);
-                });
-                break;
             case Line::LINE_XA_LOT:
+                // Thêm điều kiện ngày tháng nếu có
                 if (isset($request->start_date) && isset($request->end_date)) {
-                    $query->whereDate('han_giao_sx', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('han_giao_sx', '<=', date('Y-m-d', strtotime($request->end_date)));
+                    $query->whereDate('han_giao_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
+                        ->whereDate('han_giao_sx', '<=', date('Y-m-d', strtotime($request->end_date)));
                 }
-                $group_order = GroupPlanOrder::pluck('order_id')->toArray();
-                $orders_array = array_flip($group_order);
-                $query->whereNotNull(['dai', 'rong']);
-                $orders = $query->with('buyer')->get()->filter(function ($value) use ($orders_array) {
-                    return !isset($orders_array[$value->id]);
-                });
+
+                // Loại trừ các order đã có trong GroupPlanOrder và chỉ lấy những order có buyer
+                $query->whereNotNull(['dai', 'rong'])
+                    ->whereNotIn('id', $excludedOrderIds)
+                    ->has('buyer');
+
                 break;
             default:
                 $plans = ProductionPlan::whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
@@ -6003,10 +5998,13 @@ class ApiController extends AdminController
                             $q->where('line_id', $line_id);
                         });
                     }], 'sl_kh');
-                $orders = $query->with('buyer')->get();
                 break;
         }
-        // $orders = $query->with('buyer')->get();
+        $count = $query->count();
+        if (isset($request->page) && isset($request->pageSize)) {
+            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
+        }
+        $orders = $query->with('buyer')->get();
         $data = [];
         foreach ($orders as $key => $order) {
             $order->khach_hang = $order->short_name ?? '';
@@ -6018,7 +6016,7 @@ class ApiController extends AdminController
             }
             $data[] = $order;
         }
-        return $this->success($data);
+        return $this->success(['data' => $data, 'total' => $count]);
     }
 
     public function  handleOrder(Request $request)

@@ -8149,6 +8149,173 @@ class ApiController extends AdminController
         }
         return $this->success($qc_log);
     }
+
+    public function exportPQCHistory(Request $request)
+    {
+        ini_set('max_execution_time', 0);
+        ini_set('memory_limit', '1024M');
+        $centerStyle = [
+            'alignment' => [
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'wrapText' => true
+            ],
+            'borders' => array(
+                'outline' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $headerStyle = array_merge($centerStyle, [
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => array('argb' => 'BFBFBF')
+            ]
+        ]);
+        $titleStyle = array_merge($centerStyle, [
+            'font' => ['size' => 16, 'bold' => true],
+        ]);
+        $border = [
+            'borders' => array(
+                'allBorders' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet_index = 0;
+        $query = $this->queryQuality($request);
+        $groupedInfos = $query->with("plan", "machine", 'tem', 'qc_log')->get()->groupBy(function ($item) {
+            return $item->machine->line_id;
+        });
+        foreach ($groupedInfos as $line_id => $infos) {
+            $line = Line::find($line_id);
+            $sheet = $spreadsheet->getSheet($sheet_index);
+            $sheet->setTitle($line->name);
+            $start_row = 2;
+            $start_col = 1;
+            $data = [];
+            $defaultHeader = [
+                'STT',
+                'Lô SX',
+                'Ngày SX',
+                'QC kiểm tra',
+                "Máy",
+                'Mã máy',
+                'Khách hàng',
+                "MĐH",
+                "Kích thước chuẩn",
+                "MQL",
+                "Sản lượng đếm được",
+                'Sản lượng sau QC',
+                "Số phế",
+                "Tỷ lệ phế",
+                "KQ kiểm tra tính năng",
+                'KQ kiểm tra ngoại quan',
+                'Phán định',
+            ];
+            $qc_history = $infos->pluck('qc_log')->filter()->pluck('info')->toArray();
+            $tinh_nang = array_column($qc_history, 'tinh_nang');
+            $ngoai_quan = array_column($qc_history, 'ngoai_quan');
+            $tinh_nang = array_unique(array_column(array_merge(...$tinh_nang), 'id'));
+            $ngoai_quan = array_unique(array_column(array_merge(...$ngoai_quan), 'id'));
+            $tinh_nang = TestCriteria::whereIn('id', $tinh_nang)->orderBy('id')->get();
+            $ngoai_quan = TestCriteria::whereIn('id', $ngoai_quan)->orderBy('id')->get();
+
+            if (count($tinh_nang) === 0) {
+                $defaultHeader['Tính năng'] = [''];
+            } else {
+                $defaultHeader['Tính năng'] = $tinh_nang->pluck('name')->toArray();
+            }
+            if (count($ngoai_quan) === 0) {
+                $defaultHeader['Ngoại quan'] = [''];
+            } else {
+                $defaultHeader['Ngoại quan'] = $ngoai_quan->pluck('name')->toArray();
+            }
+            foreach ($infos as $key => $item) {
+                $row = [];
+                $row['STT'] = $key + 1;
+                $row['Lô SX'] = $item->lo_sx;
+                $row['Ngày SX'] = $item->created_at->format('d/m/Y');
+                $row['QC kiểm tra'] = $item->qc_log->info['user_name'] ?? '';
+                $row['Máy'] = $item->machine->name ?? '';
+                $row['Mã máy'] = $item->machine_id ?? '';
+                $row['Khách hàng'] = $item->order->short_name ?? '';
+                $row['MĐH'] = $item->order->mdh ?? '';
+                $row['Kích thước chuẩn'] = $item->order ? ($item->order->dai . 'x' . $item->order->rong . ($item->order->cao ? 'x' . $item->order->cao : "")) : '';
+                $row['MQL'] = $item->order->mql ?? '';
+                $row['Sản lượng đếm được'] = $item->sl_dau_ra_hang_loat;
+                $row['Sản lượng sau QC'] = $item->sl_dau_ra_hang_loat - $item->sl_ng_qc - $item->sl_ng_sx;
+                $row['Số phế'] = $item->sl_ng_qc + $item->sl_ng_sx;
+                $row['Tỷ lệ phế'] = ($item->sl_dau_ra_hang_loat ? floor($row['Số phế'] / $item->sl_dau_ra_hang_loat * 100) : 0) . '%';
+                $row['KQ kiểm tra tính năng'] = $item->sl_tinh_nang ?? '';
+                $row['KQ kiểm tra ngoại quan'] = $item->sl_ngoai_quan ?? '';
+                $row['Phán định'] = $item->phan_dinh === 1 ? "OK" : ($item->phan_dinh === 2 ? "NG" : "pass");
+                if (count($tinh_nang) === 0) {
+                    $row['Tính năng'] = '';
+                } else {
+                    foreach ($tinh_nang as $test_criteria) {
+                        $row[$test_criteria->name] = collect($item->qc_log->info['tinh_nang'] ?? [])->firstWhere('id', $test_criteria->id)['value'] ?? '';
+                    }
+                }
+                if (count($ngoai_quan) === 0) {
+                    $row['Ngoại quan'] = '';
+                } else {
+                    foreach ($ngoai_quan as $test_criteria) {
+                        $row[$test_criteria->name] = collect($item->qc_log->info['ngoai_quan'] ?? [])->firstWhere('id', $test_criteria->id)['value'] ?? '';
+                    }
+                }
+                $data[] = $row;
+            }
+            // return $data;
+            // $header[] = 'Đánh giá';
+            // $table_key[$this->num_to_letters(22 + $index)] = 'evaluate';
+            foreach ($defaultHeader as $key => $cell) {
+                if (!is_array($cell)) {
+                    $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
+                } else {
+                    if (count($cell) > 0) {
+                        $style = array_merge($headerStyle, array('fill' => [
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => array('argb' => 'EBF1DE')
+                        ]));
+                        $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($style);
+                        foreach ($cell as $val) {
+                            $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($style);
+                            $start_col += 1;
+                        }
+                    }
+                    continue;
+                }
+                $start_col += 1;
+            }
+            $sheet->fromArray($data, null, 'A4', true);
+            $sheet->setCellValue([1, 1], 'BẢNG KIỂM TRA CHẤT LƯỢNG CÔNG ĐOẠN ' . mb_strtoupper($line->name))->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
+            $sheet->getRowDimension(1)->setRowHeight(40);
+            foreach ($sheet->getColumnIterator() as $column) {
+                $sheet->getStyle($column->getColumnIndex() . ($start_row + 2) . ':' . $column->getColumnIndex() . (count($data) + 3))->applyFromArray(array_merge($centerStyle, $border));
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            }
+            if ($sheet_index < count($groupedInfos) - 1) {
+                $spreadsheet->createSheet();
+                $sheet_index += 1;
+            }
+        }
+
+        header("Content-Description: File Transfer");
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Chi tiết QC.xlsx"');
+        header('Cache-Control: max-age=0');
+        header("Content-Transfer-Encoding: binary");
+        header('Expires: 0');
+        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('exported_files/Chi tiết QC.xlsx');
+        $href = '/exported_files/Chi tiết QC.xlsx';
+        return $this->success($href);
+    }
     //End UI
 
     public function phanKhuTheoNCC(Request $request)

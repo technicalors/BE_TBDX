@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 */
 
 Broadcast::channel('App.Models.CustomUser.{id}', function ($user, $id) {
-    return $user->id === $id;
+    return (int) $user->id === (int) $id;
 });
 
 Broadcast::channel('my-channel', function() {

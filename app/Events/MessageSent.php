@@ -27,7 +27,7 @@ class MessageSent implements ShouldBroadcast
     public function broadcastOn()
     {
         return collect($this->message->chat->participants)
-        ->filter(fn($user) => $user->id !== $this->message->sender_id) // Loại trừ người gửi nếu muốn
+        ->filter(fn($user) => $user->id != $this->message->sender_id) // Loại trừ người gửi nếu muốn
         ->map(fn ($user) => new PrivateChannel('user.' . $user->id))
         ->all();
     }

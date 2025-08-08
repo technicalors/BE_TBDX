@@ -619,6 +619,7 @@ class ApiController extends AdminController
                 } else {
                     $info_ids = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
                     $next_info = InfoCongDoan::whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
+                    Log::info($next_info);
                     if ($next_info) {
                         $so_ra = $next_info->so_ra;
                         $next_info->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s'), 'status' => 1, 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $so_ra, 'so_ra' => $so_ra]);

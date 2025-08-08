@@ -5836,6 +5836,9 @@ class ApiController extends AdminController
         if (isset($request->show) && $request->show === 'new') {
             $query->where('tem.display', 1)->where('created_by', $request->user()->id);
         }
+        if (isset($request->start_date) && isset($request->end_date)) {
+            $query->whereDate('created_at', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('created_at', '<=', date('Y-m-d', strtotime($request->end_date)));
+        }
         if (isset($request->lo_sx)) {
             $query->where('tem.lo_sx', $request->lo_sx);
         }

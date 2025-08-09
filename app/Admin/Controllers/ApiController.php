@@ -2251,7 +2251,8 @@ class ApiController extends AdminController
         $log['phan_dinh'] = $phan_dinh;
         try {
             DB::beginTransaction();
-            if ($phan_dinh === 1) {
+            $check_material = Material::where('ma_cuon_ncc', $mtl_import->ma_cuon_ncc)->first();
+            if ($phan_dinh === 1 && !$check_material) {
                 $material = Material::orderByraw('CHAR_LENGTH(id) DESC')->where('id', 'like', date('y') . '-%')->orderBy('id', 'DESC')->whereRaw('LENGTH(id) = 8')->first();
                 $matches = $material ? explode('-', $material->id) : [0, 0];
                 $material_input = $mtl_import->toArray();

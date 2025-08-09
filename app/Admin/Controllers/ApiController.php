@@ -552,7 +552,7 @@ class ApiController extends AdminController
                     if ($info_lo_sx) {
                         $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
                         $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
-                        if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity) && $request['Pre_Counter'] >= $tracking->pre_counter) {   
+                        if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity)) {   
                             Log::info(['tracking'=>$tracking->toArray(), 'request'=>$request->all()]);
                             $running_infos = InfoCongDoan::where('machine_id', $tracking->machine_id)->where('status', 1)->get();
                             if(count($running_infos) > 0){

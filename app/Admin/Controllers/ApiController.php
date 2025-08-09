@@ -2275,7 +2275,7 @@ class ApiController extends AdminController
             return $this->failure($th, 'Đã xảy ra lỗi');
         }
 
-        return $this->success($mtl_import);
+        return $this->success($mtl_import, (isset($material) ? 'Đã tạo cuộn' : 'Đã lưu dữ liệu kiểm tra'));
     }
 
     //================Machine===============

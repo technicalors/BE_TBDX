@@ -623,7 +623,7 @@ class ApiController extends AdminController
                         'lo_sx'=>$next_info->lo_sx ?? null,
                         'status'=>$next_info->status ?? null,
                         'sl_dau_ra_hang_loat'=>$next_info->sl_dau_ra_hang_loat ?? null,
-                        'so_dao_tracking' => $tracking->so_dao ?? null,
+                        'so_dao_tracking' => $tracking->set_counter ?? null,
                     ]);
                     if ($next_info) {
                         $so_ra = $next_info->so_ra;

@@ -553,6 +553,7 @@ class ApiController extends AdminController
                         $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
                         $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
                         if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity)) { //Nếu không thoả mãn điều kiện, tìm và chạy lô mới   
+                            Log::debug("end lo_sx");
                             Log::info(['tracking'=>$tracking->toArray(), 'request'=>$request->all()]);
                             $running_infos = InfoCongDoan::where('machine_id', $tracking->machine_id)->where('status', 1)->get();
                             if(count($running_infos) > 0){
@@ -620,6 +621,7 @@ class ApiController extends AdminController
                 } else {
                     $info_ids = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
                     $next_info = InfoCongDoan::whereIn('id', $info_ids)->where('status', 0)->where('so_dao', $request['Set_Counter'] ?? "")->first();
+                    Log::debug("next info");
                     Log::info([
                         'lo_sx'=>$next_info->lo_sx ?? null,
                         'status'=>$next_info->status ?? null,

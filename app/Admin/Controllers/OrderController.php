@@ -249,8 +249,9 @@ class OrderController extends AdminController
             $pageSize = $request->pageSize;
             $query->offset($page * $pageSize)->limit($pageSize ?? 10);
         }
-        $records = $query->with(['customer_specifications.drc', 'plan', 'creator:id,name'])->select('*', 'sl as sl_dinh_muc')->get()->map(function ($item) {
+        $records = $query->with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name'])->select('*', 'sl as sl_dinh_muc')->get()->map(function ($item) {
             $item->red_text = ($item->phan_loai_2 === 'thung-1-manh' && $item->dai_tam > 315) ? true : false;
+            $item->ngay_kh = $item->group_plan_order->plan->ngay_sx ?? '';
             return $item;
         });
         $res = [
@@ -520,7 +521,7 @@ class OrderController extends AdminController
                 'ngay_dat_hang' => $value->ngay_dat_hang,
                 'note_2' => $value->note_2,
                 'dot' => $value->dot,
-                'ngay_kh' => collect($value->plan ?? [])[0]->ngay_sx ?? '',
+                'ngay_kh' => $value->group_plan_order->plan->ngay_sx ?? '',
                 'creator' => $value->creator->name ?? "",
             ];
         }

@@ -288,7 +288,7 @@ class ApiController extends AdminController
                 'priority' => $key + 1,
             ]);
         }
-        return $infos_priority->pluck('info_cong_doan_id')->toArray();
+        // return $infos_priority->pluck('info_cong_doan_id')->toArray();
     }
 
     public function reorderPriority(Request $request)
@@ -445,7 +445,7 @@ class ApiController extends AdminController
     public function updateQuantityInfoCongDoan(Request $request)
     {
         $info = InfoCongDoan::find($request->id);
-        if(!$info){
+        if (!$info) {
             return $this->failure('', 'Không tìm thấy lô');
         }
         $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat;
@@ -481,21 +481,20 @@ class ApiController extends AdminController
             $tracking = Tracking::where('machine_id', $info->machine_id)->first();
             if ($tracking) {
                 $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])
-                ->where('lo_sx', '!=', $info->lo_sx)
-                ->where('machine_id', $tracking->machine_id)
-                ->orderBy('updated_at', 'DESC')
-                ->orderBy('order_id')
-                ->first();
+                    ->where('lo_sx', '!=', $info->lo_sx)
+                    ->where('machine_id', $tracking->machine_id)
+                    ->orderBy('updated_at', 'DESC')
+                    ->orderBy('order_id')
+                    ->first();
                 $tracking->update([
                     'lo_sx' => $next_batch->lo_sx ?? null,
                     'so_ra' => $next_batch->so_ra ?? 0,
                     'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien ?? 0,
                     'sl_kh' => $next_batch->dinh_muc ?? 0,
                 ]);
-                if($next_batch){
-                    $next_batch->update(['status'=>1]);
+                if ($next_batch) {
+                    $next_batch->update(['status' => 1]);
                 }
-                
             }
         }
 
@@ -523,13 +522,13 @@ class ApiController extends AdminController
     function updateSodu(Request $request)
     {
         $info = InfoCongDoan::find($request->info_id);
-        if(!$info){
+        if (!$info) {
             return $this->failure($request->info_id, 'Không tìm thấy lô');
         }
-        if(is_numeric($request->so_du)){
-            $info->update(['so_du'=>$request->so_du]);
+        if (is_numeric($request->so_du)) {
+            $info->update(['so_du' => $request->so_du]);
             return $this->success($request->all(), 'Đã cập nhật số dư');
-        }else{
+        } else {
             return $this->failure($request->info_id, 'Cập nhật không thành công');
         }
     }
@@ -554,9 +553,9 @@ class ApiController extends AdminController
                         $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
                         if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity)) { //Nếu không thoả mãn điều kiện, tìm và chạy lô mới   
                             Log::debug("end lo_sx");
-                            Log::info(['tracking'=>$tracking->toArray(), 'request'=>$request->all()]);
+                            Log::info(['tracking' => $tracking->toArray(), 'request' => $request->all()]);
                             $running_infos = InfoCongDoan::where('machine_id', $tracking->machine_id)->where('status', 1)->get();
-                            if(count($running_infos) > 0){
+                            if (count($running_infos) > 0) {
                                 foreach ($running_infos as $info) {
                                     $info->update([
                                         'status' => 2,
@@ -565,8 +564,13 @@ class ApiController extends AdminController
                                 }
                             }
                             InfoCongDoanPriority::whereIn('info_cong_doan_id', $running_infos->pluck('id')->toArray())->delete();
-                            $info_ids = $this->reorderInfoCongDoan();
-                            $next_info = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('id', $info_ids)->where('so_dao', $request['Set_Counter'] ?? "")->first();
+                            $this->reorderInfoCongDoan();
+                            $next_info = InfoCongDoan::select('info_cong_doan.*')
+                                ->join('info_cong_doan_priority', 'info_cong_doan.id', '=', 'info_cong_doan_priority.info_cong_doan_id')
+                                ->where('info_cong_doan.status', 0)
+                                ->where('info_cong_doan.so_dao', $request['Set_Counter'] ?? "")
+                                ->orderBy('info_cong_doan_priority.priority', 'asc')
+                                ->first();
                             if ($next_info) {
                                 $so_ra = $next_info->so_ra;
                                 $next_info->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s'), 'status' => 1, 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $so_ra, 'so_ra' => $so_ra]);
@@ -619,14 +623,19 @@ class ApiController extends AdminController
                         ]);
                     }
                 } else {
-                    $info_ids = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
-                    $next_info = InfoCongDoan::whereIn('id', $info_ids)->where('status', 0)->where('so_dao', $request['Set_Counter'] ?? "")->first();
+                    // $info_ids = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
+                    $next_info = InfoCongDoan::select('info_cong_doan.*')
+                        ->join('info_cong_doan_priority', 'info_cong_doan.id', '=', 'info_cong_doan_priority.info_cong_doan_id')
+                        ->where('info_cong_doan.status', 0)
+                        ->where('info_cong_doan.so_dao', $request['Set_Counter'] ?? "")
+                        ->orderBy('info_cong_doan_priority.priority', 'asc')
+                        ->first();
                     Log::debug("next info");
                     Log::info([
-                        'lo_sx'=>$next_info->lo_sx ?? null,
-                        'status'=>$next_info->status ?? null,
-                        'sl_dau_ra_hang_loat'=>$next_info->sl_dau_ra_hang_loat ?? null,
-                        'so_dao'=>$next_info->so_dao ?? null,
+                        'lo_sx' => $next_info->lo_sx ?? null,
+                        'status' => $next_info->status ?? null,
+                        'sl_dau_ra_hang_loat' => $next_info->sl_dau_ra_hang_loat ?? null,
+                        'so_dao' => $next_info->so_dao ?? null,
                         'so_dao_tracking' => $tracking->set_counter ?? null,
                         'set_counter' => $request['Set_Counter'] ?? null,
                     ]);
@@ -661,17 +670,17 @@ class ApiController extends AdminController
                 // DB::rollBack();
                 throw $th;
             }
-        }   
+        }
         $endTime = microtime(true);
         $timeTaken = $endTime - $startTime;
-        return (['machine_id'=>$tracking->machine_id,'timeTaken'=>$timeTaken, 'pre'=>$request['Pre_Counter'], 'set'=>$request['Set_Counter']]);
+        return (['machine_id' => $tracking->machine_id, 'timeTaken' => $timeTaken, 'pre' => $request['Pre_Counter'], 'set' => $request['Set_Counter']]);
     }
 
     protected function broadcastProductionUpdate($info_lo_sx, $so_ra, $reload = false)
     {
         $info_lo_sx['sl_dau_ra_hang_loat'] = $so_ra ? $info_lo_sx['sl_dau_ra_hang_loat'] / $so_ra : 0;
         $info_lo_sx['sl_ng_sx'] = $so_ra ? $info_lo_sx['sl_ng_sx'] / $so_ra : 0;
-        broadcast(new ProductionUpdated(['info_cong_doan' => $info_lo_sx, 'reload' => $reload]))->toOthers();
+        broadcast(new ProductionUpdated(['info_cong_doan' => $info_lo_sx, 'reload' => $reload]));
     }
 
     public function TemPrintProduction($request, $tracking, $machine)
@@ -687,7 +696,7 @@ class ApiController extends AdminController
         } else {
             //Tìm lô đang chạy
             $broadcast = [];
-            if($info_cong_doan_in){
+            if ($info_cong_doan_in) {
                 $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
                 if ($next_batch) {
                     if (($request['Pre_Counter'] - $tracking->pre_counter)  >= $info_cong_doan_in->dinh_muc) {
@@ -742,7 +751,7 @@ class ApiController extends AdminController
                         $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
                         $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
                     }
-                } 
+                }
             } else {
                 $tracking->update([
                     'lo_sx' => null,
@@ -755,8 +764,8 @@ class ApiController extends AdminController
                     'status' => 0
                 ]);
             }
-            
-            broadcast(new ProductionUpdated($broadcast))->toOthers();
+
+            broadcast(new ProductionUpdated($broadcast));
             return $broadcast;
         }
     }
@@ -769,7 +778,7 @@ class ApiController extends AdminController
         $info_cong_doan_in = InfoCongDoan::where('machine_id', $machine->id)->where('lo_sx', $tracking->lo_sx)->first();
         //Tìm lô đang chạy
         $broadcast = [];
-        if($info_cong_doan_in){
+        if ($info_cong_doan_in) {
             try {
                 $next_batch = InfoCongDoan::whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
                 if ($next_batch) {
@@ -795,7 +804,7 @@ class ApiController extends AdminController
                         $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
                         $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
                     }
-                    broadcast(new ProductionUpdated($broadcast))->toOthers();
+                    broadcast(new ProductionUpdated($broadcast));
                     return $broadcast;
                 } else {
                     if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
@@ -819,14 +828,14 @@ class ApiController extends AdminController
                         $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
                         $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
                     }
-                    broadcast(new ProductionUpdated($broadcast))->toOthers();
+                    broadcast(new ProductionUpdated($broadcast));
                     return $broadcast;
                 }
                 //code...
             } catch (\Throwable $th) {
                 throw $th;
             }
-        }else{
+        } else {
             $tracking->update([
                 'lo_sx' => null,
                 'sl_kh' => 0,
@@ -916,7 +925,7 @@ class ApiController extends AdminController
                     $broadcast = ['info_cong_doan' => $info_cong_doan_dan, 'reload' => false];
                 }
             }
-            broadcast(new ProductionUpdated($broadcast))->toOthers();
+            broadcast(new ProductionUpdated($broadcast));
             return $broadcast;
         }
     }
@@ -953,7 +962,7 @@ class ApiController extends AdminController
         $machine = Machine::with('line')->where('device_id', $request['device_id'])->first();
         $tracking = Tracking::where('machine_id', $machine->id)->first();
         $res = MachineLog::UpdateStatus(['machine_id' => $machine->id, 'status' => (int)$request['Machine_Status'], 'timestamp' => date('Y-m-d H:i:s'), 'lo_sx' => $tracking->lo_sx ?? null]);
-        broadcast(new ProductionUpdated($res))->toOthers();
+        // broadcast(new ProductionUpdated($res));
         return $this->success('Đã cập nhật trạng thái');
     }
 
@@ -1971,7 +1980,7 @@ class ApiController extends AdminController
         try {
             DB::beginTransaction();
             $info_cong_doan = InfoCongDoan::where('machine_id', $input['machine_id'])->where('lo_sx', $input['lo_sx'])->first();
-            if(!$info_cong_doan) {
+            if (!$info_cong_doan) {
                 return $this->failure('', 'Không tìm thấy lô sản xuất');
             }
             $lsx_log = QCLog::where('machine_id', $input['machine_id'])->where('lo_sx', $input['lo_sx'])->first();
@@ -2037,7 +2046,7 @@ class ApiController extends AdminController
                     $phan_dinh = 1;
                 }
             }
-            if(isset($input['data']['phan_dinh'])) {
+            if (isset($input['data']['phan_dinh'])) {
                 $phan_dinh = $input['data']['phan_dinh'];
             }
             $log['phan_dinh'] = $phan_dinh;
@@ -2113,9 +2122,9 @@ class ApiController extends AdminController
         $input = $request->all();
         $customOrder = [0, 2, 1];
         $query = InfoCongDoan::where(function ($query) {
-                $query->where('status', '>=', 2)
-                    ->orWhere('status', 1)->where('sl_dau_ra_hang_loat', '>=', 100);
-            })
+            $query->where('status', '>=', 2)
+                ->orWhere('status', 1)->where('sl_dau_ra_hang_loat', '>=', 100);
+        })
             ->where('machine_id', $request->machine_id);
         if (isset($input['start_date']) && isset($input['end_date'])) {
             if ($request->machine_id === 'So01') {
@@ -2248,7 +2257,7 @@ class ApiController extends AdminController
                 break;
             }
         }
-        if(isset($input['data']['phan_dinh'])) {
+        if (isset($input['data']['phan_dinh'])) {
             $phan_dinh = $input['data']['phan_dinh'];
         }
         $log['phan_dinh'] = $phan_dinh;
@@ -2956,9 +2965,9 @@ class ApiController extends AdminController
             // $obj->quy_cach = $order ? (!$order->kich_thuoc ? ($order->length . 'x' . $order->width . ($order->height ? ('x' . $order->height) : $order->kich_thuoc)) : "") : "";
             $obj->sl_dau_vao_kh = $order->sl ?? "";
             $obj->sl_dau_ra_kh = $order->sl ?? "";
-            if($info_cong_doan->machine_id === 'So01'){
+            if ($info_cong_doan->machine_id === 'So01') {
                 $obj->sl_ok = $info_cong_doan->sl_dau_ra_hang_loat;
-            }else{
+            } else {
                 $obj->sl_ok = $info_cong_doan->sl_dau_ra_hang_loat - $info_cong_doan->sl_ng_qc - $info_cong_doan->sl_ng_sx;
             }
             $obj->sl_phe = $info_cong_doan->sl_ng_qc + $info_cong_doan->sl_ng_sx;
@@ -4080,13 +4089,13 @@ class ApiController extends AdminController
         if (!$info) {
             return $this->failure([], 'Lô chưa được quét vào sản xuất');
         }
-        if($info->status <= 1){
+        if ($info->status <= 1) {
             return $this->failure([], 'Lô ' . $info->lo_sx . ' chưa sản xuất xong');
         }
         if ($info->step !== 0) {
             return $this->failure([], 'Lô ' . $info->lo_sx . ' chưa sẵn sàng nhập kho');
         }
-        if(!$info->machine || !($info->machine->line_id == '32' || $info->machine->line_id == '33')){
+        if (!$info->machine || !($info->machine->line_id == '32' || $info->machine->line_id == '33')) {
             return $this->failure([], 'Công đoạn cuối không phải Dán hoặc Xả lót, chưa thể nhập kho');
         }
         $previousQCLog = QCLog::where('lo_sx', $request->lo_sx)->orderBy('updated_at', 'DESC')->first();
@@ -4156,9 +4165,9 @@ class ApiController extends AdminController
                 $inp['lo_sx'] = $value['lo_sx'];
                 $inp['pallet_id'] = $input['id'];
                 $inp['so_luong'] = $value['so_luong'];
-                if(in_array($info->machine_id, $machine_dan)){
+                if (in_array($info->machine_id, $machine_dan)) {
                     $inp['type'] = LSXPallet::DAN;
-                }else if(in_array($info->machine_id, $machine_xa_lot)){
+                } else if (in_array($info->machine_id, $machine_xa_lot)) {
                     $inp['type'] = LSXPallet::XA_LOT;
                 }
                 $so_luong += $value['so_luong'];
@@ -4287,9 +4296,9 @@ class ApiController extends AdminController
                 $lsx_pallets = LSXPallet::with(['warehouseFGLog' => function ($logQuery) {
                     $logQuery->where('type', 1);
                 }])
-                ->where('remain_quantity', '>', 0)
-                ->where('order_id', $fg_export->order_id)
-                ->get();
+                    ->where('remain_quantity', '>', 0)
+                    ->where('order_id', $fg_export->order_id)
+                    ->get();
                 $so_luong_da_xuat = $fg_export->warehouse_fg_log->sum('so_luong');
                 // $test[] = [$fg_export->id, $lsx_pallets, $so_luong_da_xuat];
                 $sum_sl = 0;
@@ -4373,7 +4382,7 @@ class ApiController extends AdminController
                 }
                 if ($lsx_pallet) {
                     $remain = ($lsx_pallet->remain_quantity - $lo['so_luong']);
-                    $lsx_pallet->update(['remain_quantity' => $remain > 0 ? $remain : 0, 'status'=> LSXPallet::EXPORTED]);
+                    $lsx_pallet->update(['remain_quantity' => $remain > 0 ? $remain : 0, 'status' => LSXPallet::EXPORTED]);
                 }
             }
             $pallet_quantity = LSXPallet::where('pallet_id', $input[0]['pallet_id'])->sum('remain_quantity');
@@ -4714,7 +4723,7 @@ class ApiController extends AdminController
                 $inp['nhap_du'] = $this->calculateNhapDu($lsx->so_luong, $lsx->order_id);
                 $inp['lsx_pallet_id'] = $lsx->id;
                 WarehouseFGLog::create($inp);
-                $lsx->update(['remain_quantity' => $lsx->so_luong, 'status'=> LSXPallet::IMPORTED]);
+                $lsx->update(['remain_quantity' => $lsx->so_luong, 'status' => LSXPallet::IMPORTED]);
             }
             DB::commit();
         } catch (\Throwable $th) {
@@ -4768,11 +4777,11 @@ class ApiController extends AdminController
                 $material = Material::find($reimport_data['material_id']);
                 if ($material) {
                     $log = WarehouseMLTLog::where('material_id', $reimport_data['material_id'])->orderBy('tg_nhap', 'DESC')->first();
-                    if($log){
-                        if(!$log->tg_xuat){
+                    if ($log) {
+                        if (!$log->tg_xuat) {
                             return $this->failure($material, 'NVL chưa được xuất');
                         }
-                        if($reimport_data['so_kg'] > $log->so_kg_nhap){
+                        if ($reimport_data['so_kg'] > $log->so_kg_nhap) {
                             return $this->failure($material, 'Số ký nhập lại không được lớn hơn số ký đầu');
                         }
                     }
@@ -8151,13 +8160,14 @@ class ApiController extends AdminController
         return $this->success($href);
     }
 
-    function getQCdetailHistory(Request $request){
+    function getQCdetailHistory(Request $request)
+    {
         $info = InfoCongDoan::where('id', $request->info_id)->first();
-        if(!$info){
+        if (!$info) {
             return $this->failure(null, 'Không tìm thấy lô');
         }
         $qc_log = QCLog::where('lo_sx', $info->lo_sx)->where('machine_id', $info->machine_id)->first();
-        if(!$qc_log){
+        if (!$qc_log) {
             return $this->failure(null, 'Không tìm thấy lịch sử QC');
         }
         return $this->success($qc_log);
@@ -8424,7 +8434,7 @@ class ApiController extends AdminController
             });
         }
         if (isset($input['material_id'])) {
-            $query->where('warehouse_mlt_logs.material_id', 'like', "%".$input['material_id']."%");
+            $query->where('warehouse_mlt_logs.material_id', 'like', "%" . $input['material_id'] . "%");
         }
         // Lấy tg_xuat của bản ghi xuất mới nhất cho mỗi material_id
         $query->leftJoinSub(
@@ -8465,17 +8475,17 @@ class ApiController extends AdminController
             $tg_xuat = $record->latest_tg_xuat;
             //Lấy bản ghi nhập mới nhất của NVL
             $lastImportLog = WarehouseMLTLog::where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
-            if(!$lastImportLog->tg_xuat){
+            if (!$lastImportLog->tg_xuat) {
                 //Nếu bản ghi nhập mới nhất chưa có xuất thì tìm bản ghi xuất mới nhất
                 $lastExportLog = WarehouseMLTLog::whereNotNull('tg_xuat')->where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
-                if($lastExportLog){
+                if ($lastExportLog) {
                     //Nếu có bản ghi xuất lấy số lượng nhập cuối cùng là của bản ghi có nhập xuất mới nhất
                     $so_kg_nhap = $lastExportLog->so_kg_nhap;
                     $tg_xuat = $lastExportLog->tg_xuat;
                 }
                 //Nếu ko có bản ghi xuất mới nhất thì số kg đầu giữ nguyên, số kg cuối = số kg nhập
                 $so_kg_cuoi = $lastImportLog->so_kg_nhap;
-            }else{
+            } else {
                 // $so_kg_cuoi = $lastImportLog->so_kg_nhap;
                 $so_kg_nhap = $lastImportLog->so_kg_nhap;
             }
@@ -8511,17 +8521,17 @@ class ApiController extends AdminController
             $tg_xuat = $record->latest_tg_xuat;
             //Lấy bản ghi nhập mới nhất của NVL
             $lastImportLog = WarehouseMLTLog::where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
-            if(!$lastImportLog->tg_xuat){
+            if (!$lastImportLog->tg_xuat) {
                 //Nếu bản ghi nhập mới nhất chưa có xuất thì tìm bản ghi xuất mới nhất
                 $lastExportLog = WarehouseMLTLog::whereNotNull('tg_xuat')->where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
-                if($lastExportLog){
+                if ($lastExportLog) {
                     //Nếu có bản ghi xuất lấy số lượng nhập cuối cùng là của bản ghi có nhập xuất mới nhất
                     $so_kg_nhap = $lastExportLog->so_kg_nhap;
                     $tg_xuat = $lastExportLog->tg_xuat;
                 }
                 //Nếu ko có bản ghi xuất mới nhất thì số kg đầu giữ nguyên, số kg cuối = số kg nhập
                 $so_kg_cuoi = $lastImportLog->so_kg_nhap;
-            }else{
+            } else {
                 $so_kg_nhap = $lastImportLog->so_kg_nhap;
             }
             $obj = new stdClass;
@@ -8658,7 +8668,7 @@ class ApiController extends AdminController
             $query->where('order_id', 'like', "%" . $input['order_id'] . "%");
         }
         if (!empty($input['khach_hang']) || !empty($input['mdh']) || !empty($input['mql']) || !empty($input['kich_thuoc']) || !empty($input['length']) || !empty($input['width']) || !empty($input['height'])) {
-            $query->whereHas('order', function($order_query)use($input){
+            $query->whereHas('order', function ($order_query) use ($input) {
                 if (isset($input['khach_hang'])) {
                     $order_query->where('short_name', $input['khach_hang']);
                 }
@@ -8732,7 +8742,8 @@ class ApiController extends AdminController
         return $this->success(['data' => $records, 'totalPage' => $totalPage]);
     }
 
-    function datediff($date1, $date2) {
+    function datediff($date1, $date2)
+    {
         $d1 = Carbon::parse($date1)->startOfDay();
         $d2 = Carbon::parse($date2)->startOfDay();
         return $d1->diffInDays($d2);
@@ -8924,7 +8935,7 @@ class ApiController extends AdminController
         $input = array_filter($input);
         $order_test = [];
         if (count($input) > 0) {
-            $query->whereHas('order', function($order_query)use($input){
+            $query->whereHas('order', function ($order_query) use ($input) {
                 if (isset($input['order_id'])) {
                     $order_query->where('id', 'like', "%" . $input['order_id'] . "%");
                 }

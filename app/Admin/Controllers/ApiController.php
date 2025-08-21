@@ -567,7 +567,7 @@ class ApiController extends AdminController
                             $this->reorderInfoCongDoan();
                             $next_info = InfoCongDoan::select('info_cong_doan.*')
                                 ->join('info_cong_doan_priority', 'info_cong_doan.id', '=', 'info_cong_doan_priority.info_cong_doan_id')
-                                ->where('info_cong_doan.status', 0)
+                                ->whereIn('info_cong_doan.status', [0, 1])
                                 ->where('info_cong_doan.so_dao', $request['Set_Counter'] ?? "")
                                 ->orderBy('info_cong_doan_priority.priority', 'asc')
                                 ->first();
@@ -638,7 +638,7 @@ class ApiController extends AdminController
                     // $info_ids = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
                     $next_info = InfoCongDoan::select('info_cong_doan.*')
                         ->join('info_cong_doan_priority', 'info_cong_doan.id', '=', 'info_cong_doan_priority.info_cong_doan_id')
-                        ->where('info_cong_doan.status', 0)
+                        ->whereIn('info_cong_doan.status', [0, 1])
                         ->where('info_cong_doan.so_dao', $request['Set_Counter'] ?? "")
                         ->orderBy('info_cong_doan_priority.priority', 'asc')
                         ->first();

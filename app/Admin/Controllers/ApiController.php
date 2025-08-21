@@ -571,6 +571,15 @@ class ApiController extends AdminController
                                 ->where('info_cong_doan.so_dao', $request['Set_Counter'] ?? "")
                                 ->orderBy('info_cong_doan_priority.priority', 'asc')
                                 ->first();
+                            Log::debug("next tf info");
+                            Log::info([
+                                'lo_sx' => $next_info->lo_sx ?? null,
+                                'status' => $next_info->status ?? null,
+                                'sl_dau_ra_hang_loat' => $next_info->sl_dau_ra_hang_loat ?? null,
+                                'so_dao' => $next_info->so_dao ?? null,
+                                'so_dao_tracking' => $tracking->set_counter ?? null,
+                                'set_counter' => $request['Set_Counter'] ?? null,
+                            ]);
                             if ($next_info) {
                                 $so_ra = $next_info->so_ra;
                                 $next_info->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s'), 'status' => 1, 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $so_ra, 'so_ra' => $so_ra]);
@@ -5993,7 +6002,7 @@ class ApiController extends AdminController
         $line_id = $machine->line_id;
         $orders = [];
         // Lấy danh sách order_id đã có trong GroupPlanOrder để loại trừ
-        $excludedOrderIds = GroupPlanOrder::pluck('order_id')->toArray();
+        // $excludedOrderIds = GroupPlanOrder::pluck('order_id')->toArray();
 
         switch ($line_id) {
             case Line::LINE_SONG:

@@ -2081,9 +2081,9 @@ class ApiController extends AdminController
     public function pqcLotList(Request $request)
     {
         $input = $request->all();
-        $customOrder = [0, 2, 1];
-
-        $query = InfoCongDoan::with('plan.order.customer', 'qc_log', 'tem.order.customer')->select(
+        $customOrder = [1, 0, 2, 3, 4];
+        $query = InfoCongDoan::with('plan.order.customer', 'qc_log', 'tem.order.customer')
+        ->select(
             '*',
             'sl_dau_ra_hang_loat as san_luong',
             DB::raw('sl_dau_ra_hang_loat - sl_ng_sx - sl_ng_qc as sl_ok'),
@@ -2103,7 +2103,8 @@ class ApiController extends AdminController
         } else {
             $query->whereDate('ngay_sx', date('Y-m-d'));
         }
-        $list = $query->orderByRaw("FIELD(phan_dinh, " . implode(',', $customOrder) . ")")->get();
+        // $query->orderBy('updated_at', 'DESC')->orderBy('order_id');
+        $list = $query->orderBy('updated_at', 'DESC')->orderBy('order_id')->get();
         foreach ($list as $value) {
             $log = $value->qc_log;
             $order = null;
@@ -2126,6 +2127,14 @@ class ApiController extends AdminController
             $value->checked_ngoai_quan = isset($log->info['ngoai_quan']);
             $value->checked_sl_ng = isset($log->info['sl_ng_qc']);
         }
+        $list = $list->toArray();
+        usort($list, function ($a, $b) use ($customOrder) {
+            $pos_a = array_search($a->status, $customOrder);
+            $pos_b = array_search($b->status, $customOrder);
+            if ($pos_a === false) return 1;
+            if ($pos_b === false) return -1;
+            return $pos_a - $pos_b;
+        });
         return $this->success($list);
     }
 

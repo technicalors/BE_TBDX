@@ -2129,8 +2129,8 @@ class ApiController extends AdminController
         }
         $list = $list->toArray();
         usort($list, function ($a, $b) use ($customOrder) {
-            $pos_a = array_search($a->status, $customOrder);
-            $pos_b = array_search($b->status, $customOrder);
+            $pos_a = array_search($a['status'], $customOrder);
+            $pos_b = array_search($b['status'], $customOrder);
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
             return $pos_a - $pos_b;

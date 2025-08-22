@@ -1619,6 +1619,14 @@ class ApiController extends AdminController
             $obj->slg_sx = $obj->order->sl ?? '';
             $data[] = $obj;
         }
+        $order = [1, 0, 2, 3, 4];
+        usort($data, function ($a, $b) use ($order) {
+            $pos_a = array_search($a->status, $order);
+            $pos_b = array_search($b->status, $order);
+            if ($pos_a === false) return 1;
+            if ($pos_b === false) return -1;
+            return $pos_a - $pos_b;
+        });
         return $this->success($data);
     }
 

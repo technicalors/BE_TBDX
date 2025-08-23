@@ -1176,7 +1176,6 @@ class ApiController extends AdminController
             ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
             ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
             ->orderBy('created_at', 'DESC')
-            ->orderBy('order_id')
             ->get();
         $data = [];
         $tracking = Tracking::where('machine_id', $request->machine_id)->first();

@@ -792,9 +792,9 @@ class ApiController extends AdminController
         $broadcast = [];
         if ($info_cong_doan_in) {
             try {
-                $next_batch = InfoCongDoan::whereIn('status', [0])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
+                $next_batch = InfoCongDoan::where('status', 0)->where('lo_sx', '!=', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
                 if ($next_batch) {
-                    if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
+                    if (((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) || ($info_cong_doan_in->sl_dau_ra_hang_loat > $request['Pre_Counter'])) {
                         $info_cong_doan_in->update([
                             'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'status' => 2,
@@ -819,7 +819,7 @@ class ApiController extends AdminController
                     broadcast(new ProductionUpdated($broadcast));
                     return $broadcast;
                 } else {
-                    if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
+                    if (((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) || ($info_cong_doan_in->sl_dau_ra_hang_loat > $request['Pre_Counter'])) {
                         $info_cong_doan_in->update([
                             'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),

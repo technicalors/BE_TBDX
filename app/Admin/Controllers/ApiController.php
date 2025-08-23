@@ -2163,9 +2163,9 @@ class ApiController extends AdminController
             $value->checked_sl_ng = isset($log->info['sl_ng_qc']);
         }
         $list = $list->toArray();
-        usort($list, function ($a, $b) use ($order) {
-            $pos_a = array_search($a['status'], $order);
-            $pos_b = array_search($b['status'], $order);
+        usort($list, function ($a, $b) use ($customOrder) {
+            $pos_a = array_search($a['status'], $customOrder);
+            $pos_b = array_search($b['status'], $customOrder);
         
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;

@@ -81,9 +81,9 @@ async function fetchTelemetryData(device, token) {
 
         // Data parse
         const { Pre_Counter, Set_Counter, Error_Counter, Machine_Status } = response.data;
-        if(isNaN(Pre_Counter)){
-            throw new Error("Data không hợp lệ");
-        }
+        // if(isNaN(Pre_Counter)){
+        //     throw new Error("Data không hợp lệ");
+        // }
         const data = {
             device_id:       device,
             Pre_Counter:     Pre_Counter    ? (Pre_Counter[0]?.value    ?? 0) : 0,

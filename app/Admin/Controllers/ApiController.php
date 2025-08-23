@@ -1214,9 +1214,23 @@ class ApiController extends AdminController
         usort($data, function ($a, $b) use ($order) {
             $pos_a = array_search($a->status, $order);
             $pos_b = array_search($b->status, $order);
+        
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-            return $pos_a - $pos_b;
+        
+            // Nếu status khác nhau thì so sánh theo $order
+            if ($pos_a !== $pos_b) {
+                return $pos_a - $pos_b;
+            }
+        
+            // Nếu status giống nhau
+            if (!empty($a->thoi_gian_ket_thuc) && !empty($b->thoi_gian_ket_thuc)) {
+                // So sánh thoi_gian_ket_thuc giảm dần
+                return strtotime($b->thoi_gian_ket_thuc) - strtotime($a->thoi_gian_ket_thuc);
+            }
+        
+            // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
+            return 0;
         });
         return $this->success($data);
     }
@@ -1622,9 +1636,23 @@ class ApiController extends AdminController
         usort($data, function ($a, $b) use ($order) {
             $pos_a = array_search($a->status, $order);
             $pos_b = array_search($b->status, $order);
+        
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-            return $pos_a - $pos_b;
+        
+            // Nếu status khác nhau thì so sánh theo $order
+            if ($pos_a !== $pos_b) {
+                return $pos_a - $pos_b;
+            }
+        
+            // Nếu status giống nhau
+            if (!empty($a->thoi_gian_ket_thuc) && !empty($b->thoi_gian_ket_thuc)) {
+                // So sánh thoi_gian_ket_thuc giảm dần
+                return strtotime($b->thoi_gian_ket_thuc) - strtotime($a->thoi_gian_ket_thuc);
+            }
+        
+            // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
+            return 0;
         });
         return $this->success($data);
     }
@@ -2134,13 +2162,27 @@ class ApiController extends AdminController
             $value->checked_ngoai_quan = isset($log->info['ngoai_quan']);
             $value->checked_sl_ng = isset($log->info['sl_ng_qc']);
         }
-        $list = $list->toArray();
-        usort($list, function ($a, $b) use ($customOrder) {
-            $pos_a = array_search($a['status'], $customOrder);
-            $pos_b = array_search($b['status'], $customOrder);
+        // $list = $list->toArray();
+        usort($list, function ($a, $b) use ($order) {
+            $pos_a = array_search($a->status, $order);
+            $pos_b = array_search($b->status, $order);
+        
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-            return $pos_a - $pos_b;
+        
+            // Nếu status khác nhau thì so sánh theo $order
+            if ($pos_a !== $pos_b) {
+                return $pos_a - $pos_b;
+            }
+        
+            // Nếu status giống nhau
+            if (!empty($a->thoi_gian_ket_thuc) && !empty($b->thoi_gian_ket_thuc)) {
+                // So sánh thoi_gian_ket_thuc giảm dần
+                return strtotime($b->thoi_gian_ket_thuc) - strtotime($a->thoi_gian_ket_thuc);
+            }
+        
+            // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
+            return 0;
         });
         return $this->success($list);
     }

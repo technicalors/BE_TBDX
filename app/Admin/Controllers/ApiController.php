@@ -2162,10 +2162,10 @@ class ApiController extends AdminController
             $value->checked_ngoai_quan = isset($log->info['ngoai_quan']);
             $value->checked_sl_ng = isset($log->info['sl_ng_qc']);
         }
-        // $list = $list->toArray();
+        $list = $list->toArray();
         usort($list, function ($a, $b) use ($order) {
-            $pos_a = array_search($a->status, $order);
-            $pos_b = array_search($b->status, $order);
+            $pos_a = array_search($a['status'], $order);
+            $pos_b = array_search($b['status'], $order);
         
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
@@ -2176,9 +2176,9 @@ class ApiController extends AdminController
             }
         
             // Nếu status giống nhau
-            if (!empty($a->thoi_gian_ket_thuc) && !empty($b->thoi_gian_ket_thuc)) {
+            if (!empty($a['thoi_gian_ket_thuc']) && !empty($b['thoi_gian_ket_thuc'])) {
                 // So sánh thoi_gian_ket_thuc giảm dần
-                return strtotime($b->thoi_gian_ket_thuc) - strtotime($a->thoi_gian_ket_thuc);
+                return strtotime($b['thoi_gian_ket_thuc']) - strtotime($a['thoi_gian_ket_thuc']);
             }
         
             // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự

@@ -787,75 +787,97 @@ class ApiController extends AdminController
         if (!$tracking || !$tracking->lo_sx || $tracking->is_running === 0 || $tracking->status === 0) {
             return;
         }
-        $info_cong_doan_in = InfoCongDoan::where('machine_id', $machine->id)->where('lo_sx', $tracking->lo_sx)->first();
-        //Tìm lô đang chạy
-        $broadcast = [];
-        if ($info_cong_doan_in) {
-            try {
-                $next_batch = InfoCongDoan::whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->where('status', 'DESC')->orderBy('created_at', 'DESC')->first();
-                if ($next_batch) {
-                    if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
-                        $info_cong_doan_in->update([
-                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
-                            'status' => 2,
-                            'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
-                        ]);
-                        $tracking->update([
-                            'lo_sx' => $next_batch->lo_sx,
-                            'sl_kh' => $next_batch->dinh_muc,
-                            'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien,
-                        ]);
-                        $next_batch->update(['status' => 1]);
-                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
-                    } else {
-                        $info_cong_doan_in->update([
-                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
-                            'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
-                            'status' => 1
-                        ]);
-                        $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
-                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
-                    }
-                    broadcast(new ProductionUpdated($broadcast));
-                    return $broadcast;
-                } else {
-                    if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
-                        $info_cong_doan_in->update([
-                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
-                            'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
-                            'status' => 2,
-                        ]);
-                        $tracking->update([
-                            'lo_sx' => null,
-                            'sl_kh' => 0,
-                            'thu_tu_uu_tien' => 0,
-                        ]);
-                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
-                    } else {
-                        $info_cong_doan_in->update([
-                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
-                            'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
-                            'status' => 1
-                        ]);
-                        $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
-                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
-                    }
-                    broadcast(new ProductionUpdated($broadcast));
-                    return $broadcast;
-                }
-                //code...
-            } catch (\Throwable $th) {
-                throw $th;
-            }
-        } else {
+
+        $infoCongDoan = InfoCongDoan::where('machine_id', $machine->id)
+            ->where('lo_sx', $tracking->lo_sx)
+            ->first();
+
+        if (!$infoCongDoan) {
+            // Không tìm thấy công đoạn -> reset tracking
             $tracking->update([
                 'lo_sx' => null,
                 'sl_kh' => 0,
                 'thu_tu_uu_tien' => 0,
             ]);
+            return [];
         }
-        return $broadcast;
+
+        try {
+            $nextBatch = InfoCongDoan::whereIn('status', [0, 1])
+                ->where('lo_sx', '<>', $infoCongDoan->lo_sx)
+                ->where('machine_id', $tracking->machine_id)
+                ->orderBy('status', 'DESC')
+                ->orderBy('created_at', 'DESC')
+                ->first();
+
+            $isPreCounterZero = (int)$request['Pre_Counter'] === 0;
+            $hasOutput = $infoCongDoan->sl_dau_ra_hang_loat > 0;
+
+            // Hàm cập nhật chung
+            $updateRunning = function () use ($infoCongDoan, $request) {
+                $infoCongDoan->update([
+                    'thoi_gian_bat_dau'   => $infoCongDoan->thoi_gian_bat_dau ?? now(),
+                    'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
+                    'status'              => 1,
+                ]);
+                $infoCongDoan->sl_ok = $infoCongDoan->sl_dau_ra_hang_loat
+                    - $infoCongDoan->sl_ng_sx
+                    - $infoCongDoan->sl_ng_qc;
+
+                return ['info_cong_doan' => $infoCongDoan, 'reload' => false];
+            };
+
+            $broadcast = [];
+
+            if ($nextBatch) {
+                if ($isPreCounterZero && $hasOutput) {
+                    // Kết thúc công đoạn hiện tại, chuyển sang batch tiếp theo
+                    $infoCongDoan->update([
+                        'thoi_gian_bat_dau'  => $infoCongDoan->thoi_gian_bat_dau ?? now(),
+                        'status'             => 2,
+                        'thoi_gian_ket_thuc' => now(),
+                    ]);
+
+                    $tracking->update([
+                        'lo_sx'          => $nextBatch->lo_sx,
+                        'sl_kh'          => $nextBatch->dinh_muc,
+                        'thu_tu_uu_tien' => $nextBatch->thu_tu_uu_tien,
+                    ]);
+
+                    $nextBatch->update(['status' => 1]);
+
+                    $broadcast = ['info_cong_doan' => $infoCongDoan, 'reload' => true];
+                } else {
+                    $broadcast = $updateRunning();
+                }
+            } else {
+                if ($isPreCounterZero && $hasOutput) {
+                    // Kết thúc công đoạn cuối cùng, reset tracking
+                    $infoCongDoan->update([
+                        'thoi_gian_bat_dau'  => $infoCongDoan->thoi_gian_bat_dau ?? now(),
+                        'thoi_gian_ket_thuc' => now(),
+                        'status'             => 2,
+                    ]);
+
+                    $tracking->update([
+                        'lo_sx'          => null,
+                        'sl_kh'          => 0,
+                        'thu_tu_uu_tien' => 0,
+                    ]);
+
+                    $broadcast = ['info_cong_doan' => $infoCongDoan, 'reload' => true];
+                } else {
+                    $broadcast = $updateRunning();
+                }
+            }
+
+            broadcast(new ProductionUpdated($broadcast));
+            return $broadcast;
+        } catch (\Throwable $th) {
+            throw $th;
+        }
     }
+
 
     public function TemGluingProduction($request, $tracking, $machine)
     {
@@ -1214,21 +1236,21 @@ class ApiController extends AdminController
         usort($data, function ($a, $b) use ($order) {
             $pos_a = array_search($a->status, $order);
             $pos_b = array_search($b->status, $order);
-        
+
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-        
+
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
                 return $pos_a - $pos_b;
             }
-        
+
             // Nếu status giống nhau
             if (!empty($a->thoi_gian_ket_thuc) && !empty($b->thoi_gian_ket_thuc)) {
                 // So sánh thoi_gian_ket_thuc giảm dần
                 return strtotime($b->thoi_gian_ket_thuc) - strtotime($a->thoi_gian_ket_thuc);
             }
-        
+
             // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
             return 0;
         });
@@ -1636,21 +1658,21 @@ class ApiController extends AdminController
         usort($data, function ($a, $b) use ($order) {
             $pos_a = array_search($a->status, $order);
             $pos_b = array_search($b->status, $order);
-        
+
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-        
+
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
                 return $pos_a - $pos_b;
             }
-        
+
             // Nếu status giống nhau
             if (!empty($a->thoi_gian_ket_thuc) && !empty($b->thoi_gian_ket_thuc)) {
                 // So sánh thoi_gian_ket_thuc giảm dần
                 return strtotime($b->thoi_gian_ket_thuc) - strtotime($a->thoi_gian_ket_thuc);
             }
-        
+
             // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
             return 0;
         });
@@ -2118,12 +2140,12 @@ class ApiController extends AdminController
         $input = $request->all();
         $customOrder = [1, 0, 2, 3, 4];
         $query = InfoCongDoan::with('plan.order.customer', 'qc_log', 'tem.order.customer')
-        ->select(
-            '*',
-            'sl_dau_ra_hang_loat as san_luong',
-            DB::raw('sl_dau_ra_hang_loat - sl_ng_sx - sl_ng_qc as sl_ok'),
-            DB::raw('sl_ng_sx + sl_ng_qc as sl_ng'),
-        )
+            ->select(
+                '*',
+                'sl_dau_ra_hang_loat as san_luong',
+                DB::raw('sl_dau_ra_hang_loat - sl_ng_sx - sl_ng_qc as sl_ok'),
+                DB::raw('sl_ng_sx + sl_ng_qc as sl_ng'),
+            )
             ->where(function ($query) {
                 $query->where('status', '>=', 2)
                     ->orWhere('status', 1)->where('sl_dau_ra_hang_loat', '>=', 100);
@@ -2166,21 +2188,21 @@ class ApiController extends AdminController
         usort($list, function ($a, $b) use ($customOrder) {
             $pos_a = array_search($a['status'], $customOrder);
             $pos_b = array_search($b['status'], $customOrder);
-        
+
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-        
+
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
                 return $pos_a - $pos_b;
             }
-        
+
             // Nếu status giống nhau
             if (!empty($a['thoi_gian_ket_thuc']) && !empty($b['thoi_gian_ket_thuc'])) {
                 // So sánh thoi_gian_ket_thuc giảm dần
                 return strtotime($b['thoi_gian_ket_thuc']) - strtotime($a['thoi_gian_ket_thuc']);
             }
-        
+
             // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
             return 0;
         });

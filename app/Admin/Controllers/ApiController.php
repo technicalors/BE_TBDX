@@ -792,7 +792,7 @@ class ApiController extends AdminController
         $broadcast = [];
         if ($info_cong_doan_in) {
             try {
-                $next_batch = InfoCongDoan::whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
+                $next_batch = InfoCongDoan::whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->where('status', 'DESC')->orderBy('created_at', 'DESC')->first();
                 if ($next_batch) {
                     if ((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) {
                         $info_cong_doan_in->update([
@@ -1175,7 +1175,7 @@ class ApiController extends AdminController
             ->where('machine_id', $request->machine_id)
             ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
             ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
-            ->orderBy('updated_at', 'DESC')
+            ->orderBy('created_at', 'DESC')
             ->orderBy('order_id')
             ->get();
         $data = [];

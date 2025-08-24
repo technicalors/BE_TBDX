@@ -55,10 +55,10 @@ class LSXPalletController extends AdminController
         }
         if(isset($request->status)){
             if($request->status == 0){
-                $query->where('remain_quantity', 0)->whereColumn('created_at', '=', 'updated_at');
+                $query->whereNull('status');
             }else{
                 $query->where(function($sub_query){
-                    $sub_query->where('remain_quantity', '>', 0)->orWhere('remain_quantity', 0)->whereColumn('created_at', '!=', 'updated_at');
+                    $sub_query->whereNotNull('status');
                 });
             }
         }

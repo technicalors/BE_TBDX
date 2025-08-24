@@ -12,7 +12,11 @@ class LSXPallet extends Model
     use HasFactory;
     public $incrementing = false;
     protected $table = 'lsx_pallet';
-    protected $fillable = ['lo_sx', 'so_luong', 'pallet_id', 'mdh', 'mql', 'customer_id', 'order_id', 'created_at', 'remain_quantity'];
+    protected $fillable = ['lo_sx', 'so_luong', 'pallet_id', 'mdh', 'mql', 'customer_id', 'order_id', 'created_at', 'remain_quantity', 'type', 'status'];
+    const DAN = 1;
+    const XA_LOT = 2;
+    const IMPORTED = 1;
+    const EXPORTED = 2;
     public function pallet()
     {
         return $this->belongsTo(Pallet::class);
@@ -30,5 +34,11 @@ class LSXPallet extends Model
     }
     public function warehouseFGLog(){
         return $this->hasMany(WarehouseFGLog::class, ['lo_sx', 'pallet_id'], ['lo_sx', 'pallet_id']);
+    }
+    public function infoCongDoan(){
+        return $this->hasOne(InfoCongDoan::class, 'lo_sx', 'lo_sx')->orderBy('created_at', 'desc');
+    }
+    public function warehouse_fg_logs(){
+        return $this->hasMany(WarehouseFGLog::class, 'lsx_pallet_id', 'id')->orderBy('created_at', 'asc');
     }
 }

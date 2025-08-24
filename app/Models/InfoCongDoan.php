@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class InfoCongDoan extends Model
@@ -14,7 +16,7 @@ class InfoCongDoan extends Model
     protected $table = "info_cong_doan";
 
 
-    protected $fillable = ['id', 'lot_id', 'machine_id', 'thoi_gian_bat_dau', 'thoi_gian_bam_may', 'thoi_gian_ket_thuc', 'sl_dau_vao_chay_thu', 'sl_dau_ra_chay_thu', 'sl_dau_vao_hang_loat', 'sl_dau_ra_hang_loat', 'sl_ng_sx', 'sl_ng_qc', 'sl_loi', 'phan_dinh', 'loi_tinh_nang', 'loi_ngoai_quan', 'dinh_muc', 'parent_id', 'lo_sx', 'nhan_vien_sx', 'status', 'step', 'thu_tu_uu_tien', 'ngay_sx', 'plan_id', 'order_id', 'so_ra', 'so_dao'];
+    protected $fillable = ['id', 'lot_id', 'machine_id', 'thoi_gian_bat_dau', 'thoi_gian_bam_may', 'thoi_gian_ket_thuc', 'sl_dau_vao_chay_thu', 'sl_dau_ra_chay_thu', 'sl_dau_vao_hang_loat', 'sl_dau_ra_hang_loat', 'sl_ng_sx', 'sl_ng_qc', 'sl_loi', 'phan_dinh', 'loi_tinh_nang', 'loi_ngoai_quan', 'dinh_muc', 'parent_id', 'lo_sx', 'nhan_vien_sx', 'status', 'step', 'thu_tu_uu_tien', 'ngay_sx', 'plan_id', 'order_id', 'so_ra', 'so_dao', 'so_du'];
 
     static function validateStore($input)
     {
@@ -119,5 +121,54 @@ class InfoCongDoan extends Model
     public function warehouseFGLog()
     {
         return $this->hasOne(WarehouseFGLog::class, 'lo_sx', 'lo_sx');
+    }
+
+    //update user_id after save info_cong_doan
+    public static function boot()
+    {
+        parent::boot();
+
+        static::updating(function ($info) {
+            // 1) Chỉ khi status sắp đổi từ < 1 lên >= 1
+            if (!$info->isDirty('status') || $info->status < 1) {
+                return;
+            }
+
+            // 2) Chỉ khi nhan_vien_sx còn null
+            if ($info->nhan_vien_sx) {
+                return;
+            }
+
+            // 3) Chỉ khi máy này là IoT
+            //    Dùng optional() để phòng máy không tồn tại relation
+            if (!optional($info->machine)->is_iot) {
+                return;
+            }
+
+            // 4) Gán luôn cho lần update này
+            $current_user = self::getCurrentUserAtMachine($info->machine_id);
+            $info->nhan_vien_sx = $current_user->id ?? null;
+        });
+    }
+
+    static function getCurrentUserAtMachine($machine_id)
+    {
+        $machine = Machine::find($machine_id);
+        if(!$machine){
+            return null;
+        }
+        $user_line = UserLine::where('line_id', $machine->line_id)->pluck('user_id')->toArray();
+        $user_machines = UserMachine::where('machine_id', $machine_id)->pluck('user_id')->toArray();
+        $current_user = CustomUser::whereIn('id', $user_machines)->whereIn('id', $user_line)
+        ->whereNull('deleted_at')
+        ->whereNotNull('last_use_at')
+        ->whereDate('last_use_at', date('Y-m-d'))
+        ->where('function_user', 1)
+        ->orderBy('last_use_at', 'desc')
+        ->first();
+        if ($current_user) {
+            return $current_user;
+        }
+        return null;
     }
 }

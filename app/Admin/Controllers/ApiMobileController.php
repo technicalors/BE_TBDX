@@ -96,6 +96,7 @@ class ApiMobileController extends AdminController
         }
 
         $data =  [
+            "id" => $user->id,
             "username" => $user->username,
             "name" => $user->name,
             "avatar" => $user->avatar,
@@ -3640,13 +3641,11 @@ class ApiMobileController extends AdminController
                     if ($plan->info_losx && $plan->info_losx->status > 0) {
                         return $this->failure('', 'Kế hoạch đã chạy. Không thể xoá');
                     }
-                    $delete = $plan->delete();
-                    if ($delete) {
-                        $plan->mapping()->delete();
-                        $plan->l_s_x_log()->delete();
-                        $plan->group_plan_order()->delete();
-                        $plan->info_losx()->delete();
-                    }
+                    $plan->mapping()->delete();
+                    $plan->l_s_x_log()->delete();
+                    $plan->group_plan_order()->delete();
+                    $plan->info_losx()->delete();
+                    $plan->delete();
                 } else {
                     return $this->failure('', 'Không thể xoá');
                 }

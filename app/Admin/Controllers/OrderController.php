@@ -101,15 +101,17 @@ class OrderController extends AdminController
         return true;
     }
 
-    public function getOrders(Request $request)
-    {
-        $query = Order::with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name'])->orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
+    function queryOrder($request){
+        $query = Order::orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
         if (isset($request->status)) {
             if ($request->status === 'all') {
                 $query->withTrashed();
             } else if ($request->status === 'deleted') {
                 $query->onlyTrashed();
             }
+        }
+        if (isset($request->id)) {
+            $query->where('id', 'like', "%" . $request->id . "%");
         }
         if (isset($request->customer_id)) {
             $query->where('customer_id', 'like', "%" . $request->customer_id . "%");
@@ -157,7 +159,10 @@ class OrderController extends AdminController
             }
         }
         if (isset($request->kich_thuoc)) {
-            $query->where('kich_thuoc', 'like', "%$request->kich_thuoc%");
+            $query->where(function ($custom_query) use ($request) {
+                $custom_query->where('kich_thuoc', 'like', '%'.$request->kich_thuoc.'%')
+                ->orWhere('kich_thuoc_chuan', 'like', '%'.$request->kich_thuoc.'%');
+            });
         }
         if (isset($request->length)) {
             $query->where('length', 'like', $request->length);
@@ -205,12 +210,30 @@ class OrderController extends AdminController
             $query->where('xuong_giao', $request->xuong_giao);
         }
         if (isset($request->is_planned) && $request->is_planned != 0) {
-            if($request->is_planned == 1) {
+            if ($request->is_planned == 1) {
                 $query->has('group_plan_order');
             } else {
                 $query->doesntHave('group_plan_order');
             }
         }
+        if(isset($request->layout_type)){
+            if($request->layout_type === 'is_null'){
+                $query->where(function($q){
+                    $q->whereNull('layout_type')->orWhere('layout_type', '');
+                });
+            }else{
+                $query->where('layout_type', $request->layout_type);
+            }
+        }
+        if(isset($request->layout_id)){
+            $query->where('layout_id', 'like', '%'.$request->layout_id.'%');
+        }
+        return $query;
+    }
+
+    public function getOrders(Request $request)
+    {
+        $query = $this->queryOrder($request);
         $count = $query->count();
         $totalPage = $count;
         $role_ids = $request->user()->roles()->pluck('id')->toArray();
@@ -226,7 +249,11 @@ class OrderController extends AdminController
             $pageSize = $request->pageSize;
             $query->offset($page * $pageSize)->limit($pageSize ?? 10);
         }
-        $records = $query->select('*', 'sl as sl_dinh_muc')->get();
+        $records = $query->with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name'])->select('*', 'sl as sl_dinh_muc')->get()->map(function ($item) {
+            $item->red_text = ($item->phan_loai_2 === 'thung-1-manh' && $item->dai_tam > 315) ? true : false;
+            $item->ngay_kh = $item->group_plan_order->plan->ngay_sx ?? '';
+            return $item;
+        });
         $res = [
             "data" => $records,
             "totalPage" => $totalPage,
@@ -267,42 +294,47 @@ class OrderController extends AdminController
                         }
                     }
                 }
-                $input['so_luong'] = $input['sl'];
-                if (isset($input['dai']) && isset($input['rong']) && isset($input['so_luong']) && (!($input['so_ra'] ?? "") || !($input['kho_tong'] ?? "") || !($input['kho'] ?? "") || !($input['dai_tam'] ?? ""))) {
-                    $khuon_link = KhuonLink::with('khuon')
-                        ->where('customer_id', $order->short_name)
-                        ->where(DB::raw('CONCAT_WS("", dai, rong, cao)'), ($input['dai'] ?? "") . ($input['rong'] ?? "") . ($input['cao'] ?? ""))
-                        // ->where('dai', $input['dai'] ?? null)
-                        // ->where('rong', $input['rong'] ?? null)
-                        // ->where('cao', $input['cao'] ?? null)
-                        ->where('phan_loai_1', $input['phan_loai_1'] ?? null)
-                        ->where('buyer_id', $input['buyer_id'] ?? null)
-                        ->where('pad_xe_ranh', $input['note_3'] ?? null)
-                        ->first();
-                    // return [$input['dai'], $input['rong'], $input['cao']];
-                    // return $khuon_link;
-                    $input['khuon_id'] = $khuon_link->khuon_id ?? null;
-                    $formula = DB::table('formulas')->where('phan_loai_1', $input['phan_loai_1'] ?? "")->where('phan_loai_2', $input['phan_loai_2'] ?? "")->first();
-                    if ((!in_array($input['phan_loai_2'], ['thung-be', 'pad-be']) && $formula) || ($formula && in_array($input['phan_loai_2'], ['thung-be', 'pad-be']) && $khuon_link && $khuon_link->dai_khuon && $khuon_link->kho_khuon && $khuon_link->so_con)) {
-                        $input['kho_giay_array'] = range(0, 200, 5);
-                        $input['kho_giay_array'] = array_merge($input['kho_giay_array'], [88, 92]);
-                        $input['n1_except'] = [5, 7, 10, 11, 13, 14, 17, 19, 22, 23, 25, 26, 29, 31, 33, 34, 35, 38, 39];
-                        $function = str_replace('$input_dai', $input['dai'], $formula->function);
-                        $function = str_replace('$input_cao', $input['cao'] ?? 0, $function);
-                        $function = str_replace('$input_rong', $input['rong'], $function);
-                        $function = str_replace('$input_so_luong', $input['so_luong'], $function);
-                        $function = str_replace('$input_kho_giay', json_encode($input['kho_giay_array']), $function);
-                        $function = str_replace('$input_n1_except', json_encode($input['n1_except']), $function);
-                        if ($khuon_link && $khuon_link->dai_khuon && $khuon_link->kho_khuon && $khuon_link->so_con) {
-                            $function = str_replace('$kho_khuon_input', $khuon_link->kho_khuon, $function);
-                            $function = str_replace('$dai_khuon_input', $khuon_link->dai_khuon, $function);
-                            $function = str_replace('$so_con_input', $khuon_link->so_con, $function);
-                        }
-                        try {
-                            $input = array_merge($input, eval($function));
-                            $input['so_met_toi'] = round($input['dai_tam'] * $input['so_dao'] / 100);
-                        } catch (\Throwable $th) {
-                            throw $th;
+                if (isset($input['sl'])) {
+                    $input['so_luong'] = $input['sl'];
+                    if (isset($input['dai']) && isset($input['rong']) && isset($input['so_luong']) && (!($input['so_ra'] ?? "") || !($input['kho_tong'] ?? "") || !($input['kho'] ?? "") || !($input['dai_tam'] ?? ""))) {
+                        $khuon_link = KhuonLink::with('khuon')
+                            ->where('customer_id', $order->short_name)
+                            ->where(DB::raw('CONCAT_WS("", dai, rong, cao)'), ($input['dai'] ?? "") . ($input['rong'] ?? "") . ($input['cao'] ?? ""))
+                            // ->where('dai', $input['dai'] ?? null)
+                            // ->where('rong', $input['rong'] ?? null)
+                            // ->where('cao', $input['cao'] ?? null)
+                            ->where('phan_loai_1', $input['phan_loai_1'] ?? null)
+                            ->where('buyer_id', $input['buyer_id'] ?? null)
+                            ->where('pad_xe_ranh', $input['note_3'] ?? null)
+                            ->first();
+                        // return [$input['dai'], $input['rong'], $input['cao']];
+                        // return $khuon_link;
+                        $input['khuon_id'] = $khuon_link->khuon_id ?? null;
+                        $formula = DB::table('formulas')->where('phan_loai_1', $input['phan_loai_1'] ?? "")->where('phan_loai_2', $input['phan_loai_2'] ?? "")->first();
+                        if ((!in_array($input['phan_loai_2'], ['thung-be', 'pad-be']) && $formula) || ($formula && in_array($input['phan_loai_2'], ['thung-be', 'pad-be']) && $khuon_link && $khuon_link->dai_khuon && $khuon_link->kho_khuon && $khuon_link->so_con)) {
+                            $input['kho_giay_array'] = range(0, 200, 5);
+                            $input['kho_giay_array'] = array_merge($input['kho_giay_array'], [88, 92]);
+                            $input['n1_except'] = [5, 7, 10, 11, 13, 14, 17, 19, 22, 23, 25, 26, 29, 31, 33, 34, 35, 38, 39];
+                            $function = str_replace('$input_dai', $input['dai'], $formula->function);
+                            $function = str_replace('$input_cao', $input['cao'] ?? 0, $function);
+                            $function = str_replace('$input_rong', $input['rong'], $function);
+                            $function = str_replace('$input_so_luong', $input['so_luong'], $function);
+                            $function = str_replace('$input_kho_giay', json_encode($input['kho_giay_array']), $function);
+                            $function = str_replace('$input_n1_except', json_encode($input['n1_except']), $function);
+                            if ($khuon_link && $khuon_link->dai_khuon && $khuon_link->kho_khuon && $khuon_link->so_con) {
+                                $function = str_replace('$kho_khuon_input', $khuon_link->kho_khuon, $function);
+                                $function = str_replace('$dai_khuon_input', $khuon_link->dai_khuon, $function);
+                                $function = str_replace('$so_con_input', $khuon_link->so_con, $function);
+                            }
+                            try {
+                                $input = array_merge($input, eval($function));
+                                $input['so_met_toi'] = round($input['dai_tam'] * $input['so_dao'] / 100);
+                                // if($$input['phan_loai_2'] === 'thung-1-manh' && $input['dai_tam'] > 315){
+                                //     $input['phan_loai_2'] = 'thung-2-manh';
+                                // }
+                            } catch (\Throwable $th) {
+                                throw $th;
+                            }
                         }
                     }
                 }
@@ -315,7 +347,7 @@ class OrderController extends AdminController
                 if (isset($input['ids'])) {
                     foreach ($input['ids'] as $key => $id) {
                         $record = Order::find($id);
-                        if ($input['so_ra']) {
+                        if (isset($input['so_ra']) && $input['so_ra'] > 0) {
                             $input['so_dao'] = ceil(($record->sl * $he_so) / $input['so_ra']);
                             if ($input['dai_tam']) {
                                 $input['so_met_toi'] = round($input['dai_tam'] * $input['so_dao'] / 100);
@@ -432,76 +464,67 @@ class OrderController extends AdminController
 
     public function exportOrders(Request $request)
     {
-        $query = Order::orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
-        if (isset($request->customer_id)) {
-            $query->where('customer_id', 'like', "%" . $request->customer_id . "%");
+        $query = $this->queryOrder($request);
+        $records = $query->with(['customer_specifications.drc', 'group_plan_order.plan', 'creator:id,name'])->get();
+        $orders = [];
+        foreach ($records as $key => $value) {
+            $orders[] = [
+                'stt' => $key + 1,
+                'customer_id' => $value->customer_id,
+                'short_name' => $value->short_name,
+                'mdh' => $value->mdh,
+                'mql' => $value->mql,
+                'kich_thuoc' => $value->kich_thuoc,
+                'length' => $value->length,
+                'width' => $value->width,
+                'height' => $value->height,
+                'sl' => $value->sl,
+                'unit' => $value->unit,
+                'kich_thuoc_chuan' => $value->kich_thuoc_chuan,
+                'phan_loai_1' => $value->phan_loai_1,
+                'quy_cach_drc' => $value->quy_cach_drc,
+                'buyer_id' => $value->buyer_id,
+                'phan_loai_2' => $value->phan_loai_2,
+                'khuon_id' => $value->khuon_id,
+                'note_3' => $value->note_3,
+                'dai' => $value->dai,
+                'rong' => $value->rong,
+                'cao' => $value->cao,
+                'so_ra' => $value->so_ra,
+                'kho' => $value->kho,
+                'kho_tong' => $value->kho_tong,
+                'dai_tam' => $value->dai_tam,
+                'so_dao' => $value->so_dao,
+                'so_met_toi' => $value->so_met_toi,
+                'toc_do' => $value->toc_do,
+                'tg_doi_model' => $value->tg_doi_model,
+                'layout_type' => $value->layout_type,
+                'layout_id' => $value->layout_id,
+                'order' => $value->order,
+                'slg' => $value->slg,
+                'slt' => $value->slt,
+                'tmo' => $value->tmo,
+                'po' => $value->po,
+                'style' => $value->style,
+                'style_no' => $value->style_no,
+                'color' => $value->color,
+                'item' => $value->item,
+                'rm' => $value->rm,
+                'size' => $value->size,
+                'price' => $value->price,
+                'into_money' => $value->into_money,
+                'xuong_giao' => $value->xuong_giao,
+                'note_1' => $value->note_1,
+                'han_giao' => $value->han_giao,
+                'han_giao_sx' => $value->han_giao_sx,
+                'nguoi_dat_hang' => $value->nguoi_dat_hang,
+                'ngay_dat_hang' => $value->ngay_dat_hang,
+                'note_2' => $value->note_2,
+                'dot' => $value->dot,
+                'ngay_kh' => $value->group_plan_order->plan->ngay_sx ?? '',
+                'creator' => $value->creator->name ?? "",
+            ];
         }
-        if (isset($request->short_name)) {
-            $query->where('short_name', 'like', "%" . $request->short_name . "%");
-        }
-        if (isset($request->start_date) && isset($request->end_date)) {
-            $query->whereDate('ngay_dat_hang', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('ngay_dat_hang', '<=', date('Y-m-d', strtotime($request->end_date)));
-        }
-        if (isset($request->mdh)) {
-            if (is_array($request->mdh)) {
-                $query->where(function ($custom_query) use ($request) {
-                    foreach ($request->mdh as $mdh) {
-                        $custom_query->orWhere('mdh', 'like', "%$mdh%");
-                    }
-                });
-            } else {
-                $query->where('mdh', 'like', "%$request->mdh%");
-            }
-        }
-        if (isset($request->order)) {
-            $query->where('order', 'like', "%$request->order%");
-        }
-        if (isset($request->mql)) {
-            $query->where('mql', $request->mql);
-        }
-        if (isset($request->kich_thuoc)) {
-            $query->where('kich_thuoc', 'like', "%$request->kich_thuoc%");
-        }
-        if (isset($request->length)) {
-            $query->where('length', 'like', $request->length);
-        }
-        if (isset($request->width)) {
-            $query->where('width', 'like', $request->width);
-        }
-        if (isset($request->height)) {
-            $query->where('height', 'like', $request->height);
-        }
-        if (isset($request->po)) {
-            $query->where('po', 'like', "%$request->po%");
-        }
-        if (isset($request->dot)) {
-            $query->where('dot', $request->dot);
-        }
-        if (isset($request->style)) {
-            $query->where('style', 'like', "%$request->style%");
-        }
-        if (isset($request->style_no)) {
-            $query->where('style_no', 'like', "%$request->style_no%");
-        }
-        if (isset($request->color)) {
-            $query->where('color', 'like', "%$request->color%");
-        }
-        if (isset($request->item)) {
-            $query->where('item', 'like', "%$request->item%");
-        }
-        if (isset($request->rm)) {
-            $query->where('rm', 'like', "%$request->rm%");
-        }
-        if (isset($request->size)) {
-            $query->where('size', 'like', "%$request->size%");
-        }
-        if (isset($request->note_2)) {
-            $query->where('note_2', 'like', "%$request->note_2%");
-        }
-        if (isset($request->han_giao)) {
-            $query->whereDate('han_giao', date('Y-m-d', strtotime($request->han_giao)));
-        }
-        $orders = $query->select(DB::raw('ROW_NUMBER() OVER(ORDER BY ID ASC) AS Row'), 'ngay_dat_hang', 'short_name', 'customer_id', 'nguoi_dat_hang', 'mdh', 'order', 'mql', 'length', 'width', 'height', 'kich_thuoc', 'unit', 'layout_type', 'sl', 'slg', 'slt', 'tmo', 'po', 'style', 'style_no', 'color', 'item', 'rm', 'size', 'price', 'into_money', 'dot', 'xuong_giao', 'note_1', 'han_giao', 'note_2', 'xuat_tai_kho', 'han_giao_sx')->get()->toArray();
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $start_row = 2;
@@ -528,43 +551,69 @@ class OrderController extends AdminController
         $titleStyle = array_merge($centerStyle, [
             'font' => ['size' => 16, 'bold' => true],
         ]);
+        $border = [
+            'borders' => array(
+                'allBorders' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => '000000'),
+                ),
+            ),
+        ];
         $header = [
             'STT',
-            'Ngày ĐH',
-            'Khách hàng',
             'Mã khách hàng',
-            'Người ĐH',
+            'Khách hàng',
             'MĐH',
-            'Order',
             'MQL',
+            'Kích thước ĐH',
             'L',
             'W',
             'H',
-            'Kích thước',
-            'Đơn vị tính',
-            'Máy + P8',
             'SL',
+            'Đơn vị tính',
+            'Kích thước chuẩn',
+            'Phân loại 1',
+            'Quy cách DRC',
+            'Mã buyer',
+            'Phân loại 2',
+            'Mã khuôn',
+            'Ghi chú sóng',
+            'Dài',
+            'Rộng',
+            'Cao',
+            'Số ra',
+            'Khổ',
+            'Khổ tổng',
+            'Dài tấm',
+            'Số dao',
+            'Số mét tới',
+            'Tốc độ',
+            'Thời gian thay model',
+            'Chia máy + p8',
+            'Mã layout',
+            'Order',
             'SLG',
             'SLT',
             'TMO',
             'PO',
             'Style',
-            'Style no',
+            'Style NO',
             'Color',
             'Item',
             'RM',
             'Size',
-            'Giá thành',
+            'Đơn giá',
             'Thành tiền',
+            'Xưởng giao',
+            'Ghi chú khách hàng',
+            'Ngày giao hàng trên đơn',
+            'Ngày giao hàng SX',
+            'Người đặt hàng',
+            'Ngày đặt hàng',
+            'Ghi chú của TBDX',
             'Đợt',
-            'Fac',
-            'Ghi chú',
-            'Hạn giao',
-            'Ghi chú 2',
-            'Xuất tại kho',
-            'Ngày giao',
-            'Xe giao',
-            'Xuất hàng'
+            'Ngày thực hiện KH',
+            'Người tạo'
         ];
         foreach ($header as $key => $cell) {
             if (!is_array($cell)) {
@@ -582,7 +631,14 @@ class OrderController extends AdminController
         $sheet->setCellValue([1, 1], 'ĐƠN HÀNG')->mergeCells([1, 1, $start_col - 1, 1])->getStyle([1, 1, $start_col - 1, 1])->applyFromArray($titleStyle);
         $sheet->getRowDimension(1)->setRowHeight(40);
 
-        $spreadsheet->getActiveSheet()->fromArray($orders, NULL, 'A3');
+        $spreadsheet->getActiveSheet()->fromArray($orders, NULL, 'A3', true);
+        
+        // Auto-size columns
+        foreach ($sheet->getColumnIterator() as $column) {
+            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
+            $sheet->getStyle($column->getColumnIndex().($start_row).':'.$column->getColumnIndex().($start_row + count($orders)))->applyFromArray(array_merge($centerStyle, $border));
+        }
+        
         header("Content-Description: File Transfer");
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="Đơn hàng.xlsx"');
@@ -767,7 +823,7 @@ class OrderController extends AdminController
                         Log::error($id);
                         throw $th;
                     }
-                    
+
                     return 0; // Đơn hàng đầu tiên không có hậu tố
                 })
                 ->max();

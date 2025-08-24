@@ -49,6 +49,7 @@ use App\Models\LocatorFG;
 use App\Models\LocatorFGMap;
 use App\Models\LocatorMLT;
 use App\Models\LocatorMLTMap;
+use App\Models\LSX;
 use App\Models\LSXLog;
 use App\Models\LSXPallet;
 use App\Models\LSXPalletClone;
@@ -58,6 +59,7 @@ use App\Models\Material;
 use App\Models\Order;
 use App\Models\Pallet;
 use App\Models\QCLog;
+use App\Models\RequestLog;
 use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\Tem;
@@ -682,43 +684,62 @@ class ApiUIController extends AdminController
         foreach ($lines as $line_id) {
             $line = Line::find($line_id);
             $machine_ids = Machine::where('line_id', $line_id)->where('is_iot', 1)->pluck('id')->toArray();
-            
-            
+            $now = Carbon::now();
+            $start_date = Carbon::now()->setTime(7, 0, 0);
+            $end_date = Carbon::now()->addDay()->setTime(7, 0, 0);
+
+            // Nếu thời điểm hiện tại < 7h sáng, lấy dữ liệu từ 7h hôm trước đến 7h hôm nay
+            if ($now->lessThan($start_date)) {
+                $start_date = Carbon::now()->subDay()->setTime(7, 0, 0);
+                $end_date = Carbon::now()->setTime(7, 0, 0);
+            }
+
             $ke_hoach_ca = 0;
             switch ((string)$line_id) {
                 case '30':
                     $song_info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids);
-                    $ke_hoach_ca = (clone $song_info_plan_query)->where(function($q){
-                        $q->whereDate('ngay_sx', date('Y-m-d'))
-                        ->orWhereIn('id', InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray());
-                    })->sum('dinh_muc');
-                    $sl_hien_tai = (clone $song_info_plan_query)->where('thoi_gian_bat_dau', '>=', date('Y-m-d 07:00:00'))->sum('sl_dau_ra_hang_loat');
-                    // $sl_muc_tieu = (int)(($ke_hoach_ca / 8) * (int)((strtotime(date('Y-m-d H:i:s')) - strtotime(date('Y-m-d 07:30:00'))) / 3600));
+                    // Lấy kế hoạch trong ngày
+                    $ke_hoach_ca = (clone $song_info_plan_query)
+                        ->where(function ($q) {
+                            $q->whereDate('ngay_sx', date('Y-m-d'))
+                                ->orWhereIn('id', InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray());
+                        })
+                        ->sum('dinh_muc');
+                    
+                    // Lấy số lượng hiện tại trong khoảng thời gian từ 7h đến 7h hôm sau
+                    $sl_hien_tai = (clone $song_info_plan_query)
+                        ->whereBetween('thoi_gian_bat_dau', [$start_date, $end_date])
+                        ->sum('sl_dau_ra_hang_loat');
+                    
                     $sl_muc_tieu = $ke_hoach_ca;
                     break;
                 case '31':
                 case '32':
-                    $info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids)->where(function ($q) {
-                        $q->whereDate('ngay_sx', date('Y-m-d'))->orWhereDate('thoi_gian_bat_dau', date('Y-m-d'));
-                    });
-                    $infos = $info_plan_query->get();
-                    $sl_hien_tai = $infos->sum('sl_dau_ra_hang_loat');
-                    $ke_hoach_ca = $infos->sum('dinh_muc');
+                    $info_plan_query = InfoCongDoan::whereIn('machine_id', $machine_ids)
+                        ->where(function ($q) {
+                            $q->whereDate('ngay_sx', date('Y-m-d'))
+                                ->orWhereDate('thoi_gian_bat_dau', date('Y-m-d'));
+                        })->get();
+                    
+                    // Lấy kế hoạch trong ngày
+                    $ke_hoach_ca = $info_plan_query->sum('dinh_muc');
+                    
+                    // Lấy số lượng hiện tại trong khoảng thời gian từ 7h đến 7h hôm sau
+                    $sl_hien_tai = $info_plan_query->sum('sl_dau_ra_hang_loat');
+                    
                     $sl_muc_tieu = $ke_hoach_ca;
-                default:
-                    # code...
                     break;
             }
+
             $ti_le = $ke_hoach_ca ? ($sl_hien_tai / $ke_hoach_ca) * 100 : 0;
             if ($ti_le >= 95) {
                 $status = 1;
-            }
-            if ($ti_le >= 90 && $ti_le < 95) {
+            } elseif ($ti_le >= 90 && $ti_le < 95) {
                 $status = 2;
-            }
-            if ($ti_le < 90) {
+            } else {
                 $status = 3;
             }
+
             $tm = [
                 "cong_doan" => mb_strtoupper($line->name, 'UTF-8'),
                 "ke_hoach_ca" => $ke_hoach_ca,
@@ -729,7 +750,7 @@ class ApiUIController extends AdminController
             ];
             $res[] = $tm;
         }
-        return  $this->success($res);
+        return $this->success($res);
     }
 
     private function machineErrorTable($mark_err, $machine_log)
@@ -2515,7 +2536,7 @@ class ApiUIController extends AdminController
         $sheet->getRowDimension($header1_row)->setRowHeight(42);
         foreach ($sheet->getColumnIterator() as $column) {
             if ($column->getColumnIndex() !== 'A') {
-                $sheet->getColumnDimension($column->getColumnIndex())->setWidth(12);
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
                 $sheet->getStyle($column->getColumnIndex() . ($start1_row + 1) . ':' . $column->getColumnIndex() . ($table1_row - 1))->applyFromArray($border);
             }
         }
@@ -2652,7 +2673,7 @@ class ApiUIController extends AdminController
         $sheet->getRowDimension($header2_row)->setRowHeight(42);
         foreach ($sheet->getColumnIterator() as $column) {
             if ($column->getColumnIndex() !== 'A') {
-                $sheet->getColumnDimension($column->getColumnIndex())->setWidth(12);
+                $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
                 $sheet->getStyle($column->getColumnIndex() . ($start2_row + 1) . ':' . $column->getColumnIndex() . ($table2_row - 1))->applyFromArray($border);
             }
         }
@@ -2862,7 +2883,7 @@ class ApiUIController extends AdminController
             $table3_row += 1;
         }
         foreach ($sheet->getColumnIterator() as $column) {
-            $sheet->getColumnDimension($column->getColumnIndex())->setWidth(12);
+            $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
             $sheet->getStyle($column->getColumnIndex() . ($start3_row + 2) . ':' . $column->getColumnIndex() . ($table3_row - 1))->applyFromArray($border);
         }
         header("Content-Description: File Transfer");
@@ -3855,24 +3876,6 @@ class ApiUIController extends AdminController
                 // if ($input['id']) {
                 //     $locator_fg[] = $input;
                 // }
-                // $input['id'] = $row['A'];
-                // $input['ten_quy_cach'] = $row['B'];
-                // $input['ct_dai'] = 'return '.$row['C'].';';
-                // $input['ct_rong'] = 'return '.$row['D'].';';
-                // if($row['E'] === "[C]"){
-                //     $ct_cao = 'return [C];';
-                // }else{
-                //     $ct_cao = str_replace('CASE WHEN', 'if(', $row['E']);
-                //     $ct_cao = str_replace('=', '===', $ct_cao);
-                //     $ct_cao = str_replace('THEN', '){ return ', $ct_cao);
-                //     $ct_cao = str_replace('WHEN', ';} else if(', $ct_cao);
-                //     $ct_cao = str_replace('ELSE', ';}else{ return', $ct_cao);
-                //     $ct_cao = str_replace('END', ';}', $ct_cao);
-                // }
-                // $input['ct_cao'] = $ct_cao;
-                // if($input['id']){
-                //     $quy_cach[] = $input;
-                // }
                 $input['customer_id'] = $row['B'];
                 $input['phan_loai_1'] = Str::slug($row['C']);
                 $input['drc_id'] = $row['E'];
@@ -4056,19 +4059,19 @@ class ApiUIController extends AdminController
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 2
             if ($key > 2) {
-                if(!empty($row['C'])){
+                if (!empty($row['C'])) {
                     $locators[] = $row['C'];
                 }
-                if(!empty($row['E'])){
+                if (!empty($row['E'])) {
                     $locators[] = $row['E'];
                 }
-                if(!empty($row['G'])){
+                if (!empty($row['G'])) {
                     $locators[] = $row['G'];
                 }
-                if(!empty($row['I'])){
+                if (!empty($row['I'])) {
                     $locators[] = $row['I'];
                 }
-                if(!empty($row['K'])){
+                if (!empty($row['K'])) {
                     $locators[] = $row['K'];
                 }
             }
@@ -4095,15 +4098,15 @@ class ApiUIController extends AdminController
         $data = LocatorFG::get();
         $result = [];
         foreach ($data as $key => $value) {
-            if(str_contains($value->id, 'F01') && (int)explode('F01.', $value->id)[1] > 64){
+            if (str_contains($value->id, 'F01') && (int)explode('F01.', $value->id)[1] > 64) {
                 $result[] = $value;
-            } else if(str_contains($value->id, 'F02') && (int)explode('F02.', $value->id)[1] > 34){
+            } else if (str_contains($value->id, 'F02') && (int)explode('F02.', $value->id)[1] > 34) {
                 $result[] = $value;
-            } else if(str_contains($value->id, 'F03') && (int)explode('F03.', $value->id)[1] > 29){
+            } else if (str_contains($value->id, 'F03') && (int)explode('F03.', $value->id)[1] > 29) {
                 $result[] = $value;
-            } else if(str_contains($value->id, 'F04') && (int)explode('F04.', $value->id)[1] > 27){
+            } else if (str_contains($value->id, 'F04') && (int)explode('F04.', $value->id)[1] > 27) {
                 $result[] = $value;
-            } else if(str_contains($value->id, 'F05') && (int)explode('F05.', $value->id)[1] > 18){
+            } else if (str_contains($value->id, 'F05') && (int)explode('F05.', $value->id)[1] > 18) {
                 $result[] = $value;
             }
         }
@@ -4169,6 +4172,7 @@ class ApiUIController extends AdminController
                 $import_input = $input;
                 unset($import_input['id']);
                 $import_input['iqc'] = 1;
+                $import_input['so_kg'] = $input['so_kg_dau'];
                 if (!$import) {
                     WareHouseMLTImport::create($import_input);
                 } else {
@@ -5110,7 +5114,7 @@ class ApiUIController extends AdminController
     {
         $infos = InfoCongDoan::whereNull('thoi_gian_bat_dau')->whereNotNull('thoi_gian_ket_thuc')->get();
         foreach ($infos as $key => $info) {
-            $info->update(['thoi_gian_bat_dau'=>$info->thoi_gian_ket_thuc]);
+            $info->update(['thoi_gian_bat_dau' => $info->thoi_gian_ket_thuc]);
         }
         return 'ok';
     }
@@ -5161,11 +5165,11 @@ class ApiUIController extends AdminController
     {
         $group_ids = [];
         $duplicateRecords = DB::table('warehouse_fg_logs')
-        ->select('pallet_id', 'lo_sx', 'so_luong', 'order_id', DB::raw('COUNT(*) as total_records'))
-        ->where('type', 2)
-        ->groupBy('pallet_id', 'lo_sx', 'so_luong', 'order_id')
-        ->havingRaw('COUNT(*) > 1')
-        ->get();
+            ->select('pallet_id', 'lo_sx', 'so_luong', 'order_id', DB::raw('COUNT(*) as total_records'))
+            ->where('type', 2)
+            ->groupBy('pallet_id', 'lo_sx', 'so_luong', 'order_id')
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
         return $duplicateRecords;
         return 'ok';
     }
@@ -5200,8 +5204,8 @@ class ApiUIController extends AdminController
                 $input['nhap_du'] = $row['O'] == 'Không' ? 0 : $row['O'];
                 $user = CustomUser::where('name', $row['P'])->first();
                 $input['user'] = $user->id ?? null;
-                if (!empty($input['mdh']) && is_numeric($input['mql'])){
-                    if(!empty($input['pallet_id']) && !empty($input['lo_sx'])) {
+                if (!empty($input['mdh']) && is_numeric($input['mql'])) {
+                    if (!empty($input['pallet_id']) && !empty($input['lo_sx'])) {
                         $pallet_array[] = $input;
                     } else {
                         $order_array[] = $input;
@@ -5227,7 +5231,7 @@ class ApiUIController extends AdminController
                 ]);
             }
             foreach ($order_array as $key => $value) {
-                $lsx_pallet = LSXPallet::where('order_id', 'like', $value['mdh'] . "-" . $value['mql']. "%")->first();
+                $lsx_pallet = LSXPallet::where('order_id', 'like', $value['mdh'] . "-" . $value['mql'] . "%")->first();
                 if ($lsx_pallet) {
                     WareHouseLog::create([
                         'order_id' => $input['mdh'] . "-" . $input['mql'],
@@ -5238,7 +5242,7 @@ class ApiUIController extends AdminController
                         'type' => 1,
                         'created_by' => $input['user'],
                         'nhap_du' => $input['nhap_du'],
-                        'created_at' => date('Y-m-d H:i:s', mt_rand(1732881315,1734695715)),
+                        'created_at' => date('Y-m-d H:i:s', mt_rand(1732881315, 1734695715)),
                     ]);
                 }
             }
@@ -5250,7 +5254,8 @@ class ApiUIController extends AdminController
         return $array;
     }
 
-    public function updateThoiGianBatDau() {
+    public function updateThoiGianBatDau()
+    {
         $infos = InfoCongDoan::where('thoi_gian_bat_dau', null)->where('thoi_gian_ket_thuc', '!=', null)->get();
         try {
             DB::beginTransaction();
@@ -5266,7 +5271,8 @@ class ApiUIController extends AdminController
         }
     }
 
-    public function deleteDuplicateRoleUsers(){
+    public function deleteDuplicateRoleUsers()
+    {
         $role_users = DB::table('admin_role_users')->select('role_id', 'user_id', DB::raw('COUNT(*) as total_records'))
             ->groupBy('role_id', 'user_id')
             ->havingRaw('COUNT(*) > 1')
@@ -5276,5 +5282,251 @@ class ApiUIController extends AdminController
             $duplicate = DB::table('admin_role_users')->where('role_id', $value->role_id)->where('user_id', $value->user_id)->limit(1)->delete();
         }
         return 'ok';
+    }
+
+    public function updateTypeLSXPallet(Request $request)
+    {
+        $lsx_pallet = LSXPallet::with('infoCongDoan')
+            ->where('type', null)
+            ->whereDate('created_at', $request->date)
+            ->get();
+        // return $lsx_pallet->count();
+        if (count($lsx_pallet) <= 0) {
+            return $this->success('không tìm thấy dữ liệu');
+        }
+        $machine_dan = Machine::where('line_id', 32)->pluck('id')->toArray();
+        $machine_xa_lot = Machine::where('line_id', 33)->pluck('id')->toArray();
+        $counter = 0;
+        foreach ($lsx_pallet as $key => $value) {
+            if (isset($value->infoCongDoan) && in_array($value->infoCongDoan->machine_id, $machine_dan)) {
+                $value->update(['type' => LSXPallet::DAN]);
+                $counter++;
+            } else if (isset($value->infoCongDoan) && in_array($value->infoCongDoan->machine_id, $machine_xa_lot)) {
+                $value->update(['type' => LSXPallet::XA_LOT]);
+                $counter++;
+            }
+        }
+        return $this->success('done ' . $counter . "/" . $lsx_pallet->count() . ' record');
+    }
+
+    public function updateStatusLSXPallet(Request $request)
+    {
+        $lsx_pallet = LSXPallet::with('warehouseFGLog')
+            ->whereDate('created_at', $request->date)
+            ->get();
+        // return $lsx_pallet->count();
+        if (count($lsx_pallet) <= 0) {
+            return $this->success('không tìm thấy dữ liệu');
+        }
+        $counter = 0;
+        foreach ($lsx_pallet as $key => $value) {
+            if (count($value->warehouseFGLog) > 0) {
+                $logs = $value->warehouseFGLog->toArray() ?? [];
+                $check_exported = in_array(2, array_column($logs, 'type'));
+                if ($check_exported) {
+                    $value->update(['status' => LSXPallet::EXPORTED]);
+                } else {
+                    $value->update(['status' => LSXPallet::IMPORTED]);
+                }
+                $counter++;
+            } else {
+                continue;
+            }
+        }
+        return $this->success('done ' . $counter . "/" . $lsx_pallet->count() . ' record');
+    }
+
+    public function restoreLostMaterial()
+    {
+        $import = WareHouseMLTImport::doesntHave('material')->has('warehouse_mtl_log')->whereNotNull('material_id')->orderBy('created_at', 'DESC')->get();
+        // return $import->count();
+        foreach ($import as $key => $value) {
+            $log = WarehouseMLTLog::where('material_id', $value->material_id)->orderBy('tg_nhap', 'DESC')->first();
+            $so_kg_hien_tai = 0;
+            if ($log->tg_xuat) {
+                $so_kg_hien_tai = $log->so_kg_nhap - $log->so_kg_xuat;
+            } else {
+                $so_kg_hien_tai = $log->so_kg_nhap;
+            }
+            if ($so_kg_hien_tai < 0) {
+                continue;
+            }
+            Material::updateOrCreate(
+                [
+                    'id' => $value->material_id,
+                ],
+                [
+                    'so_kg' => $so_kg_hien_tai,
+                    'so_kg_dau' => $value->so_kg,
+                    'loai_giay' => $value->loai_giay,
+                    'kho_giay' => $value->kho_giay,
+                    'dinh_luong' => $value->dinh_luong,
+                    'fsc' => $value->fsc,
+                    'ma_cuon_ncc' => $value->ma_cuon_ncc,
+                    'ma_vat_tu' => $value->ma_vat_tu,
+                    'so_m_toi' => floor(($value->so_kg / ($value->kho_giay / 100)) / ($value->dinh_luong / 1000)) ?? 0
+                ]
+            );
+        }
+        return 'ok';
+    }
+
+    public function updateLSXPalletIdWarehouseLog(Request $request)
+    {
+        $logs = WarehouseFGLog::whereDate('created_at', $request->date)
+            ->with('lo_sx_pallet')
+            ->whereNull('lsx_pallet_id')
+            ->get();
+        $counter = 0;
+        if ($logs->count() <= 0) {
+            return $this->success('không tìm thấy dữ liệu');
+        }
+        foreach ($logs as $key => $value) {
+            if ($value->lo_sx_pallet) {
+                $value->update(['lsx_pallet_id' => $value->lo_sx_pallet->id ?? null]);
+                $counter++;
+            } else {
+                continue;
+            }
+        }
+        return $this->success('done ' . $counter . "/" . $logs->count() . ' record');
+    }
+
+    public function exportAllFGBeforeDate(Request $request)
+    {
+        $lsx_pallet = LSXPallet::with('warehouse_fg_logs')
+            ->whereHas('warehouse_fg_logs', function ($q) use ($request) {
+                $q->where('type', 1)
+                    ->whereDate('created_at', $request->date)
+                    ->whereDate('created_at', '<', '2025-01-01');
+            })
+            // 2) Không có log type = 2 trong cùng ngày
+            ->whereDoesntHave('warehouse_fg_logs', function ($q) use ($request) {
+                $q->where('type', 2)
+                    ->whereDate('created_at', $request->date);
+            })
+            ->get();
+        // return $lsx_pallet->count();
+        if (count($lsx_pallet) <= 0) {
+            return $this->success('không tìm thấy dữ liệu');
+        }
+        $counter = 0;
+        foreach ($lsx_pallet as $key => $value) {
+            if (count($value->warehouse_fg_logs) > 0) {
+                $logs = $value->warehouse_fg_logs->toArray() ?? [];
+                $check_exported = in_array(2, array_column($logs, 'type'));
+                if ($check_exported) {
+                    $value->update(['status' => LSXPallet::EXPORTED, 'remain_quantity' => 0]);
+                } else {
+                    $log = WarehouseFGLog::create([
+                        'lo_sx' => $value->lo_sx,
+                        'pallet_id' => $value->pallet_id,
+                        'so_luong' => $value->so_luong,
+                        'type' => 2,
+                        'created_by' => null,
+                        'created_at' => $value->created_at,
+                        'lsx_pallet_id' => $value->id,
+                        'order_id' => $value->order_id,
+                        'delivery_note_id' => null,
+                        'locator_id' => $value->pallet->locator_fg_map->locator_id ?? null,
+                        'nhap_du' => 0,
+                    ]);
+                    $value->update(['status' => LSXPallet::EXPORTED, 'remain_quantity' => 0]);
+                }
+                $counter++;
+            } else {
+                $import = WarehouseFGLog::create([
+                    'lo_sx' => $value->lo_sx,
+                    'pallet_id' => $value->pallet_id,
+                    'so_luong' => $value->so_luong,
+                    'type' => 1,
+                    'created_by' => null,
+                    'created_at' => $value->created_at,
+                    'lsx_pallet_id' => $value->id,
+                    'order_id' => $value->order_id,
+                    'delivery_note_id' => null,
+                    'locator_id' => $value->pallet->locator_fg_map->locator_id ?? null,
+                    'nhap_du' => 0,
+                ]);
+                $export = WarehouseFGLog::create([
+                    'lo_sx' => $value->lo_sx,
+                    'pallet_id' => $value->pallet_id,
+                    'so_luong' => $value->so_luong,
+                    'type' => 2,
+                    'created_by' => null,
+                    'created_at' => $value->created_at,
+                    'lsx_pallet_id' => $value->id,
+                    'order_id' => $value->order_id,
+                    'delivery_note_id' => null,
+                    'locator_id' => $value->pallet->locator_fg_map->locator_id ?? null,
+                    'nhap_du' => 0,
+                ]);
+                $value->update(['status' => LSXPallet::EXPORTED, 'remain_quantity' => 0]);
+            }
+        }
+        return $this->success('done ' . $counter . "/" . $lsx_pallet->count() . ' record');
+    }
+
+    public function getDuplicateWarehouseFGLog(Request $request)
+    {
+        $dupGroups = WarehouseFGLog::select('lsx_pallet_id', 'so_luong', DB::raw('COUNT(*) as cnt'))
+            ->where('type', 2)
+            ->groupBy('lsx_pallet_id', 'so_luong')
+            ->having('cnt', '>', 1);
+
+        // 2) Join sub-query này để lấy tất cả bản ghi trùng
+        $duplicates = WarehouseFGLog::joinSub($dupGroups, 'dup', function ($join) {
+            $join->on('warehouse_fg_logs.lsx_pallet_id', '=', 'dup.lsx_pallet_id')
+                ->on('warehouse_fg_logs.so_luong',       '=', 'dup.so_luong');
+        })
+            ->where('warehouse_fg_logs.type', 2)
+            ->get();
+        return $duplicates;
+
+        // DB::transaction(function() {
+            // 1) Lấy danh sách các nhóm (lsx_pallet_id, so_luong) có >1 record type=2
+            $groups = WarehouseFGLog::where('type', 2)
+                ->select('lsx_pallet_id','so_luong')
+                ->groupBy('lsx_pallet_id','so_luong')
+                ->havingRaw('COUNT(*) > 1')
+                ->get();
+        
+            foreach ($groups as $g) {
+                // 2) Load toàn bộ log trong nhóm
+                $logs = WarehouseFGLog::where([
+                        ['type', 2],
+                        ['lsx_pallet_id', $g->lsx_pallet_id],
+                        ['so_luong',      $g->so_luong],
+                    ])->get();
+        
+                // 3) Phân tách record "đủ cả 2" và "thiếu"
+                $valid = $logs->filter(fn($r) =>
+                    $r->created_by !== null
+                    && $r->delivery_note_id !== null
+                );
+        
+                // 4) Xác định record giữ lại
+                if ($valid->isNotEmpty()) {
+                    // nếu có ít nhất 1 record "đủ cả 2" → giữ id cao nhất trong valid
+                    $keep = $valid->sortByDesc('id')->first();
+                } else {
+                    // ngược lại → giữ id cao nhất cả nhóm
+                    $keep = $logs->sortByDesc('id')->first();
+                }
+        
+                // 5) Xóa các record còn lại
+                $toDelete = $logs->pluck('id')
+                    ->filter(fn($id) => $id !== $keep->id)
+                    ->all();
+        
+                WarehouseFGLog::whereIn('id', $toDelete)->delete();
+            }
+        // });
+        return 'done';
+    }
+
+    public function clearRequestLogs(){
+        RequestLog::truncate();
+        return 'request logs removed all';
     }
 }

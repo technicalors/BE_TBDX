@@ -14,7 +14,7 @@ class WarehouseFGLog extends Model
     use Compoships;
     use HasFactory;
     protected $table = "warehouse_fg_logs";
-    protected $fillable = ['id', 'locator_id', "pallet_id", "lo_sx", "so_luong", "type", "created_by", 'order_id', 'delivery_note_id', 'created_at', 'nhap_du'];
+    protected $fillable = ['id', 'locator_id', "pallet_id", "lo_sx", "so_luong", "type", "created_by", 'order_id', 'delivery_note_id', 'created_at', 'nhap_du', 'lsx_pallet_id'];
 
     public function lsx()
     {
@@ -66,5 +66,10 @@ class WarehouseFGLog extends Model
     public function exportRecord()
     {
         return $this->hasMany(WarehouseFGLog::class, ['lo_sx', 'pallet_id'], ['lo_sx', 'pallet_id'])->where('type', 2)->orderBy('created_at', 'DESC'); // Bản ghi xuất
+    }
+
+    public function lsx_pallet()
+    {
+        return $this->belongsTo(LSXPallet::class, 'lsx_pallet_id', 'id');
     }
 }

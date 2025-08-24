@@ -12,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 
 class ProductionUpdated implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable, SerializesModels;
     public $data;
     /**
      * Create a new event instance.

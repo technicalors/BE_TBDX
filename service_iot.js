@@ -68,7 +68,7 @@ async function fetchTelemetryData(device, token) {
             `${TELEMETRY_URL}/${device}/values/timeseries`,
             {
                 headers: { 'Authorization': `Bearer ${token}` },
-                timeout: 5000
+                timeout: 2000
             }
         );
 
@@ -81,6 +81,9 @@ async function fetchTelemetryData(device, token) {
 
         // Data parse
         const { Pre_Counter, Set_Counter, Error_Counter, Machine_Status } = response.data;
+        // if(isNaN(Pre_Counter)){
+        //     throw new Error("Data không hợp lệ");
+        // }
         const data = {
             device_id:       device,
             Pre_Counter:     Pre_Counter    ? (Pre_Counter[0]?.value    ?? 0) : 0,
@@ -123,7 +126,7 @@ async function postData(data) {
         if (data.device_id === 'f5957000-ad38-11ef-a8bd-45ae64f28680') {
             console.log('Data posted:', data);
         }
-        return await axios.post(POST_URL, data, { timeout: 5000 });
+        return await axios.post(POST_URL, data, { timeout: 2000 });
     } catch (error) {
         console.error('Error posting data:', error?.response?.message);
     }
@@ -131,7 +134,7 @@ async function postData(data) {
 
 async function postMachineStatus(data) {
     try {
-        await axios.post(POST_MACHINE_STATUS_URL, data, { timeout: 5000 });
+        await axios.post(POST_MACHINE_STATUS_URL, data, { timeout: 2000 });
         // console.log('Status posted:', data);
     } catch (error) {
         console.error('Error posting status:', error.message);
@@ -140,7 +143,7 @@ async function postMachineStatus(data) {
 
 async function postMachineParams(data) {
     try {
-        const response = await axios.post(POST_MACHINE_PARAMS_URL, data, { timeout: 5000 });
+        const response = await axios.post(POST_MACHINE_PARAMS_URL, data, { timeout: 2000 });
         console.log('Params posted:', response.data);
     } catch (error) {
         console.error('Error posting params:', error.message);

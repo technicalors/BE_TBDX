@@ -5529,4 +5529,11 @@ class ApiUIController extends AdminController
         RequestLog::truncate();
         return 'request logs removed all';
     }
+
+    public function updateLengthCutUnproduceInfo() {
+        $infos = InfoCongDoan::where('machine_id', 'So01')->where('status', 0)->whereNotNull('order_id')->with('order')->get();
+        foreach($infos as $info){
+            $info->update(['length_cut'=>($info->order->dai_tam ?? 0) * 10]);
+        }
+    }
 }

@@ -7,10 +7,11 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class ProductionUpdated implements ShouldBroadcast
+class ProductionUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, SerializesModels;
     public $data;
@@ -31,11 +32,6 @@ class ProductionUpdated implements ShouldBroadcast
      */
     public function broadcastOn()
     {
-        return new Channel('mychannel');
-    }
-
-    public function broadcastAs()
-    {
-        return 'my-event';
+        return ['production-channel'];
     }
 }

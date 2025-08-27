@@ -3700,6 +3700,7 @@ class ApiMobileController extends AdminController
                             'thu_tu_uu_tien' => $data->thu_tu_uu_tien,
                             'so_ra' => $data->order->so_ra,
                             'so_dao' => isset($data->order->so_ra) ? ceil($data->sl_kh * ($formula->he_so ?? 1) / $data->order->so_ra) : ($data->order->so_dao ?? 0),
+                            'length_cut' => ($data->order->dai_tam ?? 0) * 10,
                         ]);
                     }
                 } else {
@@ -3723,6 +3724,7 @@ class ApiMobileController extends AdminController
                             'thu_tu_uu_tien' => $data->thu_tu_uu_tien,
                             'so_ra' => $data->order->so_ra,
                             'so_dao' => isset($data->order->so_ra) ? ceil($data->sl_kh * ($formula->he_so ?? 1) / $data->order->so_ra) : ($data->order->so_dao ?? 0),
+                            'length_cut' => ($data->order->dai_tam ?? 0) * 10,
                         ]);
                     }
                 }

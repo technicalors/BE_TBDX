@@ -9,7 +9,7 @@ class Tracking extends Model
 {
     use HasFactory;
     protected $table = "tracking";
-    protected $fillable = ['machine_id', 'timestamp', 'lo_sx', 'is_running', 'pre_counter', 'error_counter', 'so_ra', 'thu_tu_uu_tien', 'set_counter', 'sl_kh', 'parent_id', 'status'];
+    protected $fillable = ['machine_id', 'timestamp', 'lo_sx', 'is_running', 'pre_counter', 'error_counter', 'so_ra', 'thu_tu_uu_tien', 'set_counter', 'sl_kh', 'parent_id', 'status', 'length_cut'];
 
     public static function createx($machine_id)
 

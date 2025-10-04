@@ -1130,8 +1130,8 @@ class ApiUIController extends AdminController
         $sub = (strtotime($end_date) - strtotime($start_date)) / 86400;
         for ($i = 0; $i <= $sub; $i++) {
             $date = date('Y-m-d', strtotime($start_date . ' +' . $i . ' days'));
-            $plan_all = WareHouseExportPlan::whereDate('ngay_xuat_hang', $date)->count();
-            $plan_true = WareHouseExportPlan::whereColumn('sl_yeu_cau_giao', 'sl_thuc_xuat')->whereColumn('updated_at', '<=', 'ngay_xuat_hang')->count();
+            $plan_all = WareHouseFGExport::whereDate('ngay_xuat_hang', $date)->count();
+            $plan_true = WareHouseFGExport::whereColumn('sl_yeu_cau_giao', 'sl_thuc_xuat')->whereColumn('updated_at', '<=', 'ngay_xuat_hang')->count();
             // $res[$date] = $plan_all > 0 ? (int)number_format($plan_true/$plan_all * 100) : 0;
             $res[$date] = 100;
         }
@@ -3108,7 +3108,7 @@ class ApiUIController extends AdminController
         $data[] = ['dien_giai' => 'Cuối kỳ', 'sl_nhap' => ($log_import - $log_export) + $product_import - $product_export];
         $data[] = [];
         foreach ($warehouse_log as $key => $log) {
-            $export_plan = WareHouseExportPlan::where('product_id', $product->id)->first();
+            $export_plan = WareHouseFGExport::where('product_id', $product->id)->first();
             $customer = $export_plan ? Customer::where('name', 'like', "%$export_plan->khach_hang%")->first() : null;
             $obj = [];
             $obj['ngay_ct'] = date('d-m-Y', strtotime($log->created_at));
@@ -5516,7 +5516,7 @@ class ApiUIController extends AdminController
         
                 // 5) Xóa các record còn lại
                 $toDelete = $logs->pluck('id')
-                    ->filter(fn($id) => $id !== $keep->id)
+                    ->filter(fn($id) => $id !== 'null')
                     ->all();
         
                 WarehouseFGLog::whereIn('id', $toDelete)->delete();
@@ -5530,10 +5530,20 @@ class ApiUIController extends AdminController
         return 'request logs removed all';
     }
 
-    public function updateLengthCutUnproduceInfo() {
-        $infos = InfoCongDoan::where('machine_id', 'So01')->where('status', 0)->whereNotNull('order_id')->with('order')->get();
-        foreach($infos as $info){
-            $info->update(['length_cut'=>($info->order->dai_tam ?? 0) * 10]);
-        }
+    public function deleteDuplicatePlan(){
+        $duplicatePlans = DB::table('production_plans')
+        ->where('ngay_sx', '>=', '2025-09-09')
+        ->whereNotIn('id', function ($query) {
+            $query->selectRaw('MIN(id)')
+                ->from('production_plans')
+                ->where('ngay_sx', '>=', '2025-09-09')
+                ->groupBy('lo_sx');
+        })
+        ->get();
+        $arr = $duplicatePlans->pluck('id')->toArray();
+        InfoCongDoan::whereIn('plan_id', $arr)->delete();
+        GroupPlanOrder::whereIn('plan_id', $arr)->delete();
+        ProductionPlan::whereIn('id', $arr)->delete();
+        return 'deleted';
     }
 }

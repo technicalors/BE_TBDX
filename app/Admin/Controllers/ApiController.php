@@ -4898,6 +4898,7 @@ class ApiController extends AdminController
         // file path
         $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, false, true);
+        $ma_ncc_arr = [];
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 3
             if ($key > 8) {
@@ -4917,14 +4918,16 @@ class ApiController extends AdminController
                 if (!$row['F']) {
                     return $this->failure([], 'Hàng số ' . ($key) . ': Thiếu định lượng');
                 }
+                if(!in_array($row['B'], $ma_ncc_arr)){
+                    $ma_ncc_arr[] = $row['B'];
+                } else {
+                    return $this->failure([], 'Hàng số ' . ($key) . ': Trùng mã cuộn nhà cung cấp');
+                }
             }
         }
         try {
             DB::beginTransaction();
             $warehouse_mlt_import = [];
-            $warehouse_mlt_materials = [];
-            // $receipt_note_query = GoodsReceiptNote::query();
-            // $receipt_note_count = $receipt_note_query->where('id', 'like', "%" . date('ym-') . "%")->count();
             $latest_receipt_note = GoodsReceiptNote::where('id', 'like', date('ym-') . '%')->orderByraw('CHAR_LENGTH(id) DESC')->orderBy('id', 'DESC')->first();
             $id = '';
             if ($latest_receipt_note) {

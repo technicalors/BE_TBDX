@@ -767,7 +767,7 @@ Route::group([
     $router->post('exportAllFGBeforeDate', [ApiUIController::class, 'exportAllFGBeforeDate']);
     $router->get('getDuplicateWarehouseFGLog', [ApiUIController::class, 'getDuplicateWarehouseFGLog']);
     $router->get('clearRequestLogs', [ApiUIController::class, 'clearRequestLogs']);
-    $router->post('updateLengthCutUnproduceInfo', [ApiUIController::class, 'updateLengthCutUnproduceInfo']);
+    $router->get('deleteDuplicatePlan', [ApiUIController::class, 'deleteDuplicatePlan']);
 });
 
 //Chat

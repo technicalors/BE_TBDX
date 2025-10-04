@@ -450,6 +450,7 @@ Route::group([
     $router->post('manufacture/tem/update', [ApiController::class, 'updateTem']);
     $router->post('manufacture/tem/create-from-order', [ApiController::class, 'createStampFromOrder']);
     $router->delete('manufacture/tem/delete/{id}', [ApiController::class, 'deleteTem']);
+    $router->post('manufacture/tem/delete-multiple', [ApiController::class, 'deleteTems']);
 
     $router->get('quality/overall', [ApiController::class, 'qualityOverall']);
     $router->get('quality/table-error-detail', [ApiController::class, 'errorTable']);

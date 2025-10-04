@@ -4,7 +4,6 @@ namespace App\Admin\Controllers;
 
 use alhimik1986\PhpExcelTemplator\params\ExcelParam;
 use alhimik1986\PhpExcelTemplator\setters\CellSetterArrayValueSpecial;
-use App\Events\ProcessIotData;
 use App\Models\Buyer;
 use App\Models\ProductionPlan;
 use App\Models\ErrorMachine;
@@ -75,7 +74,6 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use Throwable;
 use App\Events\ProductionUpdated;
-use App\Jobs\ProcessIotData as JobsProcessIotData;
 use App\Models\InfoCongDoanPriority;
 use App\Models\ShiftAssignment;
 use App\Models\Supplier;
@@ -88,9 +86,10 @@ class ApiController extends AdminController
     use API;
     private $user;
     private $apiUIController;
-    public function __construct()
+    public function __construct(CustomUser $customUser, ApiUIController $apiUIController)
     {
-        //
+        $this->user = $customUser;
+        $this->apiUIController = $apiUIController;
     }
 
     //Login
@@ -135,7 +134,7 @@ class ApiController extends AdminController
         $credentials = $request->only(["username", 'password']);
         if (Admin::guard()->attempt($credentials)) {
             $user = Admin::user();
-            // $user = $this->user->find($user->id);
+            $user = $this->user->find($user->id);
             // $user->tokens()->delete();
             return $this->success($this->parseDataUser($user), 'Đăng nhập thành công');
         }
@@ -196,83 +195,61 @@ class ApiController extends AdminController
 
     public function startProduce(Request $request)
     {
+        $machine_status = 0;
         $input = $request->all();
-
-        // Tìm máy -> nếu không có return luôn
         $machine = Machine::find($input['machine_id']);
-        if (!$machine) {
-            return $this->failure('', 'Không tìm thấy máy');
-        }
-
-        // Tìm info_cong_doan và load sẵn order (join để gọn)
-        $info_cong_doan = InfoCongDoan::with('order')
-            ->where('lo_sx', $input['lo_sx'])
-            ->where('machine_id', $input['machine_id'])
-            ->first();
-
-        if (!$info_cong_doan) {
+        if (!$machine) return $this->failure('', 'Không tìm thấy máy');
+        $info_cong_doan = InfoCongDoan::with('order')->where('lo_sx', $input['lo_sx'])->where('machine_id', $input['machine_id'])->first();
+        if ($info_cong_doan) {
+            $info_cong_doan->update(['status' => 1]);
+            InfoCongDoanPriority::updateOrCreate(['info_cong_doan_id' => $info_cong_doan->id], ['priority' => 0]);
+            $this->reorderInfoCongDoan();
+            $order = $next_info->order ?? null;
+            $so_ra = $order->so_ra ?? $info_cong_doan->so_ra;
+            $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
+            Tracking::where('machine_id', $input['machine_id'])->update([
+                'is_running' => 1,
+                'lo_sx' => $info_cong_doan->lo_sx ?? null,
+                'so_ra' => $so_ra ?? 1,
+                'thu_tu_uu_tien' => $info_cong_doan->thu_tu_uu_tien ?? 0,
+                'sl_kh' => ceil(($info_cong_doan->dinh_muc * ($formula->he_so ?? 1)) / $so_ra) ?? 0,
+                'pre_counter' => 0,
+                'error_counter' => 0,
+                'set_counter' => 0,
+            ]);
+        } else {
             return $this->failure('', 'Không tìm thấy lô cần chạy');
         }
-
-        // Update trạng thái info_cong_doan
-        $info_cong_doan->status = 1;
-        $info_cong_doan->save();
-
-        // Lấy order nếu có
-        $order   = $info_cong_doan->order;
-        $so_ra   = $order->so_ra ?? $info_cong_doan->so_ra ?? 1;
-
-        // Lấy công thức phù hợp (dùng query builder 1 lần)
-        $formula = null;
-        if ($order) {
-            $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1)
-                ->where('phan_loai_2', $order->phan_loai_2)
-                ->first(['he_so']);
-        }
-
-        $he_so = $formula->he_so ?? 1;
-        $sl_kh = ceil(($info_cong_doan->dinh_muc * $he_so) / $so_ra);
-
-        // Update tracking (1 query duy nhất)
-        Tracking::where('machine_id', $input['machine_id'])->update([
-            'is_running'       => 1,
-            'lo_sx'            => $info_cong_doan->lo_sx,
-            'so_ra'            => $so_ra,
-            'thu_tu_uu_tien'   => $info_cong_doan->thu_tu_uu_tien ?? 0,
-            'sl_kh'            => $sl_kh,
-        ]);
-
         return $this->success('');
     }
 
     public function stopProduce(Request $request)
     {
         $input = $request->all();
-
         try {
-            DB::transaction(function () use ($input, $request) {
-                // Cập nhật Tracking (1 query)
-                Tracking::where('machine_id', $input['machine_id'])->update([
-                    'is_running'      => 0,
-                    'lo_sx'           => null,
-                    'so_ra'           => 0,
-                    'thu_tu_uu_tien'  => null,
-                    'sl_kh'           => 0,
-                ]);
-
-                // Tìm info_cong_doan đang chạy
-                InfoCongDoan::where('machine_id', $input['machine_id'])
-                    ->where('status', 1)
-                    ->update(['status' => 2]);
-            });
+            DB::beginTransaction();
+            $tracking = Tracking::where('machine_id', $input['machine_id'])->first();
+            $tracking->update([
+                'is_running' => 0,
+                'lo_sx' => null,
+                'so_ra' => 0,
+                'thu_tu_uu_tien' => null,
+                'sl_kh' => 0
+            ]);
+            $info_cong_doan = InfoCongDoan::where('machine_id', $input['machine_id'])->where('status', 1)->first();
+            if ($info_cong_doan) {
+                $info_cong_doan->update(['status' => 2]);
+                InfoCongDoanPriority::where('info_cong_doan_id', $info_cong_doan->id)->delete();
+                $this->reorderInfoCongDoan();
+            }
+            DB::commit();
         } catch (\Throwable $th) {
+            DB::rollBack();
             ErrorLog::saveError($request, $th);
             return $this->failure($th->getMessage(), 'Đã xảy ra lỗi');
         }
-
         return $this->success('');
     }
-
 
     public function startTracking(Request $request)
     {
@@ -563,8 +540,11 @@ class ApiController extends AdminController
 
     public function CorrugatingProduction($request, $tracking)
     {
+        $startTime = microtime(true);
+        //Kiểm tra tracking. Nếu tracking có chạy thì tiếp tục ngược lại thì không
         if ($tracking->is_running != 0) {
             try {
+                // DB::beginTransaction();
                 //Tìm kiếm lô đang chạy
                 if ($tracking->lo_sx) {
                     $info_lo_sx = InfoCongDoan::where('lo_sx', $tracking->lo_sx)->where('machine_id', $tracking->machine_id)->where('status', 1)->first();
@@ -572,22 +552,37 @@ class ApiController extends AdminController
                         $current_quantity = $tracking->pre_counter + ($tracking->error_counter ?? 0);
                         $incoming_quantity = $request['Pre_Counter'] + ($request['Error_Counter'] ?? 0);
                         if ($tracking->pre_counter > 0 && ($current_quantity > $incoming_quantity)) { //Nếu không thoả mãn điều kiện, tìm và chạy lô mới   
-                            Log::debug('1, ' . now()->toDateTimeString());
-                            DB::table('info_cong_doan')
-                                ->where('id', $info_lo_sx->id)
-                                ->update([
-                                    'status' => 2,
-                                    'thoi_gian_ket_thuc' => now(),
-                                ]);
-                            Log::debug('2, ' . now()->toDateTimeString());
-                            Log::debug('3, ' . now()->toDateTimeString());
-                            $next_info = InfoCongDoan::where('machine_id', $tracking->machine_id)
-                                ->where('status', 0)
-                                ->where('so_dao', $request['Set_Counter'] ?? "")
-                                ->where('length_cut', $request['Length_Cut'] ?? "")
-                                // ->orderBy('info_cong_doan_priority.priority', 'asc')
+                            Log::debug("end lo_sx");
+                            Log::info(['tracking' => $tracking->toArray(), 'request' => $request->all()]);
+                            $running_infos = InfoCongDoan::where('machine_id', $tracking->machine_id)->where('status', 1)->get();
+                            if (count($running_infos) > 0) {
+                                foreach ($running_infos as $info) {
+                                    $info->update([
+                                        'status' => 2,
+                                        'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
+                                    ]);
+                                }
+                            }
+                            InfoCongDoanPriority::whereIn('info_cong_doan_id', $running_infos->pluck('id')->toArray())->delete();
+                            $this->reorderInfoCongDoan();
+                            $next_info = InfoCongDoan::select('info_cong_doan.*')
+                                ->join('info_cong_doan_priority', 'info_cong_doan.id', '=', 'info_cong_doan_priority.info_cong_doan_id')
+                                ->whereIn('info_cong_doan.status', [0, 1])
+                                ->where('info_cong_doan.so_dao', $request['Set_Counter'] ?? "")
+                                ->orderBy('info_cong_doan_priority.priority', 'asc')
                                 ->first();
-                            Log::debug('4, ' . now()->toDateTimeString());
+                            Log::debug("next tf info");
+                            Log::info([
+                                'lo_sx' => $next_info->lo_sx ?? null,
+                                'status' => $next_info->status ?? null,
+                                'sl_dau_ra_hang_loat' => $next_info->sl_dau_ra_hang_loat ?? null,
+                                'so_dao' => $next_info->so_dao ?? null,
+                                'so_dao_tracking' => $tracking->set_counter ?? null,
+                                'current_counter' => $current_quantity ?? '',
+                                'incomming' => $incoming_quantity ?? '',
+                                'pre_counter' => $request['pre_counter'] ?? null,
+                                'set_counter' => $request['Set_Counter'] ?? null,
+                            ]);
                             if ($next_info) {
                                 $so_ra = $next_info->so_ra;
                                 $next_info->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s'), 'status' => 1, 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $so_ra, 'so_ra' => $so_ra]);
@@ -600,7 +595,6 @@ class ApiController extends AdminController
                                     'pre_counter' => $request['Pre_Counter'],
                                     'set_counter' => $request['Set_Counter'],
                                     'error_counter' => $request['Error_Counter'],
-                                    'length_cut' => $request['Length_Cut'],
                                 ]);
                             } else {
                                 $tracking->update([
@@ -612,11 +606,9 @@ class ApiController extends AdminController
                                     'pre_counter' => $request['Pre_Counter'],
                                     'set_counter' => $request['Set_Counter'],
                                     'error_counter' => $request['Error_Counter'],
-                                    'length_cut' => $request['Length_Cut'],
                                 ]);
                             }
-                            Log::debug('5, ' . now()->toDateTimeString());
-                            return $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
+                            $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra, true);
                         } else {
                             $info_lo_sx->update([
                                 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $tracking->so_ra,
@@ -626,13 +618,11 @@ class ApiController extends AdminController
                             $tracking->update([
                                 'pre_counter' => $request['Pre_Counter'],
                                 'error_counter' => $request['Error_Counter'],
-                                'set_counter' => $request['Set_Counter'],
-                                'length_cut' => $request['Length_Cut'],
+                                'set_counter' => $request['Set_Counter']
                             ]);
-                            return $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra);
+                            $this->broadcastProductionUpdate($info_lo_sx, $tracking->so_ra);
                         }
                     } else {
-                        Log::debug('Không tìm thấy lô');
                         $tracking->update([
                             'sl_kh' => 0,
                             'lo_sx' => null,
@@ -642,19 +632,25 @@ class ApiController extends AdminController
                             'pre_counter' => $request['Pre_Counter'],
                             'set_counter' => $request['Set_Counter'],
                             'error_counter' => $request['Error_Counter'],
-                            'length_cut' => $request['Length_Cut'],
                         ]);
                     }
                 } else {
                     // $info_ids = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
-                    Log::debug('6, ' . now()->toDateTimeString());
-                    $next_info = InfoCongDoan::where('machine_id', $tracking->machine_id)
-                        // ->join('info_cong_doan_priority', 'id', '=', 'info_cong_doan_priority.info_cong_doan_id')
-                        ->where('status', 0)
-                        ->where('so_dao', $request['Set_Counter'] ?? "")
-                        ->where('length_cut', $request['Length_Cut'] ?? "")
-                        // ->orderBy('info_cong_doan_priority.priority', 'asc')
+                    $next_info = InfoCongDoan::select('info_cong_doan.*')
+                        ->join('info_cong_doan_priority', 'info_cong_doan.id', '=', 'info_cong_doan_priority.info_cong_doan_id')
+                        ->whereIn('info_cong_doan.status', [0, 1])
+                        ->where('info_cong_doan.so_dao', $request['Set_Counter'] ?? "")
+                        ->orderBy('info_cong_doan_priority.priority', 'asc')
                         ->first();
+                    Log::debug("next info");
+                    Log::info([
+                        'lo_sx' => $next_info->lo_sx ?? null,
+                        'status' => $next_info->status ?? null,
+                        'sl_dau_ra_hang_loat' => $next_info->sl_dau_ra_hang_loat ?? null,
+                        'so_dao' => $next_info->so_dao ?? null,
+                        'so_dao_tracking' => $tracking->set_counter ?? null,
+                        'set_counter' => $request['Set_Counter'] ?? null,
+                    ]);
                     if ($next_info) {
                         $so_ra = $next_info->so_ra;
                         $next_info->update(['thoi_gian_bat_dau' => date('Y-m-d H:i:s'), 'status' => 1, 'sl_dau_ra_hang_loat' => $request['Pre_Counter'] * $so_ra, 'so_ra' => $so_ra]);
@@ -667,9 +663,7 @@ class ApiController extends AdminController
                             'pre_counter' => $request['Pre_Counter'],
                             'set_counter' => $request['Set_Counter'],
                             'error_counter' => $request['Error_Counter'],
-                            'length_cut' => $request['Length_Cut'],
                         ]);
-                        return $this->broadcastProductionUpdate($next_info, $tracking->so_ra, true);
                     } else {
                         $tracking->update([
                             'sl_kh' => 0,
@@ -680,10 +674,8 @@ class ApiController extends AdminController
                             'pre_counter' => $request['Pre_Counter'],
                             'set_counter' => $request['Set_Counter'],
                             'error_counter' => $request['Error_Counter'],
-                            'length_cut' => $request['Length_Cut'],
                         ]);
                     }
-                    Log::debug('7, ' . now()->toDateTimeString());
                 }
                 // DB::commit();
             } catch (\Throwable $th) {
@@ -691,15 +683,16 @@ class ApiController extends AdminController
                 throw $th;
             }
         }
-        return null;
-        // return (['machine_id' => $tracking->machine_id, 'timeTaken' => $timeTaken, 'pre' => $request['Pre_Counter'], 'set' => $request['Set_Counter']]);
+        $endTime = microtime(true);
+        $timeTaken = $endTime - $startTime;
+        return (['machine_id' => $tracking->machine_id, 'timeTaken' => $timeTaken, 'pre' => $request['Pre_Counter'], 'set' => $request['Set_Counter']]);
     }
 
     protected function broadcastProductionUpdate($info_lo_sx, $so_ra, $reload = false)
     {
         $info_lo_sx['sl_dau_ra_hang_loat'] = $so_ra ? $info_lo_sx['sl_dau_ra_hang_loat'] / $so_ra : 0;
         $info_lo_sx['sl_ng_sx'] = $so_ra ? $info_lo_sx['sl_ng_sx'] / $so_ra : 0;
-        return ['info_cong_doan' => $info_lo_sx, 'reload' => $reload];
+        broadcast(new ProductionUpdated(['info_cong_doan' => $info_lo_sx, 'reload' => $reload]));
     }
 
     public function TemPrintProduction($request, $tracking, $machine)
@@ -707,200 +700,160 @@ class ApiController extends AdminController
         if (!$tracking || !$tracking->lo_sx || $tracking->is_running === 0) {
             return;
         }
-
-        $today = now()->toDateString();
-        $now   = now();
-        Log::debug('In 1, ' . now()->toDateTimeString());
-        $infoCongDoan = InfoCongDoan::where('machine_id', $machine->id)
-            ->where('lo_sx', $tracking->lo_sx)
-            ->where('status', 1)
-            ->first();
-
-        // Nếu không có công đoạn thì reset tracking
-        if (!$infoCongDoan) {
-            $tracking->update([
-                'lo_sx' => null,
-                'pre_counter' => 0,
-                'error_counter' => 0,
-                'is_running' => 1,
-                'sl_kh' => 0,
-                'thu_tu_uu_tien' => 0,
-                'set_counter' => 0,
-                'status' => 0
+        $info_cong_doan_in = InfoCongDoan::where('machine_id', $machine->id)->where('lo_sx', $tracking->lo_sx)->first();
+        if ($tracking->status === 0 && $info_cong_doan_in) {
+            $info_cong_doan_in->update([
+                'sl_dau_vao_chay_thu' => $request['Pre_Counter'],
             ]);
-            Log::debug('In 2, ' . now()->toDateTimeString());
-            return null;
-        }
-        Log::debug('In 3, ' . now()->toDateTimeString());
-        // Chạy thử
-        if ($tracking->status === 0) {
-            $infoCongDoan->update([
-                'sl_dau_ra_chay_thu' => $request['Pre_Counter'],
-            ]);
-            Log::debug('In 4, ' . now()->toDateTimeString());
-            return null;
-        }
-
-        $preCounterDiff = $request['Pre_Counter'] - $tracking->pre_counter;
-        $broadcast      = [];
-        Log::debug('In 5, ' . now()->toDateTimeString());
-        // Đủ định mức → kết thúc batch hiện tại
-        if ($preCounterDiff >= $infoCongDoan->dinh_muc) {
-            $infoCongDoan->update([
-                'status' => 2,
-                'thoi_gian_ket_thuc' => $now
-            ]);
-
-            // Tìm batch tiếp theo (chỉ query khi cần)
-            $nextBatch = InfoCongDoan::where('ngay_sx', $today)
-                ->where('status', 0)
-                ->where('lo_sx', '!=', $infoCongDoan->lo_sx)
-                ->where('machine_id', $tracking->machine_id)
-                ->orderByDesc('created_at')
-                ->first();
-            Log::debug('In 6, ' . now()->toDateTimeString());
-            if ($nextBatch) {
-                $tracking->update([
-                    'lo_sx' => $nextBatch->lo_sx,
-                    'sl_kh' => $nextBatch->dinh_muc,
-                    'thu_tu_uu_tien' => $nextBatch->thu_tu_uu_tien,
-                    'pre_counter' => $request['Pre_Counter'] ?? 0,
-                    'error_counter' => $request['Error_Counter'] ?? 0,
-                    'is_running' => 1
-                ]);
-                $broadcast = ['info_cong_doan' => $infoCongDoan, 'reload' => true];
-                Log::debug('In 7, ' . now()->toDateTimeString());
-            } else {
-                if ($preCounterDiff < 0) {
-                    $infoCongDoan->update([
-                        'thoi_gian_ket_thuc' => $now,
-                        'status' => 2,
-                    ]);
-                    $tracking->update([
-                        'lo_sx' => null,
-                        'pre_counter' => 0,
-                        'error_counter' => 0,
-                        'is_running' => 1,
-                        'sl_kh' => 0,
-                        'thu_tu_uu_tien' => 0,
-                        'set_counter' => 0,
-                        'status' => 0
-                    ]);
-                    $infoCongDoan->sl_ok = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng_sx - $infoCongDoan->sl_ng_qc;
-                    $broadcast = ['info_cong_doan' => $infoCongDoan, 'reload' => true];
-                    Log::debug('In 8, ' . now()->toDateTimeString());
-                } else {
-                    $infoCongDoan->update([
-                        'sl_dau_ra_hang_loat' => $preCounterDiff,
-                    ]);
-                    $infoCongDoan->sl_ok = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng_sx - $infoCongDoan->sl_ng_qc;
-                    $broadcast = ['info_cong_doan' => $infoCongDoan, 'reload' => false];
-                    Log::debug('In 9, ' . now()->toDateTimeString());
-                }
-            }
         } else {
-            Log::debug('In 10, ' . now()->toDateTimeString());
-            // Chưa đủ định mức
-            $slDauRa = $preCounterDiff;
-            $infoCongDoan->update([
-                'thoi_gian_bat_dau' => $infoCongDoan->thoi_gian_bat_dau ?? $now,
-                'sl_dau_ra_hang_loat' => $slDauRa,
-                'status' => 1
-            ]);
-            $infoCongDoan->sl_ok = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng_sx - $infoCongDoan->sl_ng_qc;
-            $broadcast = ['info_cong_doan' => $infoCongDoan, 'reload' => false];
-            Log::debug('In 11, ' . now()->toDateTimeString());
+            //Tìm lô đang chạy
+            $broadcast = [];
+            if ($info_cong_doan_in) {
+                $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
+                if ($next_batch) {
+                    if (($request['Pre_Counter'] - $tracking->pre_counter)  >= $info_cong_doan_in->dinh_muc) {
+                        $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
+                            'status' => 2,
+                            'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
+                            'sl_dau_ra_hang_loat' => $info_cong_doan_in->dinh_muc
+                        ]);
+                        $tracking->update([
+                            'lo_sx' => $next_batch->lo_sx,
+                            'sl_kh' => $next_batch->dinh_muc,
+                            'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien,
+                            'pre_counter' => $info_cong_doan_in->dinh_muc + $tracking->pre_counter,
+                            'error_counter' => $request['Error_Counter'] ?? 0,
+                            'is_running' => 1
+                        ]);
+                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
+                    } else {
+                        $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
+                            'sl_dau_ra_hang_loat' => $request['Pre_Counter'] - $tracking->pre_counter,
+                            'status' => 1
+                        ]);
+                        $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
+                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
+                    }
+                } else {
+                    if ($request['Pre_Counter'] < $info_cong_doan_in->sl_dau_ra_hang_loat) {
+                        $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
+                            'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
+                            'status' => 2,
+                        ]);
+                        $tracking->update([
+                            'lo_sx' => null,
+                            'pre_counter' => 0,
+                            'error_counter' => 0,
+                            'is_running' => 1,
+                            'sl_kh' => 0,
+                            'thu_tu_uu_tien' => 0,
+                            'set_counter' => 0,
+                            'status' => 0
+                        ]);
+                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
+                    } else {
+                        $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
+                            'sl_dau_ra_hang_loat' => $request['Pre_Counter'] - $tracking->pre_counter,
+                            'status' => 1
+                        ]);
+                        $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
+                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
+                    }
+                }
+            } else {
+                $tracking->update([
+                    'lo_sx' => null,
+                    'pre_counter' => 0,
+                    'error_counter' => 0,
+                    'is_running' => 1,
+                    'sl_kh' => 0,
+                    'thu_tu_uu_tien' => 0,
+                    'set_counter' => 0,
+                    'status' => 0
+                ]);
+            }
+
+            broadcast(new ProductionUpdated($broadcast));
+            return $broadcast;
         }
-
-        return $broadcast;
     }
-
 
     public function TemPrintProductionCH($request, $tracking, $machine)
     {
         if (!$tracking || !$tracking->lo_sx || $tracking->is_running === 0 || $tracking->status === 0) {
             return;
         }
-
-        $today = now()->toDateString();
-        $now   = now();
-        Log::debug('Chap 1, ' . now()->toDateTimeString());
-        $infoCongDoan = InfoCongDoan::where('machine_id', $machine->id)
-            ->where('lo_sx', $tracking->lo_sx)
-            ->where('status', 1)
-            ->first();
-        // Nếu không có công đoạn thì reset tracking
-        if (!$infoCongDoan) {
-            $tracking->update([
-                'lo_sx' => null,
-                'pre_counter' => 0,
-                'error_counter' => 0,
-                'is_running' => 1,
-                'sl_kh' => 0,
-                'thu_tu_uu_tien' => 0,
-                'set_counter' => 0,
-                'status' => 0
-            ]);
-            Log::debug('Chap 2, ' . now()->toDateTimeString());
-            return null;
-        }
-        Log::debug('Chap 3, ' . now()->toDateTimeString());
-        // Chạy thử
-        if ($tracking->status === 0) {
-            $infoCongDoan->update([
-                'sl_dau_ra_chay_thu' => $request['Pre_Counter'],
-            ]);
-            Log::debug('Chap 4, ' . now()->toDateTimeString());
-            return null;
-        }
-
+        $info_cong_doan_in = InfoCongDoan::where('machine_id', $machine->id)->where('lo_sx', $tracking->lo_sx)->first();
+        //Tìm lô đang chạy
         $broadcast = [];
-        Log::debug('Chap 5, ' . now()->toDateTimeString());
-        if ($request['Pre_Counter'] == 0) {
-            $infoCongDoan->update([
-                'status' => 2,
-                'thoi_gian_ket_thuc' => $now
-            ]);
-            $nextBatch = InfoCongDoan::where('ngay_sx', $today)
-                ->where('status', 0)
-                ->where('lo_sx', '!=', $infoCongDoan->lo_sx)
-                ->where('machine_id', $tracking->machine_id)
-                ->orderByDesc('created_at')
-                ->first();
-            Log::debug('Chap 6, ' . now()->toDateTimeString());
-            if ($nextBatch) {
-                $tracking->update([
-                    'lo_sx' => $nextBatch->lo_sx,
-                    'sl_kh' => $nextBatch->dinh_muc,
-                    'thu_tu_uu_tien' => $nextBatch->thu_tu_uu_tien,
-                    'pre_counter' => $request['Pre_Counter'] ?? 0,
-                    'error_counter' => $request['Error_Counter'] ?? 0,
-                    'is_running' => 1
-                ]);
-                $nextBatch->update(['status' => 1, 'thoi_gian_bat_dau' => $now,]);
-                $broadcast = ['info_cong_doan' => $infoCongDoan, 'reload' => true];
-                Log::debug('Chap 7, ' . now()->toDateTimeString());
-            } else {
-                $tracking->update([
-                    'lo_sx' => null,
-                    'sl_kh' => 0,
-                    'thu_tu_uu_tien' => 0,
-                ]);
-                $infoCongDoan->sl_ok = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng_sx - $infoCongDoan->sl_ng_qc;
-                $broadcast = ['info_cong_doan' => $infoCongDoan, 'reload' => true];
-                Log::debug('Chap 8, ' . now()->toDateTimeString());
+        if ($info_cong_doan_in) {
+            try {
+                $next_batch = InfoCongDoan::where('status', 0)->where('lo_sx', '!=', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
+                if ($next_batch) {
+                    if (((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) || ($info_cong_doan_in->sl_dau_ra_hang_loat > $request['Pre_Counter'])) {
+                        $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
+                            'status' => 2,
+                            'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
+                        ]);
+                        $tracking->update([
+                            'lo_sx' => $next_batch->lo_sx,
+                            'sl_kh' => $next_batch->dinh_muc,
+                            'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien,
+                        ]);
+                        $next_batch->update(['status' => 1]);
+                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
+                    } else {
+                        $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
+                            'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
+                            'status' => 1
+                        ]);
+                        $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
+                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
+                    }
+                    broadcast(new ProductionUpdated($broadcast));
+                    return $broadcast;
+                } else {
+                    if (((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) || ($info_cong_doan_in->sl_dau_ra_hang_loat > $request['Pre_Counter'])) {
+                        $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
+                            'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
+                            'status' => 2,
+                        ]);
+                        $tracking->update([
+                            'lo_sx' => null,
+                            'sl_kh' => 0,
+                            'thu_tu_uu_tien' => 0,
+                        ]);
+                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => true];
+                    } else {
+                        $info_cong_doan_in->update([
+                            'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
+                            'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
+                            'status' => 1
+                        ]);
+                        $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
+                        $broadcast = ['info_cong_doan' => $info_cong_doan_in, 'reload' => false];
+                    }
+                    broadcast(new ProductionUpdated($broadcast));
+                    return $broadcast;
+                }
+                //code...
+            } catch (\Throwable $th) {
+                throw $th;
             }
         } else {
-            $infoCongDoan->update([
-                'thoi_gian_bat_dau' => $infoCongDoan->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
-                'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
-                'status' => 1
+            $tracking->update([
+                'lo_sx' => null,
+                'sl_kh' => 0,
+                'thu_tu_uu_tien' => 0,
             ]);
-            $infoCongDoan->sl_ok = $infoCongDoan->sl_dau_ra_hang_loat - $infoCongDoan->sl_ng_sx - $infoCongDoan->sl_ng_qc;
-            $broadcast = ['info_cong_doan' => $infoCongDoan, 'reload' => false];
-            Log::debug('Chap 9, ' . now()->toDateTimeString());
         }
-
         return $broadcast;
     }
 
@@ -991,11 +944,28 @@ class ApiController extends AdminController
 
     public function websocket(Request $request)
     {
-        $deviceId = $request->input('device_id');
-        JobsProcessIotData::dispatch($request->all())
-            ->onQueue("device_{$deviceId}"); // mỗi máy 1 queue riêng
-
-        return $this->success(['status' => 'queued']);
+        if (!isset($request['device_id'])) return 'Không có mã máy';
+        $machine = Machine::with('line')->where('device_id', $request['device_id'])->first();
+        $line = $machine->line;
+        $tracking = Tracking::where('machine_id', $machine->id)->first();
+        switch ($line->id) {
+            case Line::LINE_SONG:
+                return $this->CorrugatingProduction($request, $tracking, $machine);
+                break;
+            case Line::LINE_IN:
+                if ($machine->id === 'CH02' || $machine->id === 'CH03') {
+                    return $this->TemPrintProductionCH($request, $tracking, $machine);
+                } else {
+                    return $this->TemPrintProduction($request, $tracking, $machine);
+                }
+                break;
+            case Line::LINE_DAN:
+                return $this->TemGluingProduction($request, $tracking, $machine);
+                break;
+            default:
+                break;
+        }
+        return $this->success($this->takeTime());
     }
 
     public function websocketMachineStatus(Request $request)
@@ -1126,20 +1096,18 @@ class ApiController extends AdminController
         switch ($line->id) {
             case Line::LINE_SONG:
                 //Chia query thành "đã qua sản xuất" và "chưa sản xuất"
-                // $info_priority = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
-                // return $info_priority;
-                $unfinished_query = InfoCongDoan::whereIn('status', [0, 1])
+                $info_priority = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
+                $unfinished_query = InfoCongDoan::whereIn('id', $info_priority)
+                    ->whereIn('status', [0, 1])
                     ->whereDate('ngay_sx', '<=', date('Y-m-d'))
                     ->where('machine_id', $request->machine_id)
                     ->with('plan', 'order.buyer', 'infoCongDoanPriority');
-                // return $unfinished_query->count();
-                // if (count($info_priority)) {
-                //     $unfinished_query->orderByRaw('FIELD(id, ' . implode(',', ($info_priority ?? [])) . ')');
-                // } else {
-                $unfinished_query->orderBy('ngay_sx')->orderBy('thu_tu_uu_tien')->orderBy('updated_at');
-                // }
+                if (count($info_priority)) {
+                    $unfinished_query->orderByRaw('FIELD(id, ' . implode(',', ($info_priority ?? [])) . ')');
+                } else {
+                    $unfinished_query->orderBy('ngay_sx')->orderBy('thu_tu_uu_tien')->orderBy('updated_at');
+                }
                 $unfinished = $unfinished_query->get();
-                // return $unfinished;
                 $list = $unfinished;
                 $data = $this->corrugatingInfoList($list);
                 break;
@@ -1246,21 +1214,21 @@ class ApiController extends AdminController
         usort($data, function ($a, $b) use ($order) {
             $pos_a = array_search($a->status, $order);
             $pos_b = array_search($b->status, $order);
-
+        
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-
+        
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
                 return $pos_a - $pos_b;
             }
-
+        
             // Nếu status giống nhau
             if (!empty($a->thoi_gian_ket_thuc) && !empty($b->thoi_gian_ket_thuc)) {
                 // So sánh thoi_gian_ket_thuc giảm dần
                 return strtotime($b->thoi_gian_ket_thuc) - strtotime($a->thoi_gian_ket_thuc);
             }
-
+        
             // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
             return 0;
         });
@@ -1662,27 +1630,28 @@ class ApiController extends AdminController
             $obj->dot = $obj->order->dot ?? '';
             $obj->note = $obj->order->note_3 ?? '';
             $obj->slg_sx = $obj->order->sl ?? '';
+            $obj->layout_id = $obj->order->layout_id ?? '';
             $data[] = $obj;
         }
         $order = [1, 0, 2, 3, 4];
         usort($data, function ($a, $b) use ($order) {
             $pos_a = array_search($a->status, $order);
             $pos_b = array_search($b->status, $order);
-
+        
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-
+        
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
                 return $pos_a - $pos_b;
             }
-
+        
             // Nếu status giống nhau
             if (!empty($a->thoi_gian_ket_thuc) && !empty($b->thoi_gian_ket_thuc)) {
                 // So sánh thoi_gian_ket_thuc giảm dần
                 return strtotime($b->thoi_gian_ket_thuc) - strtotime($a->thoi_gian_ket_thuc);
             }
-
+        
             // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
             return 0;
         });
@@ -2150,12 +2119,12 @@ class ApiController extends AdminController
         $input = $request->all();
         $customOrder = [1, 0, 2, 3, 4];
         $query = InfoCongDoan::with('plan.order.customer', 'qc_log', 'tem.order.customer')
-            ->select(
-                '*',
-                'sl_dau_ra_hang_loat as san_luong',
-                DB::raw('sl_dau_ra_hang_loat - sl_ng_sx - sl_ng_qc as sl_ok'),
-                DB::raw('sl_ng_sx + sl_ng_qc as sl_ng'),
-            )
+        ->select(
+            '*',
+            'sl_dau_ra_hang_loat as san_luong',
+            DB::raw('sl_dau_ra_hang_loat - sl_ng_sx - sl_ng_qc as sl_ok'),
+            DB::raw('sl_ng_sx + sl_ng_qc as sl_ng'),
+        )
             ->where(function ($query) {
                 $query->where('status', '>=', 2)
                     ->orWhere('status', 1)->where('sl_dau_ra_hang_loat', '>=', 100);
@@ -2198,21 +2167,21 @@ class ApiController extends AdminController
         usort($list, function ($a, $b) use ($customOrder) {
             $pos_a = array_search($a['status'], $customOrder);
             $pos_b = array_search($b['status'], $customOrder);
-
+        
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-
+        
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
                 return $pos_a - $pos_b;
             }
-
+        
             // Nếu status giống nhau
             if (!empty($a['thoi_gian_ket_thuc']) && !empty($b['thoi_gian_ket_thuc'])) {
                 // So sánh thoi_gian_ket_thuc giảm dần
                 return strtotime($b['thoi_gian_ket_thuc']) - strtotime($a['thoi_gian_ket_thuc']);
             }
-
+        
             // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
             return 0;
         });
@@ -4382,14 +4351,7 @@ class ApiController extends AdminController
         if (isset($request->delivery_note_id)) {
             $query->where('delivery_note_id', $request->delivery_note_id);
         }
-        $fg_exports = $query->orderBy('created_at', 'DESC')->with([
-            'warehouse_fg_log' => function ($subQuery) {
-                $subQuery->where('type', 2);
-            },
-            // 'lsxpallets'=> function ($subQuery) {
-            //     $subQuery->where('remain_quantity', '>', 0);
-            // }
-        ])->get();
+        $fg_exports = $query->orderBy('created_at', 'DESC')->get();
         $data = [];
         $lsx_array = [];
         $test = [];
@@ -4401,7 +4363,8 @@ class ApiController extends AdminController
                     ->where('remain_quantity', '>', 0)
                     ->where('order_id', $fg_export->order_id)
                     ->get();
-                $so_luong_da_xuat = $fg_export->warehouse_fg_log->sum('so_luong');
+                $so_luong_da_xuat = LSXPallet::where('order_id', $fg_export->order_id)->where('status', LSXPallet::EXPORTED)->select('*', DB::raw('so_luong - remain_quantity as da_xuat'))->get()->sum('da_xuat');
+                // return $so_luong_da_xuat;
                 // $test[] = [$fg_export->id, $lsx_pallets, $so_luong_da_xuat];
                 $sum_sl = 0;
                 $sl_can_xuat = $fg_export->so_luong - $so_luong_da_xuat;
@@ -6024,7 +5987,7 @@ class ApiController extends AdminController
                 $tem->update($input);
                 if (isset($input['ids']) && is_array($input['ids'])) {
                     $input['ids'] = array_diff($input['ids'], [$input['id']]);
-                    $fillable = ['so_luong', 'sl_tem', 'machine_id', 'nhan_vien_sx', 'note'];
+                    $fillable = ['sl_tem'];
                     $fillable_innput = array_intersect_key($input, array_flip($fillable));
                     $tems = Tem::whereIn('id', $input['ids'])->update($fillable_innput);
                 }
@@ -6050,6 +6013,22 @@ class ApiController extends AdminController
         }
         $tem->delete();
         return $this->success('', 'Đã xoá thành công');
+    }
+
+    public function deleteTems(Request $request)
+    {
+        $input = $request->all();
+        $tems = Tem::whereIn('id', $input ?? [])->get();
+        $all = count($tems);
+        $count = 0;
+        foreach ($tems as $key => $tem) {
+            $check = InfoCongDoan::where('lo_sx', $tem->lo_sx)->where('machine_id', $tem->machine_id)->first();
+            if(!$check){
+                $tem->delete();
+                $count++;
+            }
+        }
+        return $this->success('', 'Đã xoá ' . $count . '/' . $all);
     }
 
     public function getOrderList(Request $request)
@@ -6743,7 +6722,6 @@ class ApiController extends AdminController
                         'plan_id' => $plan->id,
                         'status' => 0,
                         'so_dao' => isset($order->so_ra) ? ceil($plan->sl_kh * ($formula->he_so ?? 1) / $order->so_ra) : $order->so_dao,
-                        'length_cut' => $order->dai_tam * 10,
                     ]);
                     if ($machine->line_id == '31') {
                         if ($order) {
@@ -6753,7 +6731,7 @@ class ApiController extends AdminController
                 }
             }
             DB::commit();
-            // $this->apiUIController->updateInfoCongDoanPriority();
+            $this->apiUIController->updateInfoCongDoanPriority();
             return $this->success('', "Tạo KHSX thành công");
         } catch (\Throwable $th) {
             throw $th;

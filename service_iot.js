@@ -1,105 +1,202 @@
 /**************************************************
- *  service_iot.js
- *  Chức năng:
- *  - Login auth (retry khi mất auth)
- *  - Fetch dữ liệu từ danh sách devices (1s/lần)
- *  - Bỏ qua device lỗi
- *  - Chỉ gửi nếu dữ liệu mới, không trùng với lần trước
+ *  Gắn thêm:  npm i axios p-limit
  **************************************************/
-
 const axios = require('axios');
+const pLimit = require('p-limit');
 
-// ====== Config ======
+// ====== Configuration Constants ======
 const TELEMETRY_URL = "http://113.161.189.44:3030/api/plugins/telemetry/DEVICE";
 const AUTH_URL      = "http://113.161.189.44:3030/api/auth/login";
-const POST_URL      = "http://127.0.0.1:8000/api/websocket";
+// const LOCAL_URL      = "http://127.0.0.1:8001";
+const BASE_URL      = "http://backtbdx.ouransoft.vn"
+const POST_URL                  = `${BASE_URL}/api/websocket`;
+const POST_MACHINE_STATUS_URL   = `${BASE_URL}/api/websocket-machine-status`;
+const POST_MACHINE_PARAMS_URL   = `${BASE_URL}/api/websocket-machine-params`;
 
 const USER_CREDENTIALS = {
     username: 'messystem@gmail.com',
     password: 'mesors@2023'
 };
 
-const DEVICES = [
-    '2262b3d0-85db-11ee-8392-a51389126dc6', // Da06
-    '34055200-85db-11ee-8392-a51389126dc6', // Da05
-    '0a6afda0-85db-11ee-8392-a51389126dc6', // Pr06
-    'ffd778a0-85da-11ee-8392-a51389126dc6', // Pr15
-    'e9aba8d0-85da-11ee-8392-a51389126dc6', // So01
-    'd9397550-ad38-11ef-a8bd-45ae64f28680', // Pr11
-    'ed675240-ad38-11ef-a8bd-45ae64f28680', // Pr12
-    'f5957000-ad38-11ef-a8bd-45ae64f28680', // Pr16
-    '69f8f0e0-ad3c-11ef-a8bd-45ae64f28680', // CH02
-    '72f81a40-ad3c-11ef-a8bd-45ae64f28680'  // CH03
+const DEVICES =  [
+    '2262b3d0-85db-11ee-8392-a51389126dc6', //Da06
+    '34055200-85db-11ee-8392-a51389126dc6', //Da05
+    '0a6afda0-85db-11ee-8392-a51389126dc6', //Pr06
+    'ffd778a0-85da-11ee-8392-a51389126dc6', //Pr15
+    'e9aba8d0-85da-11ee-8392-a51389126dc6', //So01
+    'd9397550-ad38-11ef-a8bd-45ae64f28680', //Pr11
+    'ed675240-ad38-11ef-a8bd-45ae64f28680', //Pr12
+    'f5957000-ad38-11ef-a8bd-45ae64f28680', //Pr16
+    '69f8f0e0-ad3c-11ef-a8bd-45ae64f28680', //CH02
+    '72f81a40-ad3c-11ef-a8bd-45ae64f28680'  //CH03
 ];
 
-const MachineID = {
-    '2262b3d0-85db-11ee-8392-a51389126dc6': 'Da06',
-    '34055200-85db-11ee-8392-a51389126dc6': 'Da05',
-    '0a6afda0-85db-11ee-8392-a51389126dc6': 'Pr06',
-    'ffd778a0-85da-11ee-8392-a51389126dc6': 'Pr15',
-    'e9aba8d0-85da-11ee-8392-a51389126dc6': 'So01',
-    'd9397550-ad38-11ef-a8bd-45ae64f28680': 'Pr11',
-    'ed675240-ad38-11ef-a8bd-45ae64f28680': 'Pr12',
-    'f5957000-ad38-11ef-a8bd-45ae64f28680': 'Pr16',
-    '69f8f0e0-ad3c-11ef-a8bd-45ae64f28680': 'CH02',
-    '72f81a40-ad3c-11ef-a8bd-45ae64f28680': 'CH03',
+// Các khoảng thời gian (ms)
+const RETRY_INTERVALS = {
+    fetchError:    2000,  // Lỗi fetch => chờ 2s rồi thử lại
+    duplicateData: 1000   // Tạm dùng làm interval loop
+};
+
+// ====== Store states for duplicate checking ======
+const previousData   = {};
+const previousStatus = {};
+let token;
+
+// ====== 1) Function: authenticate -> lấy token ======
+async function authenticate() {
+    try {
+        const response = await axios.post(AUTH_URL, USER_CREDENTIALS);
+        token = response.data.token;
+        return response.data.token;
+    } catch (error) {
+        console.error('Authentication failed:', error.message);
+        // Retry sau 2s
+        await delay(RETRY_INTERVALS.fetchError);
+        return authenticate();
+    }
 }
 
-// ====== State ======
-let token;
-const previousData = {}; // lưu dữ liệu lần trước
-
-// ====== Utility ======
+// ====== 2) Utility: delay ======
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ====== 1) Authenticate ======
-async function authenticate() {
-    while (true) {
-        try {
-            console.log("🔑 Authenticating...");
-            const response = await axios.post(AUTH_URL, USER_CREDENTIALS);
-            token = response.data.token;
-            console.log("✅ Auth success");
-            return token;
-        } catch (error) {
-            console.error("❌ Auth failed:", error.message);
-            await delay(2000); // retry sau 2s
-        }
-    }
-}
-
-// ====== 2) Fetch telemetry for 1 device ======
-async function fetchTelemetryData(device) {
+// ====== 3) Fetch telemetry data cho 1 device ======
+async function fetchTelemetryData(device, token) {
     try {
         const response = await axios.get(
             `${TELEMETRY_URL}/${device}/values/timeseries`,
-            { headers: { 'Authorization': `Bearer ${token}` }, timeout: 5000 }
+            {
+                headers: { 'Authorization': `Bearer ${token}` },
+                timeout: 2000
+            }
         );
 
-        return {
-            device_id: device,
-            Pre_Counter:    response.data?.Pre_Counter?.[0]?.value ?? 0,
-            Set_Counter:    response.data?.Set_Counter?.[0]?.value ?? 0,
-            Error_Counter:  response.data?.Error_Counter?.[0]?.value ?? 0,
-            Machine_Status: response.data?.Machine_Status?.[0]?.value ?? 0,
-            Length_Cut: response.data?.Length_Cut?.[0]?.value ?? 0,
-        };
-    } catch (err) {
-        // Nếu 401 => auth lại
-        if (err.response && err.response.status === 401) {
-            console.warn(`⚠️ Unauthorized for ${device}, re-auth...`);
-            await authenticate();
-        } else {
-            console.error(`❌ Fetch error for ${MachineID[device]}:`, err.message);
+        // Nếu token cũ, bị 401 -> login lại
+        if (response.status === 401) {
+            console.warn('Unauthorized. Re-authenticating...');
+            const newToken = await authenticate();
+            return fetchTelemetryData(device, newToken);
         }
-        return null; // báo lỗi, bỏ qua device
+
+        // Data parse
+        const { Pre_Counter, Set_Counter, Error_Counter, Machine_Status } = response.data;
+        // if(isNaN(Pre_Counter)){
+        //     throw new Error("Data không hợp lệ");
+        // }
+        const data = {
+            device_id:       device,
+            Pre_Counter:     Pre_Counter    ? (Pre_Counter[0]?.value    ?? 0) : 0,
+            Set_Counter:     Set_Counter    ? (Set_Counter[0]?.value    ?? 0) : 0,
+            Error_Counter:   Error_Counter  ? (Error_Counter[0]?.value  ?? 0) : 0,
+            Machine_Status:  Machine_Status ? (Machine_Status[0]?.value ?? 0) : 0,
+        };
+
+        const status = {
+            device_id:       device,
+            Machine_Status:  Machine_Status ? (Machine_Status[0]?.value ?? "") : ""
+        };
+
+        // Demo params: nếu cần post tất cả key-value
+        const params = {};
+        Object.keys(response.data ?? {}).forEach(key => {
+            params[key] = response.data[key][0]?.value ?? "";
+        });
+        params['device_id'] = device;
+
+        return { data, status, params };
+
+    } catch (error) {
+        // Nếu 401 do token hết hạn => login lại
+        if (error.response && error.response.status === 401) {
+            console.warn('Received 401 status. Re-authenticating...');
+            const newToken = await authenticate();
+            return fetchTelemetryData(device, newToken);
+        } else {
+            console.error(`Error fetching data for device ${device}:`, error.message);
+            throw error;
+        }
     }
 }
 
-// ====== 3) So sánh dữ liệu cũ/mới ======
-function isDuplicate(prev, current) {
+// ====== 4) postData, postMachineStatus, postMachineParams ======
+async function postData(data) {
+    try {
+        // In log sample
+        if (data.device_id === 'f5957000-ad38-11ef-a8bd-45ae64f28680') {
+            console.log('Data posted:', data);
+        }
+        return await axios.post(POST_URL, data, { timeout: 2000 });
+    } catch (error) {
+        console.error('Error posting data:', error?.response?.message);
+    }
+}
+
+async function postMachineStatus(data) {
+    try {
+        await axios.post(POST_MACHINE_STATUS_URL, data, { timeout: 2000 });
+        // console.log('Status posted:', data);
+    } catch (error) {
+        console.error('Error posting status:', error.message);
+    }
+}
+
+async function postMachineParams(data) {
+    try {
+        const response = await axios.post(POST_MACHINE_PARAMS_URL, data, { timeout: 2000 });
+        console.log('Params posted:', response.data);
+    } catch (error) {
+        console.error('Error posting params:', error.message);
+    }
+}
+
+// ====== 5) Hàm xử lý data cho 1 device (fetch + check duplicate + post) ======
+let lastParamsSentTime = 0;
+async function processData(device, token) {
+    try {
+        const { data, status, params } = await fetchTelemetryData(device, token);
+
+        // Kiểm tra duplicate status
+        const prevStatus = previousStatus[device];
+        if (!isStatusDuplicate(prevStatus, status)) {
+            previousStatus[device] = status;
+            await postMachineStatus(status);
+        } else {
+            console.log(`Duplicate status for device ${device}, not sending.`);
+        }
+
+        // (Nếu cần gửi tất cả params)
+        const now = Date.now();
+        if (now - lastParamsSentTime >= 60000) {
+            await postMachineParams(params);
+            lastParamsSentTime = now;
+        }
+
+        // Kiểm tra duplicate data
+        if (data) {
+            const prev = previousData[device];
+            if (!isDataDuplicate(prev, data)) {
+                previousData[device] = data;
+                const startTime = performance.now();
+                var res = await postData(data);
+                const endTime = performance.now();
+                const timeTaken = (endTime - startTime) / 1000; // sec
+                console.log(`Thời gian xử lý (từ FE): ${timeTaken} s`);
+                console.log(data);
+            } else {
+                console.log(`Duplicate data for device ${device}, not sending.`);
+            }
+        }
+    } catch (error) {
+        // Nếu lỗi, ta log, nhưng không vỡ vòng lặp
+        console.log(`Error -> device ${device}:`, error.message);
+        // Có thể chờ 2s trước khi cho device này fetch lại
+        await delay(RETRY_INTERVALS.fetchError);
+    }
+}
+
+// ====== 6) Check duplicate functions ======
+function isDataDuplicate(prev, current) {
     if (!prev) return false;
     return prev.Pre_Counter   === current.Pre_Counter &&
            prev.Set_Counter   === current.Set_Counter &&
@@ -107,40 +204,44 @@ function isDuplicate(prev, current) {
            prev.Machine_Status=== current.Machine_Status;
 }
 
-// ====== 4) Gửi dữ liệu lên server ======
-async function postData(data) {
-    try {
-        var { data: res } = await axios.post(POST_URL, data, { timeout: 5000 });
-        console.log(`📤 Posted data for device ${MachineID[data.device_id]}`, res.data);
-    } catch (err) {
-        console.error(`❌ Post error for ${MachineID[data.device_id]}:`, err.message);
-    }
+function isStatusDuplicate(prev, current) {
+    if (!prev) return false;
+    return prev.Machine_Status === current.Machine_Status;
 }
 
-// ====== 5) Xử lý từng device ======
-async function processDevice(device) {
-    const data = await fetchTelemetryData(device);
-    if (!data) return; // bỏ qua nếu fetch lỗi
+// ====== 7) Giới hạn số request đồng thời (p-limit) ======
+const limit = pLimit(3); 
+// -> Chỉ cho phép 3 request chạy cùng lúc. 
+//   Tuỳ ý sửa con số này theo tài nguyên mạng/server.
 
-    const prev = previousData[device];
-    if (!isDuplicate(prev, data)) {
-        previousData[device] = data;
-        await postData(data);
-    } else {
-        // console.log(`⏩ Duplicate data for ${device}, skip`);
-    }
+// ====== 8) Hàm xử lý tất cả devices theo vòng lặp ======
+async function runDevices(token) {
+    // Xử lý tất cả device song song nhưng giới hạn concurrency
+    await Promise.all(
+        DEVICES.map(device => limit(() => processData(device, token)))
+    );
 }
 
-// ====== 6) Main loop ======
-async function main() {
-    await authenticate();
+// ====== 9) Hàm main: vừa login, vừa lặp fetch + post ======
+async function initialize() {
+    while (true) {
+        try {
+            // Mỗi vòng lặp ta auth 1 lần (hoặc có thể cache token)
+            // const token = await authenticate();
 
-    setInterval(async () => {
-        for (const device of DEVICES) {
-            processDevice(device);
+            // Gọi xử lý tất cả devices (đã limit concurrency)
+            await runDevices(token);
+
+            // Chờ 1 khoảng => lặp
+            await delay(RETRY_INTERVALS.duplicateData);
+
+        } catch (err) {
+            // Nếu có lỗi ngoài ý muốn => log & chờ
+            console.error("Error in main loop:", err.message);
+            await delay(RETRY_INTERVALS.fetchError);
         }
-    }, 1000); // lặp mỗi 1 giây
+    }
 }
 
-// ====== Start ======
-main();
+// ====== 10) Bắt đầu ======
+initialize();

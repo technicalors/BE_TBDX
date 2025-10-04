@@ -3,7 +3,9 @@
 namespace App\Jobs;
 
 use App\Admin\Controllers\ApiController;
+use App\Admin\Controllers\ApiUIController;
 use App\Events\ProductionUpdated;
+use App\Models\CustomUser;
 use App\Models\Line;
 use App\Models\Machine;
 use App\Models\Tracking;
@@ -30,7 +32,7 @@ class ProcessIotData implements ShouldQueue
     public function __construct($data)
     {
         $this->data = $data;
-        $this->apiController = new ApiController();
+        $this->apiController = new ApiController(new CustomUser(), new ApiUIController());
     }
 
     /**

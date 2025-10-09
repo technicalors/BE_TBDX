@@ -9,6 +9,7 @@ use App\Models\ErrorLog;
 use App\Models\Field;
 use App\Models\FieldRole;
 use App\Models\GroupPlanOrder;
+use App\Models\InfoCongDoan;
 use App\Models\KhuonLink;
 use App\Models\LocatorMLTMap;
 use App\Models\LSXPallet;
@@ -16,6 +17,7 @@ use App\Models\Material;
 use App\Models\Order;
 use App\Models\ProductionPlan;
 use App\Models\Table;
+use App\Models\Tem;
 use App\Models\WareHouse;
 use App\Models\WarehouseFGLog;
 use App\Models\WarehouseMLTLog;
@@ -433,7 +435,7 @@ class OrderController extends AdminController
             if (empty($input['mql'])) {
                 return $this->failure('', 'Không có mã quản lý');
             }
-            if (empty($input['hna_giao'])) {
+            if (empty($input['han_giao'])) {
                 return $this->failure('', 'Không có hạn giao');
             }
             $input['id'] = $this->createNextOrderId($input['mdh'], $input['mql'], $input['han_giao']);
@@ -451,7 +453,16 @@ class OrderController extends AdminController
     {
         try {
             DB::beginTransaction();
-            $input = $request->all();
+            foreach ($request->ids ?? [] as $id) {
+                $groupPlanOrder = GroupPlanOrder::where('order_id', $id)->first();
+                if($groupPlanOrder) return $this->failure($request->ids, 'Đơn hàng ' . $id . ' đã được sử dụng');
+                $plan = ProductionPlan::where('order_id', $id)->first();
+                if($plan) return $this->failure($request->ids, 'Đơn hàng ' . $id . ' đã được sử dụng');
+                $infoCongDoan = InfoCongDoan::where('order_id', $id)->first();
+                if($infoCongDoan) return $this->failure($request->ids, 'Đơn hàng ' . $id . ' đã được sử dụng');
+                $tem = Tem::where('order_id', $id)->first();
+                if($tem) return $this->failure($request->ids, 'Đơn hàng ' . $id . ' đã được sử dụng');
+            }
             Order::whereIn('id', $request->ids)->delete();
             DB::commit();
         } catch (\Throwable $th) {

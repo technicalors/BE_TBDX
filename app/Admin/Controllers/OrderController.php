@@ -19,6 +19,7 @@ use App\Models\ProductionPlan;
 use App\Models\Table;
 use App\Models\Tem;
 use App\Models\WareHouse;
+use App\Models\WareHouseFGExport;
 use App\Models\WarehouseFGLog;
 use App\Models\WarehouseMLTLog;
 use Encore\Admin\Controllers\AdminController;
@@ -453,22 +454,19 @@ class OrderController extends AdminController
     {
         try {
             DB::beginTransaction();
-            foreach ($request->ids ?? [] as $id) {
-                $groupPlanOrder = GroupPlanOrder::where('order_id', $id)->first();
-                if($groupPlanOrder) return $this->failure($request->ids, 'Đơn hàng ' . $id . ' đã được sử dụng');
-                $plan = ProductionPlan::where('order_id', $id)->first();
-                if($plan) return $this->failure($request->ids, 'Đơn hàng ' . $id . ' đã được sử dụng');
-                $infoCongDoan = InfoCongDoan::where('order_id', $id)->first();
-                if($infoCongDoan) return $this->failure($request->ids, 'Đơn hàng ' . $id . ' đã được sử dụng');
-                $tem = Tem::where('order_id', $id)->first();
-                if($tem) return $this->failure($request->ids, 'Đơn hàng ' . $id . ' đã được sử dụng');
-            }
-            Order::whereIn('id', $request->ids)->delete();
+            $groupPlanOrder = GroupPlanOrder::whereIn('order_id', $request->ids ?? [])->delete();
+            $planFromGroupOrder = ProductionPlan::whereIn('order_id', $request->ids ?? [])->delete();
+            $infoCongDoan = InfoCongDoan::whereIn('order_id', $request->ids ?? [])->delete();
+            $tem = Tem::whereIn('order_id', $request->ids ?? [])->delete();
+            $log = WarehouseFGLog::whereIn('order_id', $request->ids ?? [])->delete();
+            $export = WareHouseFGExport::whereIn('order_id', $request->ids ?? [])->delete();
+            $lsx_pallet = LSXPallet::whereIn('order_id', $request->ids ?? [])->delete();
+            $order = Order::whereIn('id', $request->ids ?? [])->forceDelete();
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
             ErrorLog::saveError($request, $th);
-            return $this->failure('', 'Đã xảy ra lỗi');
+            throw $th;
         }
         return $this->success('Xoá thành công');
     }

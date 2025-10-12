@@ -4128,87 +4128,107 @@ class ApiUIController extends AdminController
         $spreadsheet = $reader->load($_FILES['file']['tmp_name']);
         $allDataInSheet = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         $materials = [];
+        $material_ids = [];
+        $loai_giay = [];
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 2
-            if ($key > 8) {
-                $ngay_nhap = explode('/', $row['J']);
+            if ($key > 1) {
                 $input = [];
                 $input['id'] = $row['B'];
                 $input['material_id'] = $row['B'];
                 $input['supplier'] = $row['C'];
-                $input['fsc'] = $row['E'] ? 1 : 0;
-                $input['loai_giay'] = explode('(', $row['D'])[0] ?? "";
+                $input['fsc'] = $row['D'] ? 1 : 0;
+                $input['loai_giay'] = trim($row['E']);
                 if (empty($input['loai_giay'])) {
                     return $this->failure([], 'Không có loai giay: ' . $key);
                 }
                 $input['kho_giay'] = (float)$row['F'];
                 $input['dinh_luong'] = (float)$row['G'];
                 $input['ma_vat_tu'] = $input['loai_giay'] . '(' . $input['dinh_luong'] . ')' . $input['kho_giay']; //Loai giay + (dinh luong) + kho giay
-                $input['ma_cuon_ncc'] = $row['K'];
-                $input['so_kg'] = (float)str_replace(',', '', ($row['M'] ?? $row['H']));
+                $input['ma_cuon_ncc'] = $row['I'];
+                $input['so_kg'] = (float)str_replace(',', '', ($row['K'] ?? $row['H']));
                 $input['so_kg_dau'] = (float)str_replace(',', '', $row['H']);
-                $input['ngay_nhap'] = $row['I'];
-                $input['location_id'] = $row['N'];
+                try {
+                    $input['ngay_nhap'] = $this->transformDate($row['J']);
+                } catch (\Throwable $th) {
+                    return $this->failure([], 'Lỗi format time: ' . $key); 
+                }
+                
+                $input['location_id'] = $row['L'];
                 if ($input['so_kg'] && $input['kho_giay'] && $input['dinh_luong']) {
                     $input['so_m_toi'] = floor(($input['so_kg'] / ($input['kho_giay'] / 100)) / ($input['dinh_luong'] / 1000));
                 }
                 if ($input['id']) {
                     $materials[] = $input;
+                    $material_ids[] = $input['id'];
+                    $loai_giay[$input['loai_giay']] = $input['supplier'];
                 }
             }
         }
-        try {
-            DB::beginTransaction();
-            $material_ids = [];
-            foreach ($materials as $key => $input) {
-                $material = Material::find($input['id']);
-                if ($material) {
-                    $material->update($input);
-                } else {
-                    Material::create($input);
-                }
-                $material_ids[] = $input['id'];
-                $import = WareHouseMLTImport::where(['material_id' => $input['id']])->first();
-                $import_input = $input;
-                unset($import_input['id']);
-                $import_input['iqc'] = 1;
-                $import_input['so_kg'] = $input['so_kg_dau'];
-                if (!$import) {
-                    WareHouseMLTImport::create($import_input);
-                } else {
-                    $import->update($import_input);
-                }
-                Supplier::firstOrCreate(['id' => $input['loai_giay'], 'name' => $input['supplier']]);
-                $log = WarehouseMLTLog::where('material_id', $input['id'])->orderBy('created_at', "DESC")->first();
-                if ($log && !$log->tg_xuat) {
-                    $export_log = WarehouseMLTLog::where('material_id', $input['id'])->whereNotNull('tg_xuat')->orderBy('created_at', "DESC")->first();
-                    $log->update([
-                        'tg_nhap' => $export_log->tg_xuat ?? $this->transformDate($input['ngay_nhap']),
-                        'locator_id' => $input['location_id'],
-                        'so_kg_nhap' => $input['so_kg'],
-                    ]);
+        foreach ($loai_giay as $key_id => $name) {
+            Supplier::firstOrCreate(['id' => $key_id], ['name' => $name]);
+        }
+        foreach ($materials as $key => $input) {
+            $material = Material::find($input['id']);
+            if ($material) {
+                $material->update($input);
+            } else {
+                Material::create($input);
+            }
+            WareHouseMLTImport::updateOrCreate(['material_id' => $input['id']],
+            [
+                'iqc'=>1,
+                'ma_vat_tu'=>$input['ma_vat_tu'],
+                'ma_cuon_ncc'=>$input['ma_cuon_ncc'],
+                'fsc'=>$input['fsc'],
+                'so_kg'=>$input['so_kg_dau'],
+                'loai_giay'=>$input['loai_giay'],
+                'kho_giay'=>$input['kho_giay'],
+                'dinh_luong'=>$input['dinh_luong'],
+            ]
+            )->first();
+            $check = WarehouseMLTLog::where('material_id', $input['id'])->where(function($q){
+                $q->whereDate('created_at', '>=', '2025-10-10')->orWhereDate('updated_at', '>=', '2025-10-10');
+            })->first();
+            if($check){
+                continue;
+            }
+            $log = WarehouseMLTLog::where('material_id', $input['id'])->orderBy('created_at', "DESC")->first();
+            if($log){
+                if(!$log->tg_xuat && $log->so_kg_nhap == $input['so_kg']){
+                    continue;
                 } else {
                     WarehouseMLTLog::create([
-                        'tg_nhap' => $log->tg_xuat ?? $this->transformDate($input['ngay_nhap']),
+                        'tg_nhap' => $log->tg_xuat,
                         'locator_id' => $input['location_id'],
                         'material_id' => $input['id'],
                         'so_kg_nhap' => $input['so_kg'],
                     ]);
                 }
-                LocatorMLTMap::where('material_id', $input['id'])->delete();
-                LocatorMLTMap::create(['material_id' => $input['id'], 'locator_mlt_id' => $input['location_id']]);
+                
             }
-            Material::whereNotIn('id', $material_ids)->delete();
-            LocatorMLTMap::doesntHave('material')->delete();
-            $locator_map = LocatorMLTMap::get()->groupBy('locator_mlt_id');
-            foreach ($locator_map as $key => $locator) {
-                LocatorMLT::find($key)->update(['capacity' => count($locator)]);
+            LocatorMLTMap::updateOrCreate(['material_id' => $input['id']], ['locator_mlt_id' => $input['location_id']]);
+        }
+        // LocatorMLTMap::doesntHave('material')->delete();
+        // $locator_map = LocatorMLTMap::get()->groupBy('locator_mlt_id');
+        // foreach ($locator_map as $key => $locator) {
+        //     LocatorMLT::find($key)->update(['capacity' => count($locator)]);
+        // }
+
+        $exported_materials = Material::whereNotIn('id', $material_ids)
+        ->whereDoesntHave('warehouse_mlt_logs', function($q){
+            $q->whereDate('created_at', '>=', '2025-10-10')->orWhereDate('updated_at', '>=', '2025-10-10');
+        })
+        ->get();
+        foreach ($exported_materials as $key => $exported) {
+            $latest_log = WarehouseMLTLog::where('material_id', $exported->id)->orderBy('created_at', 'DESC')->first();
+            if($latest_log && (!$latest_log->tg_xuat || $latest_log->so_kg_nhap != $latest_log->so_kg_xuat)){
+                $exported->update(['so_kg' => 0]);
+                $latest_log->update([
+                    'tg_xuat' => now(),
+                    'so_kg_xuat' => $latest_log->so_kg_nhap,
+                ]);
             }
-            WarehouseMLTLog::where('locator_id', "")->delete();
-            DB::commit();
-        } catch (\Exception $th) {
-            DB::rollBack();
-            return $th;
         }
 
         return $this->success([], 'Upload thành công');

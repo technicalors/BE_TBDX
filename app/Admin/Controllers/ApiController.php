@@ -1097,17 +1097,17 @@ class ApiController extends AdminController
             case Line::LINE_SONG:
                 // return $this->success([]);
                 //Chia query thành "đã qua sản xuất" và "chưa sản xuất"
-                $info_priority = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
-                $unfinished_query = InfoCongDoan::whereIn('id', $info_priority)
-                    ->whereIn('status', [0, 1])
-                    ->whereDate('ngay_sx', '<=', date('Y-m-d'))
+                // $info_priority = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
+                $unfinished_query = InfoCongDoan::whereIn('status', [0, 1])
+                    ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
+                    ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
                     ->where('machine_id', $request->machine_id)
                     ->with('plan', 'order.buyer', 'infoCongDoanPriority');
-                if (count($info_priority)) {
-                    $unfinished_query->orderByRaw('FIELD(id, ' . implode(',', ($info_priority ?? [])) . ')');
-                } else {
+                // if (count($info_priority)) {
+                //     $unfinished_query->orderByRaw('FIELD(id, ' . implode(',', ($info_priority ?? [])) . ')');
+                // } else {
                     $unfinished_query->orderBy('ngay_sx')->orderBy('thu_tu_uu_tien')->orderBy('updated_at');
-                }
+                // }
                 $unfinished = $unfinished_query->get();
                 $list = $unfinished;
                 $data = $this->corrugatingInfoList($list);

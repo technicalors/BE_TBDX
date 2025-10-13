@@ -1095,7 +1095,7 @@ class ApiController extends AdminController
         $data = [];
         switch ($line->id) {
             case Line::LINE_SONG:
-                return $this->success([]);
+                // return $this->success([]);
                 //Chia query thành "đã qua sản xuất" và "chưa sản xuất"
                 $info_priority = InfoCongDoanPriority::orderBy('priority')->pluck('info_cong_doan_id')->toArray();
                 $unfinished_query = InfoCongDoan::whereIn('id', $info_priority)

@@ -4215,21 +4215,21 @@ class ApiUIController extends AdminController
         //     LocatorMLT::find($key)->update(['capacity' => count($locator)]);
         // }
 
-        $exported_materials = Material::whereNotIn('id', $material_ids)
-        ->whereDoesntHave('warehouse_mlt_logs', function($q){
-            $q->whereDate('created_at', '>=', '2025-10-10')->orWhereDate('updated_at', '>=', '2025-10-10');
-        })
-        ->get();
-        foreach ($exported_materials as $key => $exported) {
-            $latest_log = WarehouseMLTLog::where('material_id', $exported->id)->orderBy('created_at', 'DESC')->first();
-            if($latest_log && (!$latest_log->tg_xuat || $latest_log->so_kg_nhap != $latest_log->so_kg_xuat)){
-                $exported->update(['so_kg' => 0]);
-                $latest_log->update([
-                    'tg_xuat' => now(),
-                    'so_kg_xuat' => $latest_log->so_kg_nhap,
-                ]);
-            }
-        }
+        // $exported_materials = Material::whereNotIn('id', $material_ids)
+        // ->whereDoesntHave('warehouse_mlt_logs', function($q){
+        //     $q->whereDate('created_at', '>=', '2025-10-10')->orWhereDate('updated_at', '>=', '2025-10-10');
+        // })
+        // ->get();
+        // foreach ($exported_materials as $key => $exported) {
+        //     $latest_log = WarehouseMLTLog::where('material_id', $exported->id)->orderBy('created_at', 'DESC')->first();
+        //     if($latest_log && (!$latest_log->tg_xuat || $latest_log->so_kg_nhap != $latest_log->so_kg_xuat)){
+        //         $exported->update(['so_kg' => 0]);
+        //         $latest_log->update([
+        //             'tg_xuat' => now(),
+        //             'so_kg_xuat' => $latest_log->so_kg_nhap,
+        //         ]);
+        //     }
+        // }
 
         return $this->success([], 'Upload thành công');
     }

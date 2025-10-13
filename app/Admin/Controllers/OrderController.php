@@ -106,13 +106,6 @@ class OrderController extends AdminController
 
     function queryOrder($request){
         $query = Order::orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
-        if (isset($request->status)) {
-            if ($request->status === 'all') {
-                $query->withTrashed();
-            } else if ($request->status === 'deleted') {
-                $query->onlyTrashed();
-            }
-        }
         if (isset($request->id)) {
             $query->where('id', 'like', "%" . $request->id . "%");
         }
@@ -461,7 +454,7 @@ class OrderController extends AdminController
             $log = WarehouseFGLog::whereIn('order_id', $request->ids ?? [])->delete();
             $export = WareHouseFGExport::whereIn('order_id', $request->ids ?? [])->delete();
             $lsx_pallet = LSXPallet::whereIn('order_id', $request->ids ?? [])->delete();
-            $order = Order::whereIn('id', $request->ids ?? [])->forceDelete();
+            $order = Order::whereIn('id', $request->ids ?? [])->delete();
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -787,14 +780,12 @@ class OrderController extends AdminController
         // Tìm tất cả bản ghi trùng `mdh`, `mql`, và `han_giao`
         $existedOrder = Order::where('id', 'REGEXP', '^' . $mdh . '-' . $mql . '(-|$)')
             ->where('han_giao', $hanGiao)
-            ->withTrashed()
             ->first();
         if ($existedOrder) {
             return $existedOrder->id;
         }
         $latestOrderId = Order::where('id', 'REGEXP', '^' . $mdh . '-' . $mql . '(-|$)')
             ->where('han_giao', '!=', $hanGiao)
-            ->withTrashed()
             ->get()
             ->sortByDesc('id', SORT_NATURAL)
             ->first();
@@ -962,7 +953,7 @@ class OrderController extends AdminController
     {
         try {
             DB::beginTransaction();
-            $restore = Order::withTrashed()->where('id', $request->id)->restore();
+            // $restore = Order::withTrashed()->where('id', $request->id)->restore();
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();

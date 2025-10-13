@@ -5569,4 +5569,18 @@ class ApiUIController extends AdminController
         ProductionPlan::whereIn('id', $arr)->delete();
         return 'deleted';
     }
+
+    public function deleteSoftDeletedOrder(){
+        set_time_limit(300);
+        $order_ids = Order::whereNotNull('deleted_at')->limit(1000)->pluck('id')->toArray();
+        $groupPlanOrder = GroupPlanOrder::whereIn('order_id', $order_ids)->delete();
+        $planFromGroupOrder = ProductionPlan::whereIn('order_id', $order_ids)->delete();
+        $infoCongDoan = InfoCongDoan::whereIn('order_id', $order_ids)->delete();
+        $tem = Tem::whereIn('order_id', $order_ids)->delete();
+        $log = WarehouseFGLog::whereIn('order_id', $order_ids)->delete();
+        $export = WareHouseFGExport::whereIn('order_id', $order_ids)->delete();
+        $lsx_pallet = LSXPallet::whereIn('order_id', $order_ids)->delete();
+        $order = Order::whereIn('id', $order_ids)->delete();
+        return 'Đã xóa';
+    }
 }

@@ -768,6 +768,7 @@ Route::group([
     $router->get('getDuplicateWarehouseFGLog', [ApiUIController::class, 'getDuplicateWarehouseFGLog']);
     $router->get('clearRequestLogs', [ApiUIController::class, 'clearRequestLogs']);
     $router->get('deleteDuplicatePlan', [ApiUIController::class, 'deleteDuplicatePlan']);
+    $router->get('deleteSoftDeletedOrder', [ApiUIController::class, 'deleteSoftDeletedOrder']);
 });
 
 //Chat

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
     public $incrementing = false;
     protected $primaryKey = 'id'; // Đảm bảo khoá chính đúng
     protected $keyType = 'string'; // Nếu khoá chính là kiểu chuỗi

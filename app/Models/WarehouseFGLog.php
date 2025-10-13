@@ -48,7 +48,7 @@ class WarehouseFGLog extends Model
 
     public function order()
     {
-        return $this->hasOne(Order::class, 'id', 'order_id')->withTrashed();
+        return $this->hasOne(Order::class, 'id', 'order_id');
     }
 
     public function warehouse_fg_export()

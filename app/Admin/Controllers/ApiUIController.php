@@ -4172,21 +4172,22 @@ class ApiUIController extends AdminController
             $material = Material::find($input['id']);
             if ($material) {
                 $material->update($input);
-            } else {
-                Material::create($input);
-            }
-            WareHouseMLTImport::updateOrCreate(['material_id' => $input['id']],
-            [
-                'iqc'=>1,
-                'ma_vat_tu'=>$input['ma_vat_tu'],
-                'ma_cuon_ncc'=>$input['ma_cuon_ncc'],
-                'fsc'=>$input['fsc'],
-                'so_kg'=>$input['so_kg_dau'],
-                'loai_giay'=>$input['loai_giay'],
-                'kho_giay'=>$input['kho_giay'],
-                'dinh_luong'=>$input['dinh_luong'],
-            ]
-            )->first();
+            } 
+            // else {
+            //     Material::create($input);
+            // }
+            // WareHouseMLTImport::updateOrCreate(['material_id' => $input['id']],
+            // [
+            //     'iqc'=>1,
+            //     'ma_vat_tu'=>$input['ma_vat_tu'],
+            //     'ma_cuon_ncc'=>$input['ma_cuon_ncc'],
+            //     'fsc'=>$input['fsc'],
+            //     'so_kg'=>$input['so_kg_dau'],
+            //     'loai_giay'=>$input['loai_giay'],
+            //     'kho_giay'=>$input['kho_giay'],
+            //     'dinh_luong'=>$input['dinh_luong'],
+            // ]
+            // )->first();
             $check = WarehouseMLTLog::where('material_id', $input['id'])->where(function($q){
                 $q->whereDate('created_at', '>=', '2025-10-10')->orWhereDate('updated_at', '>=', '2025-10-10');
             })->first();

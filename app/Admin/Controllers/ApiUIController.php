@@ -4165,72 +4165,74 @@ class ApiUIController extends AdminController
                 }
             }
         }
-        foreach ($loai_giay as $key_id => $name) {
-            Supplier::firstOrCreate(['id' => $key_id], ['name' => $name]);
-        }
-        foreach ($materials as $key => $input) {
-            $material = Material::find($input['id']);
-            if ($material) {
-                $material->update($input);
-            } 
-            // else {
-            //     Material::create($input);
-            // }
-            // WareHouseMLTImport::updateOrCreate(['material_id' => $input['id']],
-            // [
-            //     'iqc'=>1,
-            //     'ma_vat_tu'=>$input['ma_vat_tu'],
-            //     'ma_cuon_ncc'=>$input['ma_cuon_ncc'],
-            //     'fsc'=>$input['fsc'],
-            //     'so_kg'=>$input['so_kg_dau'],
-            //     'loai_giay'=>$input['loai_giay'],
-            //     'kho_giay'=>$input['kho_giay'],
-            //     'dinh_luong'=>$input['dinh_luong'],
-            // ]
-            // )->first();
-            $check = WarehouseMLTLog::where('material_id', $input['id'])->where(function($q){
-                $q->whereDate('created_at', '>=', '2025-10-10')->orWhereDate('updated_at', '>=', '2025-10-10');
-            })->first();
-            if($check){
-                continue;
-            }
-            $log = WarehouseMLTLog::where('material_id', $input['id'])->orderBy('created_at', "DESC")->first();
-            if($log){
-                if(!$log->tg_xuat && $log->so_kg_nhap == $input['so_kg']){
-                    continue;
-                } else {
-                    WarehouseMLTLog::create([
-                        'tg_nhap' => $log->tg_xuat,
-                        'locator_id' => $input['location_id'],
-                        'material_id' => $input['id'],
-                        'so_kg_nhap' => $input['so_kg'],
-                    ]);
-                }
+        //Chạy lần 1
+        // foreach ($loai_giay as $key_id => $name) {
+        //     Supplier::firstOrCreate(['id' => $key_id], ['name' => $name]);
+        // }
+        // foreach ($materials as $key => $input) {
+        //     $material = Material::find($input['id']);
+        //     if ($material) {
+        //         $material->update($input);
+        //     } 
+        //     // else {
+        //     //     Material::create($input);
+        //     // }
+        //     // WareHouseMLTImport::updateOrCreate(['material_id' => $input['id']],
+        //     // [
+        //     //     'iqc'=>1,
+        //     //     'ma_vat_tu'=>$input['ma_vat_tu'],
+        //     //     'ma_cuon_ncc'=>$input['ma_cuon_ncc'],
+        //     //     'fsc'=>$input['fsc'],
+        //     //     'so_kg'=>$input['so_kg_dau'],
+        //     //     'loai_giay'=>$input['loai_giay'],
+        //     //     'kho_giay'=>$input['kho_giay'],
+        //     //     'dinh_luong'=>$input['dinh_luong'],
+        //     // ]
+        //     // )->first();
+        //     $check = WarehouseMLTLog::where('material_id', $input['id'])->where(function($q){
+        //         $q->whereDate('created_at', '>=', '2025-10-10')->orWhereDate('updated_at', '>=', '2025-10-10');
+        //     })->first();
+        //     if($check){
+        //         continue;
+        //     }
+        //     $log = WarehouseMLTLog::where('material_id', $input['id'])->orderBy('created_at', "DESC")->first();
+        //     if($log){
+        //         if(!$log->tg_xuat && $log->so_kg_nhap == $input['so_kg']){
+        //             continue;
+        //         } else {
+        //             WarehouseMLTLog::create([
+        //                 'tg_nhap' => $log->tg_xuat,
+        //                 'locator_id' => $input['location_id'],
+        //                 'material_id' => $input['id'],
+        //                 'so_kg_nhap' => $input['so_kg'],
+        //             ]);
+        //         }
                 
-            }
-            LocatorMLTMap::updateOrCreate(['material_id' => $input['id']], ['locator_mlt_id' => $input['location_id']]);
-        }
+        //     }
+        //     LocatorMLTMap::updateOrCreate(['material_id' => $input['id']], ['locator_mlt_id' => $input['location_id']]);
+        // }
         // LocatorMLTMap::doesntHave('material')->delete();
         // $locator_map = LocatorMLTMap::get()->groupBy('locator_mlt_id');
         // foreach ($locator_map as $key => $locator) {
         //     LocatorMLT::find($key)->update(['capacity' => count($locator)]);
         // }
 
-        // $exported_materials = Material::whereNotIn('id', $material_ids)
-        // ->whereDoesntHave('warehouse_mlt_logs', function($q){
-        //     $q->whereDate('created_at', '>=', '2025-10-10')->orWhereDate('updated_at', '>=', '2025-10-10');
-        // })
-        // ->get();
-        // foreach ($exported_materials as $key => $exported) {
-        //     $latest_log = WarehouseMLTLog::where('material_id', $exported->id)->orderBy('created_at', 'DESC')->first();
-        //     if($latest_log && (!$latest_log->tg_xuat || $latest_log->so_kg_nhap != $latest_log->so_kg_xuat)){
-        //         $exported->update(['so_kg' => 0]);
-        //         $latest_log->update([
-        //             'tg_xuat' => now(),
-        //             'so_kg_xuat' => $latest_log->so_kg_nhap,
-        //         ]);
-        //     }
-        // }
+        //Chạy lần 2
+        $exported_materials = Material::whereNotIn('id', $material_ids)
+        ->whereDoesntHave('warehouse_mlt_logs', function($q){
+            $q->whereDate('created_at', '>=', '2025-10-10')->orWhereDate('updated_at', '>=', '2025-10-10');
+        })
+        ->get();
+        foreach ($exported_materials as $key => $exported) {
+            $latest_log = WarehouseMLTLog::where('material_id', $exported->id)->orderBy('created_at', 'DESC')->first();
+            if($latest_log && (!$latest_log->tg_xuat || $latest_log->so_kg_nhap != $latest_log->so_kg_xuat)){
+                $exported->update(['so_kg' => 0]);
+                $latest_log->update([
+                    'tg_xuat' => now(),
+                    'so_kg_xuat' => $latest_log->so_kg_nhap,
+                ]);
+            }
+        }
 
         return $this->success([], 'Upload thành công');
     }

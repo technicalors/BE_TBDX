@@ -1106,7 +1106,7 @@ class ApiController extends AdminController
                 // if (count($info_priority)) {
                 //     $unfinished_query->orderByRaw('FIELD(id, ' . implode(',', ($info_priority ?? [])) . ')');
                 // } else {
-                    $unfinished_query->orderBy('ngay_sx')->orderBy('thu_tu_uu_tien')->orderBy('updated_at');
+                $unfinished_query->orderBy('ngay_sx')->orderBy('thu_tu_uu_tien')->orderBy('updated_at');
                 // }
                 $unfinished = $unfinished_query->get();
                 $list = $unfinished;
@@ -1215,21 +1215,21 @@ class ApiController extends AdminController
         usort($data, function ($a, $b) use ($order) {
             $pos_a = array_search($a->status, $order);
             $pos_b = array_search($b->status, $order);
-        
+
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-        
+
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
                 return $pos_a - $pos_b;
             }
-        
+
             // Nếu status giống nhau
             if (!empty($a->thoi_gian_ket_thuc) && !empty($b->thoi_gian_ket_thuc)) {
                 // So sánh thoi_gian_ket_thuc giảm dần
                 return strtotime($b->thoi_gian_ket_thuc) - strtotime($a->thoi_gian_ket_thuc);
             }
-        
+
             // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
             return 0;
         });
@@ -1638,21 +1638,21 @@ class ApiController extends AdminController
         usort($data, function ($a, $b) use ($order) {
             $pos_a = array_search($a->status, $order);
             $pos_b = array_search($b->status, $order);
-        
+
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-        
+
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
                 return $pos_a - $pos_b;
             }
-        
+
             // Nếu status giống nhau
             if (!empty($a->thoi_gian_ket_thuc) && !empty($b->thoi_gian_ket_thuc)) {
                 // So sánh thoi_gian_ket_thuc giảm dần
                 return strtotime($b->thoi_gian_ket_thuc) - strtotime($a->thoi_gian_ket_thuc);
             }
-        
+
             // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
             return 0;
         });
@@ -2120,12 +2120,12 @@ class ApiController extends AdminController
         $input = $request->all();
         $customOrder = [1, 0, 2, 3, 4];
         $query = InfoCongDoan::with('plan.order.customer', 'qc_log', 'tem.order.customer')
-        ->select(
-            '*',
-            'sl_dau_ra_hang_loat as san_luong',
-            DB::raw('sl_dau_ra_hang_loat - sl_ng_sx - sl_ng_qc as sl_ok'),
-            DB::raw('sl_ng_sx + sl_ng_qc as sl_ng'),
-        )
+            ->select(
+                '*',
+                'sl_dau_ra_hang_loat as san_luong',
+                DB::raw('sl_dau_ra_hang_loat - sl_ng_sx - sl_ng_qc as sl_ok'),
+                DB::raw('sl_ng_sx + sl_ng_qc as sl_ng'),
+            )
             ->where(function ($query) {
                 $query->where('status', '>=', 2)
                     ->orWhere('status', 1)->where('sl_dau_ra_hang_loat', '>=', 100);
@@ -2168,21 +2168,21 @@ class ApiController extends AdminController
         usort($list, function ($a, $b) use ($customOrder) {
             $pos_a = array_search($a['status'], $customOrder);
             $pos_b = array_search($b['status'], $customOrder);
-        
+
             if ($pos_a === false) return 1;
             if ($pos_b === false) return -1;
-        
+
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
                 return $pos_a - $pos_b;
             }
-        
+
             // Nếu status giống nhau
             if (!empty($a['thoi_gian_ket_thuc']) && !empty($b['thoi_gian_ket_thuc'])) {
                 // So sánh thoi_gian_ket_thuc giảm dần
                 return strtotime($b['thoi_gian_ket_thuc']) - strtotime($a['thoi_gian_ket_thuc']);
             }
-        
+
             // Một trong hai thoi_gian_ket_thuc null -> không thay đổi thứ tự
             return 0;
         });
@@ -4919,7 +4919,7 @@ class ApiController extends AdminController
                 if (!$row['F']) {
                     return $this->failure([], 'Hàng số ' . ($key) . ': Thiếu định lượng');
                 }
-                if(!in_array($row['B'], $ma_ncc_arr)){
+                if (!in_array($row['B'], $ma_ncc_arr)) {
                     $ma_ncc_arr[] = $row['B'];
                 } else {
                     return $this->failure([], 'Hàng số ' . ($key) . ': Trùng mã cuộn nhà cung cấp');
@@ -6027,7 +6027,7 @@ class ApiController extends AdminController
         $count = 0;
         foreach ($tems as $key => $tem) {
             $check = InfoCongDoan::where('lo_sx', $tem->lo_sx)->where('machine_id', $tem->machine_id)->first();
-            if(!$check){
+            if (!$check) {
                 $tem->delete();
                 $count++;
             }
@@ -8595,50 +8595,124 @@ class ApiController extends AdminController
         return $this->success(['data' => $records, 'totalPage' => $totalPage]);
     }
 
+    function customQueryWarehouseMLTLog2($request)
+    {
+        $input = $request->all();
+        $query = Material::orderByraw('CHAR_LENGTH(id) DESC')->orderBy('id');
+        if (isset($input['loai_giay'])) $query->where('loai_giay', 'like', "%" . $input['loai_giay'] . "%");
+        if (isset($input['kho_giay'])) $query->where('kho_giay', 'like', "%" . $input['kho_giay'] . "%");
+        if (isset($input['dinh_luong'])) $query->where('dinh_luong', 'like', "%" . $input['dinh_luong'] . "%");
+        if (isset($input['ma_cuon_ncc'])) $query->where('ma_cuon_ncc', 'like', "%" . $input['ma_cuon_ncc'] . "%");
+        if (isset($input['ma_vat_tu'])) $query->where('ma_vat_tu', 'like', "%" . $input['ma_vat_tu'] . "%");
+        if (isset($input['so_kg'])) $query->where('so_kg', $input['so_kg']);
+        if (isset($input['so_cuon'])) $query->whereColumn('so_kg', '=', 'so_kg_dau');
+        if (isset($input['material_id'])) {
+            $query->where('id', 'like', "%" . $input['material_id'] . "%");
+        }
+        $firstNhapSub = WarehouseMLTLog::select('warehouse_mlt_logs.tg_nhap')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'asc')->limit(1);
+
+        // Subquery so_kg_nhap tương ứng warehouse_mlt_logs.tg_nhap đầu tiên
+        $lastKgNhapSub = WarehouseMLTLog::select('warehouse_mlt_logs.so_kg_nhap')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
+
+        // Subquery tg_xuat mới nhất
+        $lastXuatSub = WarehouseMLTLog::select('warehouse_mlt_logs.tg_xuat')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
+
+        // Subquery so_kg_xuat tương ứng warehouse_mlt_logs.tg_xuat mới nhất
+        $lastKgXuatSub = WarehouseMLTLog::select('warehouse_mlt_logs.so_kg_xuat')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
+
+        $query->addSelect([
+                'first_tg_nhap'   => $firstNhapSub,
+                'last_kg_nhap'   => $lastKgNhapSub,
+                'last_tg_xuat'    => $lastXuatSub,
+                'last_kg_xuat'    => $lastKgXuatSub,
+            ]);
+        if (isset($input['tg_nhap'])) {
+            $query->whereFirstImportDate(date('Y-m-d', strtotime($input['tg_nhap'])));
+        }
+        if (isset($input['tg_xuat'])) {
+            $query->whereLastExportDate(date('Y-m-d', strtotime($input['tg_xuat'])));
+        }
+        if (isset($input['locator_id'])) {
+            $query->whereHas('locator', function ($q) use ($input) {
+                $q->where('locator_mlt_id',  'like', "%" . $input['locator_id'] . "%");
+            });
+        }
+        if (isset($input['khu_vuc'])) {
+            $query->whereHas('locator', function ($q) use ($input) {
+                $q->where('locator_mlt_id',  'like', "%" . $input['khu_vuc'] . ".___%");
+            });
+        }
+        return $query->with('supplier', 'locator', 'warehouse_mlt_import');
+    }
+    public function warehouseMLTLog2(Request $request)
+    {
+        $page = $request->page - 1;
+        $pageSize = $request->pageSize;
+        $query = $this->customQueryWarehouseMLTLog2($request);
+        $totalPage = $query->count();
+        $query->offset($page * $pageSize)->limit($pageSize ?? 20);
+        $records = $query->get();
+        foreach ($records as $key => $record) {
+            $tg_nhap = $record->first_tg_nhap ?? '';
+            $so_kg_nhap = $record->last_kg_nhap ?? 0;
+            $so_kg_cuoi = $so_kg_nhap - ($record->last_kg_xuat ?? 0);
+            $tg_xuat = $record->last_tg_xuat;
+            $record->material_id = $record->id ?? '';
+            $record->ten_ncc = $record->supplier->name ?? '';
+            $record->loai_giay = $record->loai_giay ?? '';
+            $record->fsc = $record->fsc ? 'X' : '';
+            $record->kho_giay = $record->kho_giay ?? '';
+            $record->dinh_luong = $record->dinh_luong ?? '';
+            $record->ma_cuon_ncc = $record->ma_cuon_ncc ?? "";
+            $record->ma_vat_tu = $record->ma_vat_tu ?? '';
+            $record->tg_nhap = $tg_nhap ? date('d/m/Y', strtotime($tg_nhap)) : "";
+            $record->so_phieu_nhap_kho = $record->warehouse_mlt_import->goods_receipt_note_id ?? '';
+            $record->so_kg_nhap = $so_kg_nhap;
+            $record->so_kg_dau = $record->so_kg_dau ?? "0";
+            $record->so_kg_cuoi = $so_kg_cuoi;
+            $record->so_kg_xuat = $record->so_kg_nhap - $record->so_kg_cuoi;
+            $record->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
+            $record->so_cuon = $record->so_kg_dau != $record->so_kg_cuoi ? "0" : "1";
+            $vi_tri = $record->locator->locator_mlt_id ?? '';
+            $record->khu_vuc = str_contains($vi_tri, 'C') ? ('Khu ' . (int)str_replace('C', '', $vi_tri)) : "";
+            $record->locator_id = $vi_tri;
+        }
+        return $this->success(['data' => $records, 'totalPage' => $totalPage]);
+    }
+
     public function exportWarehouseMLTLog(Request $request)
     {
-        $query = $this->customQueryWarehouseMLTLog($request);
+        set_time_limit(300);
+        ini_set('memory_limit', '1G');
+        $query = $this->customQueryWarehouseMLTLog2($request);
         $records = $query->get();
         $data = [];
         foreach ($records as $key => $record) {
-            $so_kg_nhap = $record->so_kg_nhap;
-            $so_kg_cuoi = 0;
-            $tg_xuat = $record->latest_tg_xuat;
-            //Lấy bản ghi nhập mới nhất của NVL
-            $lastImportLog = WarehouseMLTLog::where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
-            if (!$lastImportLog->tg_xuat) {
-                //Nếu bản ghi nhập mới nhất chưa có xuất thì tìm bản ghi xuất mới nhất
-                $lastExportLog = WarehouseMLTLog::whereNotNull('tg_xuat')->where('material_id', $record->material_id)->orderBy('tg_nhap', 'DESC')->first();
-                if ($lastExportLog) {
-                    //Nếu có bản ghi xuất lấy số lượng nhập cuối cùng là của bản ghi có nhập xuất mới nhất
-                    $so_kg_nhap = $lastExportLog->so_kg_nhap;
-                    $tg_xuat = $lastExportLog->tg_xuat;
-                }
-                //Nếu ko có bản ghi xuất mới nhất thì số kg đầu giữ nguyên, số kg cuối = số kg nhập
-                $so_kg_cuoi = $lastImportLog->so_kg_nhap;
-            } else {
-                $so_kg_nhap = $lastImportLog->so_kg_nhap;
-            }
             $obj = new stdClass;
             $obj->stt = $key + 1;
-            $obj->material_id = $record->material_id;
-            $obj->ten_ncc = $record->material->supplier->name ?? "";
-            $obj->loai_giay = $record->material->loai_giay ?? "";
-            $obj->fsc = $record->material->fsc ? 'X' : '';
-            $obj->kho_giay = $record->material->kho_giay ?? "";
-            $obj->dinh_luong = $record->material->dinh_luong ?? "";
-            $obj->ma_cuon_ncc = $record->material->ma_cuon_ncc ?? "";
-            $obj->ma_vat_tu = $record->material->ma_vat_tu ?? "";
-            $obj->so_phieu_nhap_kho = $record->warehouse_mlt_import ? $record->warehouse_mlt_import->goods_receipt_note_id : '';
-            $obj->tg_nhap = $record->tg_nhap ? date('d/m/Y', strtotime($record->tg_nhap)) : "";
-            $obj->so_kg_dau = $record->material->so_kg_dau ?? "0";
+            $tg_nhap = $record->first_tg_nhap ?? '';
+            $so_kg_nhap = $record->last_kg_nhap ?? 0;
+            $so_kg_cuoi = $so_kg_nhap - ($record->last_kg_xuat ?? 0);
+            $tg_xuat = $record->last_tg_xuat;
+            $obj->material_id = $record->id ?? '';
+            $obj->ten_ncc = $record->supplier->name ?? '';
+            $obj->loai_giay = $record->loai_giay ?? '';
+            $obj->fsc = $record->fsc ? 'X' : '';
+            $obj->kho_giay = $record->kho_giay ?? '';
+            $obj->dinh_luong = $record->dinh_luong ?? '';
+            $obj->ma_cuon_ncc = $record->ma_cuon_ncc ?? "";
+            $obj->ma_vat_tu = $record->ma_vat_tu ?? '';
+            $obj->so_phieu_nhap_kho = $record->warehouse_mlt_import->goods_receipt_note_id ?? '';
+            $obj->tg_nhap = $tg_nhap ? date('d/m/Y', strtotime($tg_nhap)) : "";
+            $obj->so_kg_dau = $record->so_kg_dau ?? "0";
             $obj->so_kg_nhap = $so_kg_nhap;
-            $obj->so_kg_xuat = $so_kg_nhap - $so_kg_cuoi;
+            $obj->so_kg_xuat = $obj->so_kg_nhap - $so_kg_cuoi;
             $obj->so_kg_cuoi = $so_kg_cuoi;
             $obj->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
             $obj->so_cuon = $obj->so_kg_dau != $obj->so_kg_cuoi ? "0" : "1";
-            $obj->khu_vuc = $record->locatorMlt->warehouse_mlt->name ?? "";
-            $obj->locator_id = $record->locator_id;
+            $vi_tri = $record->locator->locator_mlt_id ?? '';
+            $obj->khu_vuc = str_contains($vi_tri, 'C') ? ('Khu ' . (int)str_replace('C', '', $vi_tri)) : "";
+            $obj->locator_id = $vi_tri;
             $data[] = (array)$obj;
         }
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();

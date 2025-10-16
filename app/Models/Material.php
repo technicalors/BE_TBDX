@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class Material extends Model
@@ -59,5 +60,27 @@ class Material extends Model
     public function warehouse_mlt_logs()
     {
         return $this->hasMany(WarehouseMLTLog::class, 'material_id')->orderBy('created_at', 'DESC');
+    }
+
+    public function scopeWhereFirstImportDate($query, $date)
+    {
+        $sub = WarehouseMLTLog::select('warehouse_mlt_logs.tg_nhap')
+            ->whereColumn('warehouse_mlt_logs.material_id', 'material.id')
+            ->orderBy('warehouse_mlt_logs.tg_nhap', 'asc')
+            ->limit(1);
+
+        return $query->whereDate(DB::raw("({$sub->toSql()})"), '=', $date)
+                    ->mergeBindings($sub->getQuery());
+    }
+
+    public function scopeWhereLastExportDate($query, $date)
+    {
+        $sub = WarehouseMLTLog::select('warehouse_mlt_logs.tg_xuat')
+            ->whereColumn('warehouse_mlt_logs.material_id', 'material.id')
+            ->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')
+            ->limit(1);
+
+        return $query->whereDate(DB::raw("({$sub->toSql()})"), '=', $date)
+                    ->mergeBindings($sub->getQuery());
     }
 }

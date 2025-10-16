@@ -493,7 +493,7 @@ Route::group([
     $router->patch('goods-receipt-note/update', [ApiController::class, 'updateGoodsReceiptNote']);
     $router->delete('goods-receipt-note/delete', [ApiController::class, 'deleteGoodsReceiptNote']);
 
-    $router->get('warehouse/mlt/log', [ApiController::class, 'warehouseMLTLog']);
+    $router->get('warehouse/mlt/log', [ApiController::class, 'warehouseMLTLog2']);
     $router->get('export/warehouse-mlt-logs', [ApiController::class, 'exportWarehouseMLTLog']);
 
     $router->get('warehouse/fg/log', [ApiController::class, 'warehouseFGLog']);

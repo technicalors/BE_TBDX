@@ -18,6 +18,7 @@ use App\Admin\Controllers\UserLineMachineController;
 use App\Admin\Controllers\VOCRegisterController;
 use App\Admin\Controllers\VOCTypeController;
 use App\Admin\Controllers\ChatController;
+use App\Admin\Controllers\SupplierController;
 use App\Models\Attachment;
 use Encore\Admin\Facades\Admin;
 use Illuminate\Http\Request;
@@ -344,6 +345,7 @@ Route::group([
     $router->post('manufacture/update-quantity-info-cong-doan', [ApiController::class, 'updateQuantityInfoCongDoan'])->middleware('prevent-duplicate-requests');
     $router->post('manufacture/delete-paused-plan-list', [ApiController::class, 'deletePausedPlanList']);
     $router->post('manufacture/update-so-du', [ApiController::class, 'updateSodu']);
+    $router->post('manufacture/corrugating-machine-scan', [ApiController::class, 'corrugatingMachineScan']);
 
     $router->post('manufacture/manual/input', [ApiController::class, 'manualInput']);
     $router->post('manufacture/manual/scan', [ApiController::class, 'scanManual'])->middleware('prevent-duplicate-requests');
@@ -494,6 +496,7 @@ Route::group([
     $router->delete('goods-receipt-note/delete', [ApiController::class, 'deleteGoodsReceiptNote']);
 
     $router->get('warehouse/mlt/log', [ApiController::class, 'warehouseMLTLog2']);
+    $router->get('warehouse/mlt/detail-log', [ApiController::class, 'warehouseMLTDetailLog']);
     $router->get('export/warehouse-mlt-logs', [ApiController::class, 'exportWarehouseMLTLog']);
 
     $router->get('warehouse/fg/log', [ApiController::class, 'warehouseFGLog']);
@@ -717,6 +720,11 @@ Route::group([
     $router->post('departments/create', [DepartmentController::class, 'create']);
     $router->post('departments/delete', [DepartmentController::class, 'delete']);
     $router->patch('departments/update', [DepartmentController::class, 'update']);
+
+    $router->get('suppliers/list', [SupplierController::class, 'index']);
+    $router->post('suppliers/create', [SupplierController::class, 'create']);
+    $router->post('suppliers/delete', [SupplierController::class, 'delete']);
+    $router->patch('suppliers/update', [SupplierController::class, 'update']);
 
     $router->get('profile', [CustomAdminController::class, 'profile']);
 });

@@ -26,7 +26,7 @@ class WarehouseMLTLog extends Model
     {
         return $this->hasOne(WareHouseMLTExport::class, 'material_id', 'material_id');
     }
-    public function import()
+    public function importer()
     {
         return $this->belongsTo(CustomUser::class, 'importer_id', 'id');
     }

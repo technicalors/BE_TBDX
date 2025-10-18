@@ -8680,6 +8680,12 @@ class ApiController extends AdminController
         return $this->success(['data' => $records, 'totalPage' => $totalPage]);
     }
 
+    public function warehouseMLTDetailLog(Request $request){
+        $input = $request->all();
+        $data = WarehouseMLTLog::where('material_id', $input['material_id'])->orderBy('tg_nhap')->with('exporter', 'importer')->get();
+        return $this->success($data);
+    }
+
     public function exportWarehouseMLTLog(Request $request)
     {
         set_time_limit(300);

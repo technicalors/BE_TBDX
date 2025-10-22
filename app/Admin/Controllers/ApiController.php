@@ -4903,7 +4903,7 @@ class ApiController extends AdminController
         foreach ($allDataInSheet as $key => $row) {
             //Lấy dứ liệu từ dòng thứ 3
             if ($key > 8) {
-                $record = WareHouseMLTImport::where('ma_cuon_ncc', $row['B'])->first();
+                $record = WareHouseMLTImport::where('ma_cuon_ncc', trim($row['B']))->first();
                 if ($record) {
                     return $this->failure([], 'Hàng số ' . ($key) . ': Mã cuộn đã tồn tại');
                 }

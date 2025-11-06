@@ -701,8 +701,8 @@ class ApiUIController extends AdminController
                     // Lấy kế hoạch trong ngày
                     $ke_hoach_ca = (clone $song_info_plan_query)
                         ->where(function ($q) {
-                            $q->whereDate('ngay_sx', date('Y-m-d'))
-                                ->orWhereIn('id', InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray());
+                            $q->whereDate('ngay_sx', date('Y-m-d'));
+                                // ->orWhereIn('id', InfoCongDoanPriority::all()->pluck('info_cong_doan_id')->toArray());
                         })
                         ->sum('dinh_muc');
                     

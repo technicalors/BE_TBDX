@@ -8615,10 +8615,10 @@ class ApiController extends AdminController
         $lastKgNhapSub = WarehouseMLTLog::select('warehouse_mlt_logs.so_kg_nhap')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
 
         // Subquery tg_xuat mới nhất
-        $lastXuatSub = WarehouseMLTLog::select('warehouse_mlt_logs.tg_xuat')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
+        $lastXuatSub = WarehouseMLTLog::select('warehouse_mlt_logs.tg_xuat')->whereNotNull('tg_xuat')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
 
         // Subquery so_kg_xuat tương ứng warehouse_mlt_logs.tg_xuat mới nhất
-        $lastKgXuatSub = WarehouseMLTLog::select('warehouse_mlt_logs.so_kg_xuat')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
+        $lastKgXuatSub = WarehouseMLTLog::select('warehouse_mlt_logs.so_kg_xuat')->whereNotNull('tg_xuat')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
 
         $query->addSelect([
                 'first_tg_nhap'   => $firstNhapSub,

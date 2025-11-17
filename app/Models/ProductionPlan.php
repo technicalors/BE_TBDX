@@ -18,7 +18,8 @@ class ProductionPlan extends Model
     protected $table = 'production_plans';
     protected $fillable = [
         'id', 'lo_sx', 'machine_id', 'thu_tu_uu_tien', 'ngay_dat_hang', 'toc_do', 'tg_doi_model',
-        'sl_kh', 'so_m_toi', 'ghi_chu', 'thoi_gian_bat_dau', 'thoi_gian_ket_thuc', 'file', 'order_id', 'ngay_sx','ordering', 'created_by', 'loss_quantity'
+        'sl_kh', 'so_m_toi', 'ghi_chu', 'thoi_gian_bat_dau', 'thoi_gian_ket_thuc', 'file', 'order_id', 'ngay_sx','ordering', 'created_by', 'loss_quantity',
+        'sl_tem'
     ];
 
     public function machine()

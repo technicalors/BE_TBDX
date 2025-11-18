@@ -8617,6 +8617,9 @@ class ApiController extends AdminController
         // Subquery tg_xuat mới nhất
         $lastXuatSub = WarehouseMLTLog::select('warehouse_mlt_logs.tg_xuat')->whereNotNull('tg_xuat')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
 
+        // Subquery so_kg_xuat mới nhất
+        $newestKgXuatSub = WarehouseMLTLog::select('warehouse_mlt_logs.so_kg_xuat')->whereNotNull('tg_xuat')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
+
         // Subquery so_kg_xuat tương ứng warehouse_mlt_logs.tg_xuat mới nhất
         $lastKgXuatSub = WarehouseMLTLog::select('warehouse_mlt_logs.so_kg_xuat')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
 
@@ -8625,6 +8628,7 @@ class ApiController extends AdminController
                 'last_kg_nhap'   => $lastKgNhapSub,
                 'last_tg_xuat'    => $lastXuatSub,
                 'last_kg_xuat'    => $lastKgXuatSub,
+                'newest_kg_xuat' => $newestKgXuatSub
             ]);
         if (isset($input['tg_nhap'])) {
             $query->whereFirstImportDate(date('Y-m-d', strtotime($input['tg_nhap'])));
@@ -8670,7 +8674,7 @@ class ApiController extends AdminController
             $record->so_kg_nhap = $so_kg_nhap;
             $record->so_kg_dau = $record->so_kg_dau ?? "0";
             $record->so_kg_cuoi = $so_kg_cuoi;
-            $record->so_kg_xuat = $record->so_kg_nhap - $record->so_kg_cuoi;
+            $record->so_kg_xuat = $record->newest_kg_xuat - $so_kg_cuoi;
             $record->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
             $record->so_cuon = $record->so_kg_dau != $record->so_kg_cuoi ? "0" : "1";
             $vi_tri = $record->locator->locator_mlt_id ?? '';
@@ -8712,7 +8716,7 @@ class ApiController extends AdminController
             $obj->tg_nhap = $tg_nhap ? date('d/m/Y', strtotime($tg_nhap)) : "";
             $obj->so_kg_dau = $record->so_kg_dau ?? "0";
             $obj->so_kg_nhap = $so_kg_nhap;
-            $obj->so_kg_xuat = $obj->so_kg_nhap - $so_kg_cuoi;
+            $obj->so_kg_xuat = $record->newest_kg_xuat - $so_kg_cuoi;
             $obj->so_kg_cuoi = $so_kg_cuoi;
             $obj->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
             $obj->so_cuon = $obj->so_kg_dau != $obj->so_kg_cuoi ? "0" : "1";

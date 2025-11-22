@@ -8674,7 +8674,7 @@ class ApiController extends AdminController
             $record->so_kg_nhap = $so_kg_nhap;
             $record->so_kg_dau = $record->so_kg_dau ?? "0";
             $record->so_kg_cuoi = $so_kg_cuoi;
-            $record->so_kg_xuat = $record->newest_kg_xuat - $so_kg_cuoi;
+            $record->so_kg_xuat = $record->newest_kg_xuat > 0 ? $record->newest_kg_xuat - $so_kg_cuoi : 0;
             $record->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
             $record->so_cuon = $record->so_kg_dau != $record->so_kg_cuoi ? "0" : "1";
             $vi_tri = $record->locator->locator_mlt_id ?? '';
@@ -8716,7 +8716,7 @@ class ApiController extends AdminController
             $obj->tg_nhap = $tg_nhap ? date('d/m/Y', strtotime($tg_nhap)) : "";
             $obj->so_kg_dau = $record->so_kg_dau ?? "0";
             $obj->so_kg_nhap = $so_kg_nhap;
-            $obj->so_kg_xuat = $record->newest_kg_xuat - $so_kg_cuoi;
+            $obj->so_kg_xuat = $record->newest_kg_xuat > 0 ? $record->newest_kg_xuat - $so_kg_cuoi : 0;
             $obj->so_kg_cuoi = $so_kg_cuoi;
             $obj->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
             $obj->so_cuon = $obj->so_kg_dau != $obj->so_kg_cuoi ? "0" : "1";

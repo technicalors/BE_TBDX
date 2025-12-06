@@ -221,109 +221,60 @@ class KPIController extends AdminController
         Log::info('Updating KPI Warehouse FG Data');
         ini_set('memory_limit', '1024M');
         ini_set('max_execution_time', 0);
-        // $machineDan = Machine::where('line_id', 32)->get()->pluck('id')->toArray();
-        // $machineXaLot = Machine::where('line_id', 33)->get()->pluck('id')->toArray();
-        // $thung = InfoCongDoan::whereIn('machine_id', $machineDan)->get()->pluck('lo_sx')->unique()->toArray();
-        // $lot = InfoCongDoan::whereIn('machine_id', $machineXaLot)->get()->pluck('lo_sx')->unique()->toArray();
+        $sub = DB::table('warehouse_fg_logs')
+            ->select('lsx_pallet_id', DB::raw('MIN(created_at) as created_at'))
+            ->groupBy('lsx_pallet_id');
 
-        // return $export;
-        // $inventories = WarehouseFGLog::select('so_luong', 'lo_sx')
-        //     ->selectRaw("
-        //         CASE
-        //             WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) <= 30 THEN '1 tháng'
-        //             WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 31 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 60 THEN '2 tháng'
-        //             WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 61 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 90 THEN '3 tháng'
-        //             WHEN TIMESTAMPDIFF(DAY, created_at, NOW()) >= 91 AND TIMESTAMPDIFF(DAY, created_at, NOW()) <= 120 THEN '4 tháng'
-        //             ELSE '> 5 tháng'
-        //         END AS time_range,
-        //         DATEDIFF(NOW(), created_at) AS days_since_latest
-        //     ")
-        //     ->where('type', 1)
-        //     ->doesntHave('exportRecord')
-        //     ->with('lsx_pallet')
-        //     // ->whereHas('lo_sx_pallet', function($query) {
-        //     //     $query->whereNotNull('type');
-        //     // })
-        //     ->get() // Loại bỏ các `lo_sx` đã xuất
-        //     ;
-        $lsx_pallets = LSXPallet::whereIn('type', [1, 2])
-            // ->join('warehouse_fg_logs as wlog', function ($join) {
-            //     $join->on('wlog.lsx_pallet_id', '=', 'lsx_pallet.id')
-            //         ->whereRaw("wlog.created_at = (
-            //          SELECT MIN(created_at)
-            //          FROM warehouse_fg_logs
-            //          WHERE lsx_pallet_id = lsx_pallet.id
-            //      )");
-            // })
-            ->with('warehouse_fg_logs')
-            ->where('remain_quantity', '>', 0)
-            ->where('status', 1)
-            // ->selectRaw("
-            //     lsx_pallet.so_luong,
-            //     lsx_pallet.type as lot_type,
-            //     DATEDIFF(NOW(), wlog.created_at) AS days_in_stock,
-            //     CASE
-            //         WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 30 THEN '1 tháng'
-            //         WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 60 THEN '2 tháng'
-            //         WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 90 THEN '3 tháng'
-            //         WHEN TIMESTAMPDIFF(DAY, wlog.created_at, NOW()) <= 120 THEN '4 tháng'
-            //         ELSE '> 5 tháng'
-            //     END AS time_range
-            // ")
-            ->orderBy('id', 'desc')
+        $result = DB::table('lsx_pallet as p')
+            ->joinSub($sub, 'l', function ($join) {
+                $join->on('l.lsx_pallet_id', '=', 'p.id');
+            })
+            ->whereIn('p.type', [1, 2])
+            ->where('p.remain_quantity', '>', 0)
+            ->select(
+                'p.type',
+                DB::raw("
+                    CASE
+                        WHEN DATEDIFF(CURDATE(), l.created_at) <= 30 THEN 1
+                        WHEN DATEDIFF(CURDATE(), l.created_at) <= 60 THEN 2
+                        WHEN DATEDIFF(CURDATE(), l.created_at) <= 90 THEN 3
+                        WHEN DATEDIFF(CURDATE(), l.created_at) <= 120 THEN 4
+                        ELSE 5
+                    END AS bucket_group
+                "),
+                DB::raw('SUM(p.so_luong) as total_remain_quantity')
+            )
+            ->groupBy('p.type', 'bucket_group')
+            ->orderBy('p.type')
+            ->orderBy('bucket_group')
             ->get();
-        // return $lsx_pallets->sum('so_luong');
+        // Các khoảng tháng theo đúng thứ tự bạn muốn hiển thị
         $months = [
-            '1 tháng' => 0,
-            '2 tháng' => 0,
-            '3 tháng' => 0,
-            '4 tháng' => 0,
+            '1 tháng'   => 0,
+            '2 tháng'   => 0,
+            '3 tháng'   => 0,
+            '4 tháng'   => 0,
             '> 5 tháng' => 0,
         ];
-        $series = [];
+
+        // Khởi tạo sẵn 2 nhóm type với đầy đủ key tháng (để array_values() không bị lệch)
         $filtered_data = [
-            'thung' => [],
-            'lot' => [],
+            'thung' => $months,
+            'lot'   => $months,
         ];
-        $overdate = [];
-        $now = Carbon::now();
-        foreach ($lsx_pallets as $lsx_pallet) {
-            $seriesItem = [];
-            $type = $lsx_pallet->type == 1 ? 'thung' : 'lot';
-            // $seriesItem['data'] = [];
-            if(count($lsx_pallet->warehouse_fg_logs) <= 0){
-                continue;
-            }
-            if($now->diffInDays($lsx_pallet->warehouse_fg_logs[0]->created_at) <= 30){
-                $inventory_period = "1 tháng";
-            }else if($now->diffInDays($lsx_pallet->warehouse_fg_logs[0]->created_at) <= 60){
-                $inventory_period = "2 tháng";
-            }else if($now->diffInDays($lsx_pallet->warehouse_fg_logs[0]->created_at) <= 90){
-                $inventory_period = "3 tháng";
-            }else if($now->diffInDays($lsx_pallet->warehouse_fg_logs[0]->created_at) <= 120){
-                $inventory_period = "4 tháng";
+        
+        $series = ['thung' => ['name'=>'Thùng', 'data'=>[]], 'lot' => ['name'=>'Lót', 'data'=>[]]];
+        foreach ($result as $key => $value) {
+            if($value->type == 1){
+                $series['thung']['data'][] = (int)$value->total_remain_quantity;
             }else{
-                $inventory_period = "> 5 tháng";
-                $overdate[] = $lsx_pallet;
+                $series['lot']['data'][] = (int)$value->total_remain_quantity;
             }
-            if(isset($filtered_data[$type][$inventory_period])){
-                $filtered_data[$type][$inventory_period] += (int)$lsx_pallet->so_luong;
-            }else{
-                $filtered_data[$type][$inventory_period] = (int)$lsx_pallet->so_luong;
-            }
-            // $series[] = $seriesItem;
         }
-        // return $filtered_data;
-        // return $overdate;
-        $data = [];
-        $data['categories'] = array_keys($months);
-        $data['series'] = [];
-        foreach($filtered_data as $type => $result){
-            $data['series'][] = [
-                'name' => $type === 'thung' ? 'Thùng' : 'Lót',
-                'data' => array_values($result)
-            ];
-        };
+        $data = [
+            'categories' => array_keys($months),
+            'series' => array_values($series),
+        ];
         return $this->success($data);
     }
 

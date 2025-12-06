@@ -8862,8 +8862,9 @@ class ApiController extends AdminController
             });
         }
         if (isset($input['sl_ton_min']) || isset($input['sl_ton_max']) || isset($input['so_ngay_ton_min']) || isset($input['so_ngay_ton_max'])) {
-            $query->doesntHave('exportRecord');
-            $query->whereHas('lo_sx_pallet', function ($q) use ($input) {
+            // $query->doesntHave('exportRecord');
+            $query->whereHas('lsx_pallet', function ($q) use ($input) {
+                $q->where('remain_quantity' , '>', 0);
                 if (isset($input['sl_ton_min'])) {
                     $q->where('remain_quantity', '>=', $input['sl_ton_min']);
                 }
@@ -8878,11 +8879,12 @@ class ApiController extends AdminController
                 $query->whereRaw('DATEDIFF(NOW(), created_at) <= ?', [$input['so_ngay_ton_max']]);
             }
         }
-        return $query;
+        return $query->orderBy('created_at');
     }
     public function warehouseFGLog(Request $request)
     {
         $query = $this->customQueryWarehouseFGLog($request);
+        return $query->first();
         $totalPage = $query->count();
         $records = $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize)->with(['user', 'exportRecord.user'])->get();
         foreach ($records as $key => $record) {

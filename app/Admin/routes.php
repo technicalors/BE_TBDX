@@ -773,6 +773,7 @@ Route::group([
     $router->post('restore-lost-material', [ApiUIController::class, 'restoreLostMaterial']);
     $router->post('updateLSXPalletIdWarehouseLog', [ApiUIController::class, 'updateLSXPalletIdWarehouseLog']);
     $router->post('exportAllFGBeforeDate', [ApiUIController::class, 'exportAllFGBeforeDate']);
+    $router->post('exportRemainFGBeforeDate', [ApiUIController::class, 'exportRemainFGBeforeDate']);
     $router->get('getDuplicateWarehouseFGLog', [ApiUIController::class, 'getDuplicateWarehouseFGLog']);
     $router->get('clearRequestLogs', [ApiUIController::class, 'clearRequestLogs']);
     $router->get('deleteDuplicatePlan', [ApiUIController::class, 'deleteDuplicatePlan']);

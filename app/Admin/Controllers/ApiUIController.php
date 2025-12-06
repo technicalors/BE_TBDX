@@ -5417,77 +5417,151 @@ class ApiUIController extends AdminController
 
     public function exportAllFGBeforeDate(Request $request)
     {
-        $lsx_pallet = LSXPallet::with('warehouse_fg_logs')
-            ->whereHas('warehouse_fg_logs', function ($q) use ($request) {
+        // Có thể lấy từ request, tạm để cố định như bạn
+        $date = '2025-07-31';
+
+        // Base query cho LSXPallet
+        $baseQuery = LSXPallet::query()
+            ->where('remain_quantity', '>', 0)
+            ->whereHas('warehouse_fg_logs', function ($q) use ($date) {
                 $q->where('type', 1)
-                    ->whereDate('created_at', $request->date)
-                    ->whereDate('created_at', '<', '2025-01-01');
+                ->whereDate('created_at', '<=', $date);
             })
-            // 2) Không có log type = 2 trong cùng ngày
-            ->whereDoesntHave('warehouse_fg_logs', function ($q) use ($request) {
-                $q->where('type', 2)
-                    ->whereDate('created_at', $request->date);
-            })
-            ->get();
-        // return $lsx_pallet->count();
-        if (count($lsx_pallet) <= 0) {
+            ->whereDoesntHave('warehouse_fg_logs', function ($q) {
+                $q->where('type', 2);
+            });
+        // Đếm tổng trước (không load data)
+        $total = (clone $baseQuery)->count();
+
+        if ($total === 0) {
             return $this->success('không tìm thấy dữ liệu');
         }
+
         $counter = 0;
-        foreach ($lsx_pallet as $key => $value) {
-            if (count($value->warehouse_fg_logs) > 0) {
-                $logs = $value->warehouse_fg_logs->toArray() ?? [];
-                $check_exported = in_array(2, array_column($logs, 'type'));
-                if ($check_exported) {
-                    $value->update(['status' => LSXPallet::EXPORTED, 'remain_quantity' => 0]);
-                } else {
-                    $log = WarehouseFGLog::create([
-                        'lo_sx' => $value->lo_sx,
-                        'pallet_id' => $value->pallet_id,
-                        'so_luong' => $value->so_luong,
-                        'type' => 2,
-                        'created_by' => null,
-                        'created_at' => $value->created_at,
-                        'lsx_pallet_id' => $value->id,
-                        'order_id' => $value->order_id,
-                        'delivery_note_id' => null,
-                        'locator_id' => $value->pallet->locator_fg_map->locator_id ?? null,
-                        'nhap_du' => 0,
-                    ]);
-                    $value->update(['status' => LSXPallet::EXPORTED, 'remain_quantity' => 0]);
-                }
-                $counter++;
-            } else {
-                $import = WarehouseFGLog::create([
-                    'lo_sx' => $value->lo_sx,
-                    'pallet_id' => $value->pallet_id,
-                    'so_luong' => $value->so_luong,
-                    'type' => 1,
-                    'created_by' => null,
-                    'created_at' => $value->created_at,
-                    'lsx_pallet_id' => $value->id,
-                    'order_id' => $value->order_id,
-                    'delivery_note_id' => null,
-                    'locator_id' => $value->pallet->locator_fg_map->locator_id ?? null,
-                    'nhap_du' => 0,
-                ]);
-                $export = WarehouseFGLog::create([
-                    'lo_sx' => $value->lo_sx,
-                    'pallet_id' => $value->pallet_id,
-                    'so_luong' => $value->so_luong,
-                    'type' => 2,
-                    'created_by' => null,
-                    'created_at' => $value->created_at,
-                    'lsx_pallet_id' => $value->id,
-                    'order_id' => $value->order_id,
-                    'delivery_note_id' => null,
-                    'locator_id' => $value->pallet->locator_fg_map->locator_id ?? null,
-                    'nhap_du' => 0,
-                ]);
-                $value->update(['status' => LSXPallet::EXPORTED, 'remain_quantity' => 0]);
-            }
+
+        DB::transaction(function () use ($baseQuery, &$counter) {
+            // Duyệt theo từng "lô" 500 bản ghi, tránh load hết vào RAM
+            $baseQuery->orderBy('id') // để dùng chunkById
+                ->chunkById(500, function ($pallets) use (&$counter) {
+
+                    $now        = now();
+                    $logsToInsert = [];
+                    $palletIds    = [];
+
+                    foreach ($pallets as $pallet) {
+                        $logsToInsert[] = [
+                            'lo_sx'            => $pallet->lo_sx,
+                            'pallet_id'        => $pallet->pallet_id,
+                            'so_luong'         => $pallet->so_luong,
+                            'type'             => 2,
+                            'created_by'       => null, // hoặc auth()->id()
+                            // Giữ logic cũ của bạn
+                            'created_at'       => $pallet->created_at,
+                            'updated_at'       => $now,
+                            'lsx_pallet_id'    => $pallet->id,
+                            'order_id'         => $pallet->order_id,
+                            'delivery_note_id' => null,
+                            'locator_id'       => null,
+                            'nhap_du'          => 0,
+                        ];
+
+                        $palletIds[] = $pallet->id;
+                        $counter++;
+                    }
+
+                    // Insert 1 lần cho cả batch
+                    if (!empty($logsToInsert)) {
+                        WarehouseFGLog::insert($logsToInsert);
+                    }
+
+                    // Update pallet 1 lần cho cả batch
+                    if (!empty($palletIds)) {
+                        LSXPallet::whereIn('id', $palletIds)->update([
+                            'status'          => LSXPallet::EXPORTED,
+                            'remain_quantity' => 0,
+                            'updated_at'      => $now,
+                        ]);
+                    }
+                    Log::info($counter);
+                });
+        });
+
+        return $this->success('done ' . $counter . '/' . $total . ' record');
+    }
+
+    public function exportRemainFGBeforeDate(Request $request)
+    {
+        // Có thể lấy từ request, tạm để cố định như bạn
+        $date = '2025-07-31';
+
+        // Base query cho LSXPallet
+        $baseQuery = LSXPallet::query()
+            ->where('remain_quantity', '>', 0)
+            ->whereHas('warehouse_fg_logs', function ($q) use ($date) {
+                $q->where('type', 1)
+                ->whereDate('created_at', '<=', $date);
+            })
+            ->whereHas('warehouse_fg_logs', function ($q) use ($date) {
+                $q->where('type', 2);
+            });
+        // Đếm tổng trước (không load data)
+        $total = (clone $baseQuery)->count();
+
+        if ($total === 0) {
+            return $this->success('không tìm thấy dữ liệu');
         }
-        return $this->success('done ' . $counter . "/" . $lsx_pallet->count() . ' record');
+
+        $counter = 0;
+
+        DB::transaction(function () use ($baseQuery, &$counter) {
+            // Duyệt theo từng "lô" 500 bản ghi, tránh load hết vào RAM
+            $baseQuery->orderBy('id') // để dùng chunkById
+                ->chunkById(500, function ($pallets) use (&$counter) {
+
+                    $now        = now();
+                    $logsToInsert = [];
+                    $palletIds    = [];
+
+                    foreach ($pallets as $pallet) {
+                        $logsToInsert[] = [
+                            'lo_sx'            => $pallet->lo_sx,
+                            'pallet_id'        => $pallet->pallet_id,
+                            'so_luong'         => $pallet->so_luong,
+                            'type'             => 2,
+                            'created_by'       => null, // hoặc auth()->id()
+                            // Giữ logic cũ của bạn
+                            'created_at'       => $pallet->created_at,
+                            'updated_at'       => $now,
+                            'lsx_pallet_id'    => $pallet->id,
+                            'order_id'         => $pallet->order_id,
+                            'delivery_note_id' => null,
+                            'locator_id'       => null,
+                            'nhap_du'          => 0,
+                        ];
+
+                        $palletIds[] = $pallet->id;
+                        $counter++;
+                    }
+
+                    // Update pallet 1 lần cho cả batch
+                    if (!empty($palletIds)) {
+                        LSXPallet::whereIn('id', $palletIds)->update([
+                            'status'          => LSXPallet::EXPORTED,
+                            'remain_quantity' => 0,
+                            'updated_at'      => $now,
+                        ]);
+                        WarehouseFGLog::whereIn('lsx_pallet_id', $palletIds)->where('type', 2)->delete();
+                    }
+
+                    // Insert 1 lần cho cả batch
+                    if (!empty($logsToInsert)) {
+                        WarehouseFGLog::insert($logsToInsert);
+                    }
+                    Log::info($counter);
+                });
+        });
+
+        return $this->success('done ' . $counter . '/' . $total . ' record');
     }
 
     public function getDuplicateWarehouseFGLog(Request $request)

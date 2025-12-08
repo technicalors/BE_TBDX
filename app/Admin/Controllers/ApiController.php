@@ -8886,7 +8886,6 @@ class ApiController extends AdminController
     public function warehouseFGLog(Request $request)
     {
         $query = $this->customQueryWarehouseFGLog($request);
-        return $query->first();
         $totalPage = $query->count();
         $records = $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize)->with(['user', 'exportRecord.user'])->get();
         foreach ($records as $key => $record) {

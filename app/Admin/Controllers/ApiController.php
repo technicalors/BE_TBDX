@@ -8658,8 +8658,9 @@ class ApiController extends AdminController
         $records = $query->get();
         foreach ($records as $key => $record) {
             $tg_nhap = $record->first_tg_nhap ?? '';
-            $so_kg_nhap = $record->last_kg_nhap ?? 0;
-            $so_kg_cuoi = $so_kg_nhap - ($record->last_kg_xuat ?? 0);
+            $so_kg_nhap = $record->so_kg_dau ?? 0;
+            $so_kg_cuoi = $record->last_kg_nhap - ($record->last_kg_xuat ?? 0);
+            $so_kg_xuat = $so_kg_nhap - $so_kg_cuoi;
             $tg_xuat = $record->last_tg_xuat;
             $record->material_id = $record->id ?? '';
             $record->ten_ncc = $record->supplier->name ?? '';
@@ -8674,7 +8675,7 @@ class ApiController extends AdminController
             $record->so_kg_nhap = $so_kg_nhap;
             $record->so_kg_dau = $record->so_kg_dau ?? "0";
             $record->so_kg_cuoi = $so_kg_cuoi;
-            $record->so_kg_xuat = $record->newest_kg_xuat > 0 ? $record->newest_kg_xuat - $so_kg_cuoi : 0;
+            $record->so_kg_xuat = $so_kg_xuat;
             $record->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
             $record->so_cuon = $record->so_kg_dau != $record->so_kg_cuoi ? "0" : "1";
             $vi_tri = $record->locator->locator_mlt_id ?? '';

@@ -8702,8 +8702,9 @@ class ApiController extends AdminController
             $obj = new stdClass;
             $obj->stt = $key + 1;
             $tg_nhap = $record->first_tg_nhap ?? '';
-            $so_kg_nhap = $record->last_kg_nhap ?? 0;
-            $so_kg_cuoi = $so_kg_nhap - ($record->last_kg_xuat ?? 0);
+            $so_kg_nhap = $record->so_kg_dau ?? 0;
+            $so_kg_cuoi = $record->last_kg_nhap - ($record->last_kg_xuat ?? 0);
+            $so_kg_xuat = $so_kg_nhap - $so_kg_cuoi;
             $tg_xuat = $record->last_tg_xuat;
             $obj->material_id = $record->id ?? '';
             $obj->ten_ncc = $record->supplier->name ?? '';
@@ -8717,7 +8718,7 @@ class ApiController extends AdminController
             $obj->tg_nhap = $tg_nhap ? date('d/m/Y', strtotime($tg_nhap)) : "";
             $obj->so_kg_dau = $record->so_kg_dau ?? "0";
             $obj->so_kg_nhap = $so_kg_nhap;
-            $obj->so_kg_xuat = $record->newest_kg_xuat > 0 ? $record->newest_kg_xuat - $so_kg_cuoi : 0;
+            $obj->so_kg_xuat = $so_kg_xuat;
             $obj->so_kg_cuoi = $so_kg_cuoi;
             $obj->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
             $obj->so_cuon = $obj->so_kg_dau != $obj->so_kg_cuoi ? "0" : "1";

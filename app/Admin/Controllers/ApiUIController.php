@@ -5566,42 +5566,26 @@ class ApiUIController extends AdminController
 
     public function getDuplicateWarehouseFGLog(Request $request)
     {
-        $dupGroups = WarehouseFGLog::select('lsx_pallet_id', 'so_luong', DB::raw('COUNT(*) as cnt'))
-            ->where('type', 2)
-            ->groupBy('lsx_pallet_id', 'so_luong')
-            ->having('cnt', '>', 1);
-
-        // 2) Join sub-query này để lấy tất cả bản ghi trùng
-        $duplicates = WarehouseFGLog::joinSub($dupGroups, 'dup', function ($join) {
-            $join->on('warehouse_fg_logs.lsx_pallet_id', '=', 'dup.lsx_pallet_id')
-                ->on('warehouse_fg_logs.so_luong',       '=', 'dup.so_luong');
-        })
-            ->where('warehouse_fg_logs.type', 2)
-            ->get();
-        return $duplicates;
-
-        // DB::transaction(function() {
-            // 1) Lấy danh sách các nhóm (lsx_pallet_id, so_luong) có >1 record type=2
+        DB::transaction(function () {
             $groups = WarehouseFGLog::where('type', 2)
-                ->select('lsx_pallet_id','so_luong')
-                ->groupBy('lsx_pallet_id','so_luong')
+                ->select('lsx_pallet_id', 'so_luong')
+                ->groupBy('lsx_pallet_id', 'so_luong')
                 ->havingRaw('COUNT(*) > 1')
                 ->get();
-        
+
             foreach ($groups as $g) {
                 // 2) Load toàn bộ log trong nhóm
-                $logs = WarehouseFGLog::where([
-                        ['type', 2],
-                        ['lsx_pallet_id', $g->lsx_pallet_id],
-                        ['so_luong',      $g->so_luong],
-                    ])->get();
-        
+                $logs = WarehouseFGLog::where('type', 2)
+                    ->where('lsx_pallet_id', $g->lsx_pallet_id)
+                    ->where('so_luong', $g->so_luong)
+                    ->get();
+
                 // 3) Phân tách record "đủ cả 2" và "thiếu"
-                $valid = $logs->filter(fn($r) =>
-                    $r->created_by !== null
-                    && $r->delivery_note_id !== null
+                $valid = $logs->filter(fn ($r) =>
+                    !is_null($r->created_by) &&
+                    !is_null($r->delivery_note_id)
                 );
-        
+
                 // 4) Xác định record giữ lại
                 if ($valid->isNotEmpty()) {
                     // nếu có ít nhất 1 record "đủ cả 2" → giữ id cao nhất trong valid
@@ -5610,15 +5594,20 @@ class ApiUIController extends AdminController
                     // ngược lại → giữ id cao nhất cả nhóm
                     $keep = $logs->sortByDesc('id')->first();
                 }
-        
-                // 5) Xóa các record còn lại
-                $toDelete = $logs->pluck('id')
-                    ->filter(fn($id) => $id !== 'null')
+
+                // 5) Xóa các record còn lại (trừ record keep)
+                $toDelete = $logs
+                    ->where('id', '!=', $keep->id)
+                    ->pluck('id')
                     ->all();
-        
-                WarehouseFGLog::whereIn('id', $toDelete)->delete();
+
+                if (!empty($toDelete)) {
+                    $log_query = WarehouseFGLog::whereIn('id', $toDelete);
+                    LSXPallet::whereIn('id', (clone $log_query)->pluck('lsx_pallet_id')->toArray())->update(['remain_quantity'=>0]);
+                    $log_query->delete();
+                }
             }
-        // });
+        });
         return 'done';
     }
 

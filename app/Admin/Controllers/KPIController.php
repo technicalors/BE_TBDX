@@ -248,29 +248,35 @@ class KPIController extends AdminController
             ->orderBy('p.type')
             ->orderBy('bucket_group')
             ->get();
+        // return $result;
         // Các khoảng tháng theo đúng thứ tự bạn muốn hiển thị
         $months = [
             '1 tháng'   => 0,
             '2 tháng'   => 0,
             '3 tháng'   => 0,
             '4 tháng'   => 0,
-            '> 5 tháng' => 0,
-        ];
-
-        // Khởi tạo sẵn 2 nhóm type với đầy đủ key tháng (để array_values() không bị lệch)
-        $filtered_data = [
-            'thung' => $months,
-            'lot'   => $months,
+            '> 4 tháng' => 0,
         ];
         
-        $series = ['thung' => ['name'=>'Thùng', 'data'=>[]], 'lot' => ['name'=>'Lót', 'data'=>[]]];
-        foreach ($result as $key => $value) {
+        $series = [
+            'thung' => [
+                'name'=>'Thùng', 
+                'data'=>['1'=>0, '2'=>0, '3'=>0, '4'=>0, '5'=>0]
+            ],
+            'lot' => [
+                'name'=>'Lót', 
+                'data'=>['1'=>0, '2'=>0, '3'=>0, '4'=>0, '5'=>0]
+            ]
+        ];
+        foreach ($result as $value) {
             if($value->type == 1){
-                $series['thung']['data'][] = (int)$value->total_remain_quantity;
+                $series['thung']['data'][$value->bucket_group] = (int)$value->total_remain_quantity ?? 0;
             }else{
-                $series['lot']['data'][] = (int)$value->total_remain_quantity;
+                $series['lot']['data'][$value->bucket_group] = (int)$value->total_remain_quantity ?? 0;
             }
         }
+        $series['thung']['data'] = array_values($series['thung']['data']);
+        $series['lot']['data'] = array_values($series['lot']['data']);
         $data = [
             'categories' => array_keys($months),
             'series' => array_values($series),

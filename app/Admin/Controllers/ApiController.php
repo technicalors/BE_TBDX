@@ -6163,7 +6163,7 @@ class ApiController extends AdminController
                         'orders.*',
                         'orders.customer_id',
                         'buyers.ket_cau_giay',
-                        DB::raw("CONCAT_WS('', COALESCE(kho_tong, ''), COALESCE(ket_cau_giay, ''), COALESCE(layout_type, ''), COALESCE(orders.customer_id, ''), COALESCE(mdh, ''), COALESCE(dai, ''), COALESCE(rong, ''), COALESCE(cao, ''), COALESCE(note_3, ''), COALESCE(dot, '')) as concatenated_column ")
+                        DB::raw("CONCAT_WS('', COALESCE(kho_tong, ''), COALESCE(ket_cau_giay, ''), COALESCE(layout_type, ''), COALESCE(orders.customer_id, ''), COALESCE(mdh, ''), COALESCE(dai, ''), COALESCE(rong, ''), COALESCE(cao, ''), COALESCE(note_3, ''), COALESCE(dot, ''), COALESCE(dai_tam, '')) as concatenated_column ")
                     )
                     ->get()->sortBy('buyer_id')->sortByDesc('kho_tong')->groupBy('concatenated_column');
                 $start_time = strtotime($input['start_time']);

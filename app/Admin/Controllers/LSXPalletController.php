@@ -153,7 +153,7 @@ class LSXPalletController extends AdminController
             $obj->kich_thuoc = $record->order->kich_thuoc ?? "";
             $obj->so_luong = $record->so_luong ?? "";
             $obj->locator_id = $record->locator_fg_map->locator_id ?? "";
-            $record->status = count($record->warehouseFGLog) > 0 ? 'Đã nhập kho' : 'Chưa nhập kho';
+            $obj->status = count($record->warehouseFGLog) > 0 ? 'Đã nhập kho' : 'Chưa nhập kho';
             $data[] = (array)$obj;
         }
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();

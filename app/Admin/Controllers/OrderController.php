@@ -78,13 +78,14 @@ class OrderController extends AdminController
                 $inp['fsc'] = $row['E'] == 'X' ? 1 : 0;
                 $inp['kho_giay'] = $row['F'];
                 $inp['dinh_luong'] = $row['G'];
-                $inp['so_kg'] = (int)str_replace(',', '', $row['Q']);
-                $inp['so_kg_dau'] = (int)str_replace(',', '', $row['I']);
+                $inp['so_kg'] = (int) str_replace(',', '', $row['Q']);
+                $inp['so_kg_dau'] = (int) str_replace(',', '', $row['I']);
                 $inp['ma_cuon_ncc'] = $row['M'];
-                $inp['ma_vat_tu'] = $row['D'] . '(' . $row['G'] . ')' . $row['F'];;
+                $inp['ma_vat_tu'] = $row['D'] . '(' . $row['G'] . ')' . $row['F'];
+                ;
                 Material::create($inp);
                 $input['material_id'] = $row['B'];
-                $input['so_kg_nhap'] = (int)str_replace(',', '', $row['N']);
+                $input['so_kg_nhap'] = (int) str_replace(',', '', $row['N']);
                 $input['tg_nhap'] = date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $row['J'])));
                 $input['importer_id'] = 1;
                 WarehouseMLTLog::create($input);
@@ -104,7 +105,8 @@ class OrderController extends AdminController
         return true;
     }
 
-    function queryOrder($request){
+    function queryOrder($request)
+    {
         $query = Order::orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
         if (isset($request->id)) {
             $query->where('id', 'like', "%" . $request->id . "%");
@@ -156,8 +158,8 @@ class OrderController extends AdminController
         }
         if (isset($request->kich_thuoc)) {
             $query->where(function ($custom_query) use ($request) {
-                $custom_query->where('kich_thuoc', 'like', '%'.$request->kich_thuoc.'%')
-                ->orWhere('kich_thuoc_chuan', 'like', '%'.$request->kich_thuoc.'%');
+                $custom_query->where('kich_thuoc', 'like', '%' . $request->kich_thuoc . '%')
+                    ->orWhere('kich_thuoc_chuan', 'like', '%' . $request->kich_thuoc . '%');
             });
         }
         if (isset($request->length)) {
@@ -212,17 +214,17 @@ class OrderController extends AdminController
                 $query->doesntHave('group_plan_order');
             }
         }
-        if(isset($request->layout_type)){
-            if($request->layout_type === 'is_null'){
-                $query->where(function($q){
+        if (isset($request->layout_type)) {
+            if ($request->layout_type === 'is_null') {
+                $query->where(function ($q) {
                     $q->whereNull('layout_type')->orWhere('layout_type', '');
                 });
-            }else{
+            } else {
                 $query->where('layout_type', $request->layout_type);
             }
         }
-        if(isset($request->layout_id)){
-            $query->where('layout_id', 'like', '%'.$request->layout_id.'%');
+        if (isset($request->layout_id)) {
+            $query->where('layout_id', 'like', '%' . $request->layout_id . '%');
         }
         return $query;
     }
@@ -282,11 +284,11 @@ class OrderController extends AdminController
                     if ($quy_cach) {
                         $ct_dai = str_replace('[D]', $input['dai'], $quy_cach->ct_dai);
                         $ct_rong = str_replace('[R]', $input['rong'], $quy_cach->ct_rong);
-                        $input['dai'] = eval($ct_dai) ?? $input['dai'];
-                        $input['rong'] = eval($ct_rong) ?? $input['rong'];
+                        $input['dai'] = eval ($ct_dai) ?? $input['dai'];
+                        $input['rong'] = eval ($ct_rong) ?? $input['rong'];
                         if (isset($input['cao'])) {
                             $ct_cao = str_replace('[C]', $input['cao'], $quy_cach->ct_cao);
-                            $input['cao'] = eval($ct_cao) ?? $input['cao'];
+                            $input['cao'] = eval ($ct_cao) ?? $input['cao'];
                         }
                     }
                 }
@@ -323,7 +325,7 @@ class OrderController extends AdminController
                                 $function = str_replace('$so_con_input', $khuon_link->so_con, $function);
                             }
                             try {
-                                $input = array_merge($input, eval($function));
+                                $input = array_merge($input, eval ($function));
                                 $input['so_met_toi'] = round($input['dai_tam'] * $input['so_dao'] / 100);
                                 // if($$input['phan_loai_2'] === 'thung-1-manh' && $input['dai_tam'] > 315){
                                 //     $input['phan_loai_2'] = 'thung-2-manh';
@@ -357,7 +359,8 @@ class OrderController extends AdminController
                             $inp[$param] = $input[$param];
                         }
                         $order = Order::find($id);
-                        if (!$order) continue;
+                        if (!$order)
+                            continue;
                         if (isset($inp['kich_thuoc_chuan']) && $inp['kich_thuoc_chuan']) {
                             $kich_thuoc_chuan = [];
                             $kich_thuoc_chuan = explode('*', $inp['kich_thuoc_chuan']);
@@ -376,11 +379,11 @@ class OrderController extends AdminController
                             if ($quy_cach) {
                                 $ct_dai = str_replace('[D]', $inp['dai'], $quy_cach->ct_dai);
                                 $ct_rong = str_replace('[R]', $inp['rong'], $quy_cach->ct_rong);
-                                $inp['dai'] = eval($ct_dai) ?? $inp['dai'];
-                                $inp['rong'] = eval($ct_rong) ?? $inp['rong'];
+                                $inp['dai'] = eval ($ct_dai) ?? $inp['dai'];
+                                $inp['rong'] = eval ($ct_rong) ?? $inp['rong'];
                                 if (isset($inp['cao'])) {
                                     $ct_cao = str_replace('[C]', $inp['cao'], $quy_cach->ct_cao);
-                                    $inp['cao'] = eval($ct_cao) ?? $inp['cao'];
+                                    $inp['cao'] = eval ($ct_cao) ?? $inp['cao'];
                                 }
                             }
                         }
@@ -634,20 +637,20 @@ class OrderController extends AdminController
         $sheet->getRowDimension(1)->setRowHeight(40);
 
         $spreadsheet->getActiveSheet()->fromArray($orders, NULL, 'A3', true);
-        
+
         // Auto-size columns
         foreach ($sheet->getColumnIterator() as $column) {
             $sheet->getColumnDimension($column->getColumnIndex())->setAutoSize(true);
-            $sheet->getStyle($column->getColumnIndex().($start_row).':'.$column->getColumnIndex().($start_row + count($orders)))->applyFromArray(array_merge($centerStyle, $border));
+            $sheet->getStyle($column->getColumnIndex() . ($start_row) . ':' . $column->getColumnIndex() . ($start_row + count($orders)))->applyFromArray(array_merge($centerStyle, $border));
         }
-        
+
         header("Content-Description: File Transfer");
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="Đơn hàng.xlsx"');
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Đơn hàng.xlsx');
         $href = '/exported_files/Đơn hàng.xlsx';
         return $this->success($href);
@@ -725,7 +728,7 @@ class OrderController extends AdminController
                     $input['height'] = $row['K'];
                     $input['unit'] = $row['M'];
                     if (is_numeric($input['length']) && is_numeric($input['width'])) {
-                        $input['kich_thuoc_chuan'] =  $row['K'] ? $row['I'] . '*' . $row['J'] . '*' . $row['K'] : $row['I'] . '*' . $row['J'];
+                        $input['kich_thuoc_chuan'] = $row['K'] ? $row['I'] . '*' . $row['J'] . '*' . $row['K'] : $row['I'] . '*' . $row['J'];
                         if ($input['unit']) {
                             $input['dai'] = $this->updateKichThuoc($row['I'], $row['M']);
                             $input['rong'] = $this->updateKichThuoc($row['J'], $row['M']);
@@ -793,7 +796,7 @@ class OrderController extends AdminController
             return "$mdh-$mql";
         }
         $parts = explode('-', $latestOrderId->id);
-        $latestStt = isset($parts[2]) ? (int)$parts[2] : 0;
+        $latestStt = isset($parts[2]) ? (int) $parts[2] : 0;
         $nextStt = $latestStt + 1;
         return "$mdh-$mql-$nextStt";
     }
@@ -817,7 +820,7 @@ class OrderController extends AdminController
                 ->map(function ($id) use ($mdh, $mql) {
                     try {
                         if (preg_match("/^" . preg_quote($mdh, '/') . "-" . preg_quote($mql, '/') . "-(\d+)$/", $id, $matches)) {
-                            return (int)$matches[1]; // Lấy số nguyên từ hậu tố
+                            return (int) $matches[1]; // Lấy số nguyên từ hậu tố
                         }
                     } catch (\Throwable $th) {
                         Log::error($id);

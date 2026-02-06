@@ -107,7 +107,7 @@ class ApiController extends AdminController
             }
         }
 
-        $data =  [
+        $data = [
             "username" => $user->username,
             "name" => $user->name,
             "avatar" => $user->avatar,
@@ -151,7 +151,7 @@ class ApiController extends AdminController
 
     public function userInfo(Request $request)
     {
-        $user =  $request->user();
+        $user = $request->user();
         if ($user)
             return $this->success($this->parseDataUser($user));
         return $this->failure([], "Nguời dùng không tồn tại");
@@ -198,7 +198,8 @@ class ApiController extends AdminController
         $machine_status = 0;
         $input = $request->all();
         $machine = Machine::find($input['machine_id']);
-        if (!$machine) return $this->failure('', 'Không tìm thấy máy');
+        if (!$machine)
+            return $this->failure('', 'Không tìm thấy máy');
         $info_cong_doan = InfoCongDoan::with('order')->where('lo_sx', $input['lo_sx'])->where('machine_id', $input['machine_id'])->first();
         if ($info_cong_doan) {
             $info_cong_doan->update(['status' => 1]);
@@ -711,7 +712,7 @@ class ApiController extends AdminController
             if ($info_cong_doan_in) {
                 $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
                 if ($next_batch) {
-                    if (($request['Pre_Counter'] - $tracking->pre_counter)  >= $info_cong_doan_in->dinh_muc) {
+                    if (($request['Pre_Counter'] - $tracking->pre_counter) >= $info_cong_doan_in->dinh_muc) {
                         $info_cong_doan_in->update([
                             'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'status' => 2,
@@ -794,7 +795,7 @@ class ApiController extends AdminController
             try {
                 $next_batch = InfoCongDoan::where('status', 0)->where('lo_sx', '!=', $info_cong_doan_in->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
                 if ($next_batch) {
-                    if (((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) || ($info_cong_doan_in->sl_dau_ra_hang_loat > $request['Pre_Counter'])) {
+                    if (((int) $request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) || ($info_cong_doan_in->sl_dau_ra_hang_loat > $request['Pre_Counter'])) {
                         $info_cong_doan_in->update([
                             'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'status' => 2,
@@ -810,7 +811,7 @@ class ApiController extends AdminController
                     } else {
                         $info_cong_doan_in->update([
                             'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
-                            'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
+                            'sl_dau_ra_hang_loat' => (int) $request['Pre_Counter'],
                             'status' => 1
                         ]);
                         $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
@@ -819,7 +820,7 @@ class ApiController extends AdminController
                     broadcast(new ProductionUpdated($broadcast));
                     return $broadcast;
                 } else {
-                    if (((int)$request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) || ($info_cong_doan_in->sl_dau_ra_hang_loat > $request['Pre_Counter'])) {
+                    if (((int) $request['Pre_Counter'] === 0 && $info_cong_doan_in->sl_dau_ra_hang_loat > 0) || ($info_cong_doan_in->sl_dau_ra_hang_loat > $request['Pre_Counter'])) {
                         $info_cong_doan_in->update([
                             'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                             'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
@@ -834,7 +835,7 @@ class ApiController extends AdminController
                     } else {
                         $info_cong_doan_in->update([
                             'thoi_gian_bat_dau' => $info_cong_doan_in->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
-                            'sl_dau_ra_hang_loat' => (int)$request['Pre_Counter'],
+                            'sl_dau_ra_hang_loat' => (int) $request['Pre_Counter'],
                             'status' => 1
                         ]);
                         $info_cong_doan_in->sl_ok = $info_cong_doan_in->sl_dau_ra_hang_loat - $info_cong_doan_in->sl_ng_sx - $info_cong_doan_in->sl_ng_qc;
@@ -868,7 +869,7 @@ class ApiController extends AdminController
         if ($info_cong_doan_dan) {
             $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])->where('lo_sx', '<>', $info_cong_doan_dan->lo_sx)->where('machine_id', $tracking->machine_id)->orderBy('created_at', 'DESC')->first();
             if ($next_batch) {
-                if (($request['Pre_Counter'] - $tracking->pre_counter)  >= $info_cong_doan_dan->dinh_muc) {
+                if (($request['Pre_Counter'] - $tracking->pre_counter) >= $info_cong_doan_dan->dinh_muc) {
                     $info_cong_doan_dan->update([
                         'thoi_gian_bat_dau' => $info_cong_doan_dan->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                         'status' => 2,
@@ -944,7 +945,8 @@ class ApiController extends AdminController
 
     public function websocket(Request $request)
     {
-        if (!isset($request['device_id'])) return 'Không có mã máy';
+        if (!isset($request['device_id']))
+            return 'Không có mã máy';
         $machine = Machine::with('line')->where('device_id', $request['device_id'])->first();
         $line = $machine->line;
         $tracking = Tracking::where('machine_id', $machine->id)->first();
@@ -970,10 +972,12 @@ class ApiController extends AdminController
 
     public function websocketMachineStatus(Request $request)
     {
-        if (!isset($request['device_id'])) return $this->failure('Không có mã máy');;
+        if (!isset($request['device_id']))
+            return $this->failure('Không có mã máy');
+        ;
         $machine = Machine::with('line')->where('device_id', $request['device_id'])->first();
         $tracking = Tracking::where('machine_id', $machine->id)->first();
-        $res = MachineLog::UpdateStatus(['machine_id' => $machine->id, 'status' => (int)$request['Machine_Status'], 'timestamp' => date('Y-m-d H:i:s'), 'lo_sx' => $tracking->lo_sx ?? null]);
+        $res = MachineLog::UpdateStatus(['machine_id' => $machine->id, 'status' => (int) $request['Machine_Status'], 'timestamp' => date('Y-m-d H:i:s'), 'lo_sx' => $tracking->lo_sx ?? null]);
         // broadcast(new ProductionUpdated($res));
         return $this->success('Đã cập nhật trạng thái');
     }
@@ -981,9 +985,11 @@ class ApiController extends AdminController
     public function websocketMachineParams(Request $request)
     {
         $input = $request->all();
-        if (!isset($request->device_id)) return $this->failure('', 'Không có mã máy');
+        if (!isset($request->device_id))
+            return $this->failure('', 'Không có mã máy');
         $machine = Machine::where('device_id', $request->device_id)->first();
-        if (!$machine) return $this->failure('', 'Không tìm thấy máy');
+        if (!$machine)
+            return $this->failure('', 'Không tìm thấy máy');
         $tracking = Tracking::where('machine_id', $machine->id)->first();
         MachineParameterLogs::create([
             'lo_sx' => $tracking->lo_sx,
@@ -1055,7 +1061,7 @@ class ApiController extends AdminController
             $obj->sl_dau_ra_hang_loat = ceil($info_cong_doan->sl_dau_ra_hang_loat / $so_ra);
             $obj->sl_ng_sx = ceil($info_cong_doan->sl_ng_sx / $so_ra);
             $obj->sl_ng_qc = ceil($info_cong_doan->sl_ng_qc / $so_ra);
-            $obj->sl_ok = $obj->sl_dau_ra_hang_loat  - $obj->sl_ng_sx - $obj->sl_ng_qc;
+            $obj->sl_ok = $obj->sl_dau_ra_hang_loat - $obj->sl_ng_sx - $obj->sl_ng_qc;
         }
         return $this->success($obj);
     }
@@ -1087,10 +1093,11 @@ class ApiController extends AdminController
         return 0; // Keep the original order for other cases
     }
 
-    public function  listLotOI(Request $request)
+    public function listLotOI(Request $request)
     {
         $machine = Machine::with('line')->find($request->machine_id);
-        if (!$machine) return $this->failure([], 'Không tìm thấy máy');
+        if (!$machine)
+            return $this->failure([], 'Không tìm thấy máy');
         $line = $machine->line;
         $data = [];
         switch ($line->id) {
@@ -1162,7 +1169,7 @@ class ApiController extends AdminController
             $info_lo_sx->priority = $info_lo_sx->infoCongDoanPriority->priority ?? null;
             $qr = new stdClass();
             $qr->lo_sx = $info_lo_sx->lo_sx ?? "";
-            $qr->so_luong = $info_lo_sx ? ((int)$info_lo_sx->sl_dau_ra_hang_loat - (int)$info_lo_sx->sl_ng_sx - (int)$info_lo_sx->sl_ng_qc) : "";
+            $qr->so_luong = $info_lo_sx ? ((int) $info_lo_sx->sl_dau_ra_hang_loat - (int) $info_lo_sx->sl_ng_sx - (int) $info_lo_sx->sl_ng_qc) : "";
             $info_lo_sx->qr_code = json_encode($qr);
             $data[] = $info_lo_sx;
         }
@@ -1216,8 +1223,10 @@ class ApiController extends AdminController
             $pos_a = array_search($a->status, $order);
             $pos_b = array_search($b->status, $order);
 
-            if ($pos_a === false) return 1;
-            if ($pos_b === false) return -1;
+            if ($pos_a === false)
+                return 1;
+            if ($pos_b === false)
+                return -1;
 
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
@@ -1295,7 +1304,7 @@ class ApiController extends AdminController
         //Status: 0-Chờ SX; 1-Đang sản xuất; 2-SX xong, chờ QC; 3-QC xong, chờ In tem; 4-All done
         foreach ($plans as $key => $plan) {
             $order = $plan->order;
-            $info_lo_sx =  $plan->info_losx;
+            $info_lo_sx = $plan->info_losx;
             $obj = new stdClass;
             $obj->lo_sx = $plan->lo_sx ?? "-";
             $obj->lot_id = $info_lo_sx->lot_id ?? "-";
@@ -1602,7 +1611,8 @@ class ApiController extends AdminController
             } else if ($info->tem) {
                 $obj = $info->tem;
             }
-            if (is_null($obj)) continue;
+            if (is_null($obj))
+                continue;
             $obj->lo_sx = $info->lo_sx ?? "-";
             $obj->phan_dinh = $info->phan_dinh ?? "-";
             $obj->san_luong = $info->sl_dau_ra_hang_loat ?? 0;
@@ -1639,8 +1649,10 @@ class ApiController extends AdminController
             $pos_a = array_search($a->status, $order);
             $pos_b = array_search($b->status, $order);
 
-            if ($pos_a === false) return 1;
-            if ($pos_b === false) return -1;
+            if ($pos_a === false)
+                return 1;
+            if ($pos_b === false)
+                return -1;
 
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
@@ -1694,12 +1706,13 @@ class ApiController extends AdminController
     public function getManufactureOverall(Request $request)
     {
         $machine = Machine::with('line')->where('id', $request->machine_id)->first();
-        if (!$machine) return $this->failure([
-            'kh_ca' => 0,
-            'san_luong' => 0,
-            'ti_le_ca' => 0,
-            'tong_phe' => 0
-        ], 'Không tìm thấy máy');
+        if (!$machine)
+            return $this->failure([
+                'kh_ca' => 0,
+                'san_luong' => 0,
+                'ti_le_ca' => 0,
+                'tong_phe' => 0
+            ], 'Không tìm thấy máy');
         if ($machine->is_iot == 1) {
             $info_cong_doan = InfoCongDoan::where('machine_id', $machine->id)
                 ->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
@@ -1819,8 +1832,8 @@ class ApiController extends AdminController
                 $min_query = str_replace("±", '-', $query);
                 $max_query = str_replace("±", '+', $query);
                 try {
-                    $min = eval('return ' . $min_query . ';');
-                    $max = eval('return ' . $max_query . ';');
+                    $min = eval ('return ' . $min_query . ';');
+                    $max = eval ('return ' . $max_query . ';');
                 } catch (\Throwable $th) {
                     return [];
                 }
@@ -1884,8 +1897,8 @@ class ApiController extends AdminController
             $min_query = str_replace("±", '-', $query);
             $max_query = str_replace("±", '+', $query);
             try {
-                $min = eval('return ' . $min_query . ';');
-                $max = eval('return ' . $max_query . ';');
+                $min = eval ('return ' . $min_query . ';');
+                $max = eval ('return ' . $max_query . ';');
             } catch (\Throwable $th) {
                 return [];
             }
@@ -1897,7 +1910,7 @@ class ApiController extends AdminController
         } elseif ($test_criteria->tieu_chuan === "≥ Tiêu chuẩn giấy cuộn") {
             $slug = Str::slug($test_criteria->name);
             if (isset($tieu_chuan[$slug])) {
-                $test_criteria->min = (float)$tieu_chuan[$slug]['min'] ?? 0;
+                $test_criteria->min = (float) $tieu_chuan[$slug]['min'] ?? 0;
                 $test_criteria->max = $tieu_chuan[$slug]['max'] ?? null;
             }
         }
@@ -2007,8 +2020,8 @@ class ApiController extends AdminController
             if ($test_criteria) {
                 $delta = $this->findSpec($test_criteria, null, null);
                 if (count($delta) === 2) {
-                    $test_criteria->min = (int)$delta[0];
-                    $test_criteria->max = (int)$delta[1];
+                    $test_criteria->min = (int) $delta[0];
+                    $test_criteria->max = (int) $delta[1];
                 }
                 return $this->success($test_criteria);
             } else {
@@ -2042,11 +2055,12 @@ class ApiController extends AdminController
             }
 
             $log = $lsx_log->info;
-            if (!$log) $log = [
-                'thoi_gian_vao' => date('Y-m-d H:i:s'),
-                'user_id' => $request->user()->id,
-                'user_name' => $request->user()->name
-            ];
+            if (!$log)
+                $log = [
+                    'thoi_gian_vao' => date('Y-m-d H:i:s'),
+                    'user_id' => $request->user()->id,
+                    'user_name' => $request->user()->name
+                ];
             $phan_dinh = 0;
             $counter = 0;
             $is_ng = 0;
@@ -2056,7 +2070,8 @@ class ApiController extends AdminController
                     $ng_counter = 0;
                     if ($log_data) {
                         foreach ($log_data ?? [] as $value) {
-                            if ($value['result'] === 2) $ng_counter++;
+                            if ($value['result'] === 2)
+                                $ng_counter++;
                         }
                         $log['sl_tinh_nang'] = $ng_counter;
                         $info_cong_doan->sl_tinh_nang = $ng_counter;
@@ -2072,7 +2087,8 @@ class ApiController extends AdminController
                     $ng_counter = 0;
                     if ($log_data) {
                         foreach ($log_data ?? [] as $value) {
-                            if ($value['result'] === 2) $ng_counter++;
+                            if ($value['result'] === 2)
+                                $ng_counter++;
                         }
                         $log['sl_ngoai_quan'] = $ng_counter;
                         $info_cong_doan->sl_ngoai_quan = $ng_counter;
@@ -2169,8 +2185,10 @@ class ApiController extends AdminController
             $pos_a = array_search($a['status'], $customOrder);
             $pos_b = array_search($b['status'], $customOrder);
 
-            if ($pos_a === false) return 1;
-            if ($pos_b === false) return -1;
+            if ($pos_a === false)
+                return 1;
+            if ($pos_b === false)
+                return -1;
 
             // Nếu status khác nhau thì so sánh theo $order
             if ($pos_a !== $pos_b) {
@@ -2213,7 +2231,7 @@ class ApiController extends AdminController
             'sl_ok' => $info_cong_doan->where('phan_dinh', 1)->count(),
             'sl_ng' => $info_cong_doan->where('phan_dinh', 2)->count() + $info_cong_doan->where('sl_ng_qc', '>', 0)->count(),
         ];
-        $data['ti_le'] = $data['sl_kiem_tra'] > 0 ? number_format($data['sl_ng'] / $data['sl_kiem_tra'] * 100)  . '%' : '0%';
+        $data['ti_le'] = $data['sl_kiem_tra'] > 0 ? number_format($data['sl_ng'] / $data['sl_kiem_tra'] * 100) . '%' : '0%';
         return $this->success([$data]);
     }
 
@@ -2244,7 +2262,7 @@ class ApiController extends AdminController
             'sl_ok' => $sl_ok,
             'sl_ng' => $sl_ng,
         ];
-        $data['ti_le'] = $data['sl_kiem_tra'] > 0 ? number_format($data['sl_ok'] / $data['sl_kiem_tra'] * 100)  . '%' : '0%';
+        $data['ti_le'] = $data['sl_kiem_tra'] > 0 ? number_format($data['sl_ok'] / $data['sl_kiem_tra'] * 100) . '%' : '0%';
         return $this->success([$data]);
     }
 
@@ -2298,7 +2316,8 @@ class ApiController extends AdminController
                 $ng_counter = 0;
                 if ($log_data) {
                     foreach ($log_data ?? [] as $value) {
-                        if ($value['result'] === 2) $ng_counter++;
+                        if ($value['result'] === 2)
+                            $ng_counter++;
                     }
                     $log['sl_tinh_nang'] = $ng_counter;
                 }
@@ -2313,7 +2332,8 @@ class ApiController extends AdminController
                 $ng_counter = 0;
                 if ($log_data) {
                     foreach ($log_data ?? [] as $value) {
-                        if ($value['result'] === 2) $ng_counter++;
+                        if ($value['result'] === 2)
+                            $ng_counter++;
                     }
                     $log['sl_ngoai_quan'] = $ng_counter;
                 }
@@ -2439,16 +2459,20 @@ class ApiController extends AdminController
         } elseif ($machine->line->id === Line::LINE_IN) {
             switch ($request->type) {
                 case 'layout':
-                    if ($loSX->layout_id === $request->id) $mapping->layout_id = $request->id;
+                    if ($loSX->layout_id === $request->id)
+                        $mapping->layout_id = $request->id;
                     break;
                 case 'color':
-                    if ($loSX->color_id === $request->id) $mapping->color_id = $request->id;
+                    if ($loSX->color_id === $request->id)
+                        $mapping->color_id = $request->id;
                     break;
                 case 'film':
-                    if ($loSX->film_id === $request->id) $mapping->film_id = $request->id;
+                    if ($loSX->film_id === $request->id)
+                        $mapping->film_id = $request->id;
                     break;
                 case 'khuon':
-                    if ($loSX->khuon_id === $request->id) $mapping->khuon_id = $request->id;
+                    if ($loSX->khuon_id === $request->id)
+                        $mapping->khuon_id = $request->id;
                     break;
                 default:
                     break;
@@ -2503,13 +2527,13 @@ class ApiController extends AdminController
         ];
         $params = MachineParameter::where('machine_id', $request->machine_id)->where('is_if', 1)->get();
         foreach ($params as $param) {
-            array_push($column, ['title' => $param->name, 'dataIndex' => $param->parameter_id, 'key' => $param->parameter_id, 'align' => 'center'],);
+            array_push($column, ['title' => $param->name, 'dataIndex' => $param->parameter_id, 'key' => $param->parameter_id, 'align' => 'center'], );
         }
         $data = [];
         foreach ($list as $value) {
             $param_log = MachineParameterLogs::where('machine_id', $request->machine_id)->where('lo_sx', $value->lo_sx)->first();
             $mapping = Mapping::where('machine_id', $request->machine_id)->where('lo_sx', $value->lo_sx)->first();
-            $value->mapping = $mapping ? ($mapping->mapping ?  true : false) : false;
+            $value->mapping = $mapping ? ($mapping->mapping ? true : false) : false;
             $data[] = array_merge($value->toArray(), $param_log->data_input ?? []);
         }
         return $this->success(['data' => $data, 'column' => $column]);
@@ -2539,7 +2563,8 @@ class ApiController extends AdminController
     public function errorMachineList(Request $request)
     {
         $machine = Machine::with('line')->where('id', $request->machine_id)->first();
-        if (!$machine) return $this->failure('Không tìm thấy máy');
+        if (!$machine)
+            return $this->failure('Không tìm thấy máy');
         $errors = ErrorMachine::select('*', 'code as value', 'ten_su_co as label')->where('line_id', $machine->line_id)->get();
         // if (!$errors) return $this->failure('', 'Không tìm thấy lỗi');
         return $this->success($errors);
@@ -2548,7 +2573,8 @@ class ApiController extends AdminController
     public function errorMachineDetail(Request $request)
     {
         $record = ErrorMachine::where('code', $request->code)->first();
-        if (!$record) return $this->failure('', 'Không tìm thấy lỗi');
+        if (!$record)
+            return $this->failure('', 'Không tìm thấy lỗi');
         return $this->success($record);
     }
 
@@ -2731,7 +2757,7 @@ class ApiController extends AdminController
         // $record = Mapping::where('lo_sx', $lo_sx)->where('machine_id', 'like', $machine_id . "%")->whereNull('user_id')->orderBy('position', 'ASC')->first();
         if ($machine->line_id == Line::LINE_SONG) {
             $plan = ProductionPlan::with('order.buyer')->where('lo_sx', $lo_sx)->first();
-            $mapping = (array)json_decode($plan->order->buyer->mapping);
+            $mapping = (array) json_decode($plan->order->buyer->mapping);
             if (isset($mapping[$machine->id])) {
                 return $this->success($mapping[$machine->id]);
             } else {
@@ -2951,13 +2977,15 @@ class ApiController extends AdminController
             foreach ($lo_sx as $info_cong_doan) {
                 $line = $info_cong_doan->line;
                 if ($line) {
-                    if (!isset($data[$key])) $data[$key] = [];
-                    if (!isset($data[$key][$line->id])) $data[$key][$line->id] = 0;
+                    if (!isset($data[$key]))
+                        $data[$key] = [];
+                    if (!isset($data[$key][$line->id]))
+                        $data[$key][$line->id] = 0;
                     $data[$key][$line->id] += $info_cong_doan->sl_dau_ra_hang_loat - $info_cong_doan->sl_ng_sx - $info_cong_doan->sl_ng_qc;
                 }
             }
         }
-        return $this->success((array)$data);
+        return $this->success((array) $data);
     }
 
     function queryProduceHistory(Request $request)
@@ -3105,6 +3133,8 @@ class ApiController extends AdminController
             $obj->mdh = $order->mdh ?? "";
             $obj->mql = $order->mql ?? "";
             $obj->quy_cach = $order ? ($order->dai . 'x' . $order->rong . ($order->cao ? ('x' . $order->cao) : "")) : "";
+            $obj->dien_tich_1_to = $order->dien_tich_1_to ?? "";
+            $obj->dien_tich = $order->dien_tich ?? "";
             $obj->thoi_gian_bat_dau = $info_cong_doan->thoi_gian_bat_dau ? date('H:i:s', strtotime($info_cong_doan->thoi_gian_bat_dau)) : "";
             $obj->thoi_gian_ket_thuc = $info_cong_doan->thoi_gian_ket_thuc ? date('H:i:s', strtotime($info_cong_doan->thoi_gian_ket_thuc)) : "";
             $obj->sl_dau_ra_hang_loat = $info_cong_doan->sl_dau_ra_hang_loat;
@@ -3114,7 +3144,7 @@ class ApiController extends AdminController
             $obj->user_name = $info_cong_doan->user->name ?? "";
             $obj->lo_sx = $info_cong_doan->lo_sx;
             $obj->step = $info_cong_doan->step ? "Bước" : "";
-            $records[] = (array)$obj;
+            $records[] = (array) $obj;
         }
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -3158,6 +3188,8 @@ class ApiController extends AdminController
             'MĐH',
             'MQL',
             'Quy cách',
+            'Diện tích 1 tờ',
+            'Diện tích',
             'Thời gian bắt đầu',
             'Thời gian kết thúc',
             "Sản lượng đầu ra",
@@ -3176,15 +3208,17 @@ class ApiController extends AdminController
             'E' => 'mdh',
             'F' => 'mql',
             'G' => 'quy_cach',
-            'H' => 'thoi_gian_bat_dau',
-            'I' => 'thoi_gian_ket_thuc',
-            'J' => 'sl_dau_ra_hang_loat',
-            'K' => 'sl_ok',
-            'L' => 'sl_phe',
-            'M' => 'dot',
-            'N' => 'user_name',
-            'O' => 'lo_sx',
-            'P' => 'step'
+            'H' => 'dien_tich_1_to',
+            'I' => 'dien_tich',
+            'J' => 'thoi_gian_bat_dau',
+            'K' => 'thoi_gian_ket_thuc',
+            'L' => 'sl_dau_ra_hang_loat',
+            'M' => 'sl_ok',
+            'N' => 'sl_phe',
+            'O' => 'dot',
+            'P' => 'user_name',
+            'Q' => 'lo_sx',
+            'R' => 'step'
         ];
         foreach ($header as $key => $cell) {
             $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);
@@ -3218,7 +3252,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Lịch sử sản xuất.xlsx');
         $href = '/exported_files/Lịch sử sản xuất.xlsx';
         return $this->success($href);
@@ -3289,7 +3323,7 @@ class ApiController extends AdminController
         //     ->whereDate('created_at', '<=', date('Y-m-d'));
         // }
         if (isset($request->product_id)) {
-            $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
+            $query->where('lot_id', 'like', '%' . $request->product_id . '%');
         }
         if (isset($request->khach_hang)) {
             $khach_hang = Customer::where('id', $request->khach_hang)->first();
@@ -3298,7 +3332,7 @@ class ApiController extends AdminController
                 $product_ids = $plan->pluck('product_id')->toArray();
                 $query->where(function ($qr) use ($product_ids) {
                     for ($i = 0; $i < count($product_ids); $i++) {
-                        $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
+                        $qr->orwhere('lot_id', 'like', '%' . $product_ids[$i] . '%');
                     }
                 });
             }
@@ -3443,7 +3477,9 @@ class ApiController extends AdminController
         return $this->success(['data' => $data, 'totalPage' => $totalPage, 'columns' => $columns]);
     }
 
-    public function getInfoFromPlan($info) {}
+    public function getInfoFromPlan($info)
+    {
+    }
 
     public function getInfoFromTem($info)
     {
@@ -3468,7 +3504,8 @@ class ApiController extends AdminController
         try {
             DB::beginTransaction();
             $info_cong_doan = InfoCongDoan::find($request->id);
-            if (!$info_cong_doan) return $this->failure('', 'Không thấy bản ghi');
+            if (!$info_cong_doan)
+                return $this->failure('', 'Không thấy bản ghi');
             $info_cong_doan->sl_tinh_nang = 0;
             $info_cong_doan->sl_ngoai_quan = 0;
             $info_cong_doan->sl_ng_qc = 0;
@@ -3507,7 +3544,7 @@ class ApiController extends AdminController
                 ->whereDate('created_at', '<=', date('Y-m-d'));
         }
         if (isset($request->product_id)) {
-            $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
+            $query->where('lot_id', 'like', '%' . $request->product_id . '%');
         }
         if (isset($request->khach_hang)) {
             $khach_hang = Customer::where('id', $request->khach_hang)->first();
@@ -3516,7 +3553,7 @@ class ApiController extends AdminController
                 $product_ids = $plan->pluck('product_id')->toArray();
                 $query->where(function ($qr) use ($product_ids) {
                     for ($i = 0; $i < count($product_ids); $i++) {
-                        $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
+                        $qr->orwhere('lot_id', 'like', '%' . $product_ids[$i] . '%');
                     }
                 });
             }
@@ -3534,7 +3571,8 @@ class ApiController extends AdminController
                 $ngoai_quan = $log['qc'][$info->machine_id]['ngoai_quan'];
                 foreach ($ngoai_quan as $key => $error) {
                     // if(!isset($data[$date])) $data[$date] = [];
-                    if (!isset($data[$date][$key])) $data[$date][$key] = 0;
+                    if (!isset($data[$date][$key]))
+                        $data[$date][$key] = 0;
                     $data[$date][$key] += $error['value'] ?? 0;
                 }
             }
@@ -3557,7 +3595,7 @@ class ApiController extends AdminController
                 ->whereDate('created_at', '<=', date('Y-m-d'));
         }
         if (isset($request->product_id)) {
-            $query->where('lot_id', 'like',  '%' . $request->product_id . '%');
+            $query->where('lot_id', 'like', '%' . $request->product_id . '%');
         }
         if (isset($request->khach_hang)) {
             $khach_hang = Customer::where('id', $request->khach_hang)->first();
@@ -3566,7 +3604,7 @@ class ApiController extends AdminController
                 $product_ids = $plan->pluck('product_id')->toArray();
                 $query->where(function ($qr) use ($product_ids) {
                     for ($i = 0; $i < count($product_ids); $i++) {
-                        $qr->orwhere('lot_id', 'like',  '%' . $product_ids[$i] . '%');
+                        $qr->orwhere('lot_id', 'like', '%' . $product_ids[$i] . '%');
                     }
                 });
             }
@@ -3582,8 +3620,10 @@ class ApiController extends AdminController
             if (isset($log['qc'][$info->machine_id]['ngoai_quan'])) {
                 $ngoai_quan = $log['qc'][$info->machine_id]['ngoai_quan'];
                 foreach ($ngoai_quan as $key => $error) {
-                    if (!isset($data[$key]['value'])) $data[$key]['value'] = 0;
-                    if (!isset($data[$key]['frequency'])) $data[$key]['frequency'] = 0;
+                    if (!isset($data[$key]['value']))
+                        $data[$key]['value'] = 0;
+                    if (!isset($data[$key]['frequency']))
+                        $data[$key]['frequency'] = 0;
                     $data[$key]['value'] += $error['value'] ?? 0;
                     $data[$key]['name'] = $key;
                     $data[$key]['frequency'] += 1;
@@ -3679,7 +3719,8 @@ class ApiController extends AdminController
         });
         $data = [];
         foreach ($machine_logs as $key => $log) {
-            if (!$key) continue;
+            if (!$key)
+                continue;
             $obj = new stdClass();
             $obj->value = count($log);
             $obj->name = $key;
@@ -3733,7 +3774,7 @@ class ApiController extends AdminController
             $obj->cach_xu_ly = $log->error_machine->cach_xu_ly ?? "";
             $obj->nguoi_xu_ly = $log->user->name ?? "";
             $obj->da_xu_ly = ($log->end_time || $log->handle_time) ? 'Đã hoàn thành' : 'Chưa hoàn thành';
-            $data[] = (array)$obj;
+            $data[] = (array) $obj;
         }
         $centerStyle = [
             'alignment' => [
@@ -3816,7 +3857,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Thống kê chi tiết lỗi.xlsx');
         $href = '/exported_files/Thống kê chi tiết lỗi.xlsx';
         return $this->success($href);
@@ -3938,7 +3979,8 @@ class ApiController extends AdminController
             }
             $log = WarehouseMLTLog::where('material_id', $material->id)->orderBy('updated_at', 'DESC')->first();
             $material_mlt_map = LocatorMLTMap::where('material_id', $material->id)->first();
-            if ($log && !$log->tg_xuat) return $this->failure('', 'Cuộn ' . $material->id . ' đã ở trong kho');
+            if ($log && !$log->tg_xuat)
+                return $this->failure('', 'Cuộn ' . $material->id . ' đã ở trong kho');
             $material->material_id = $material->id;
             $material->status = 1;
             return $this->success($material);
@@ -4026,7 +4068,8 @@ class ApiController extends AdminController
             foreach ($materials as $key => $material) {
                 $material_input = $this->findObject($input, $material->id, 'material_id');
                 $locator = LocatorMLT::find($material_input['locator_id'] ?? "");
-                if (!$locator) return $this->failure('', 'Vị trí không phù hợp');
+                if (!$locator)
+                    return $this->failure('', 'Vị trí không phù hợp');
                 $material = Material::find($material->id);
                 $inp['material_id'] = $material->id;
                 $inp['locator_id'] = $locator->id;
@@ -4130,7 +4173,7 @@ class ApiController extends AdminController
             $locator = LocatorFG::where('capacity', 0)->orderBy('id')->first();
             $latest_pallet = Pallet::where('id', 'like', 'PL' . date('ymd') . '%')->orderBy('id', 'DESC')->first();
             if ($latest_pallet) {
-                $pallet_id = (int)str_replace('PL' . date('ymd'), '', $latest_pallet->id);
+                $pallet_id = (int) str_replace('PL' . date('ymd'), '', $latest_pallet->id);
             } else {
                 $pallet_id = 0;
             }
@@ -4149,7 +4192,7 @@ class ApiController extends AdminController
             return $this->failure([], 'Lô sản xuất không tồn tại');
         }
         $obj = new stdClass();
-        $obj->lo_sx =  $record->lo_sx;
+        $obj->lo_sx = $record->lo_sx;
         $obj->so_luong = $record->sl_dau_ra_hang_loat - $record->sl_ng_sx - $record->sl_ng_qc;
         return $this->success($obj);
     }
@@ -4190,10 +4233,14 @@ class ApiController extends AdminController
             $lo_sx = InfoCongDoan::where('lo_sx', $request->list_losx[0])->with('tem', 'plan')->first();
             $customer = "";
             $inserting_customer = "";
-            if ($lo_sx->tem) $customer = $lo_sx->tem->order->customer_id;
-            elseif ($lo_sx->plan) $customer = $lo_sx->plan->order->customer_id;
-            if ($info->tem) $inserting_customer = $info->tem->order->customer_id;
-            elseif ($info->plan) $inserting_customer = $info->plan->order->customer_id;
+            if ($lo_sx->tem)
+                $customer = $lo_sx->tem->order->customer_id;
+            elseif ($lo_sx->plan)
+                $customer = $lo_sx->plan->order->customer_id;
+            if ($info->tem)
+                $inserting_customer = $info->tem->order->customer_id;
+            elseif ($info->plan)
+                $inserting_customer = $info->plan->order->customer_id;
             if (strtolower(trim($customer)) !== strtolower(trim($inserting_customer))) {
                 return $this->failure('', 'Lô ' . $info->lo_sx . ' không có cùng khách hàng với các lô đã quét trước đó');
             }
@@ -4216,7 +4263,7 @@ class ApiController extends AdminController
             DB::beginTransaction();
             $latest_pallet = Pallet::where('id', 'like', 'PL' . date('ymd') . '%')->orderBy('id', 'DESC')->first();
             if ($latest_pallet) {
-                $pallet_id = (int)str_replace('PL' . date('ymd'), '', $latest_pallet->id);
+                $pallet_id = (int) str_replace('PL' . date('ymd'), '', $latest_pallet->id);
             } else {
                 $pallet_id = 0;
             }
@@ -4358,9 +4405,11 @@ class ApiController extends AdminController
         $test = [];
         if (count($fg_exports) > 0) {
             foreach ($fg_exports as $key => $fg_export) {
-                $lsx_pallets = LSXPallet::with(['warehouseFGLog' => function ($logQuery) {
-                    $logQuery->where('type', 1);
-                }])
+                $lsx_pallets = LSXPallet::with([
+                    'warehouseFGLog' => function ($logQuery) {
+                        $logQuery->where('type', 1);
+                    }
+                ])
                     ->where('remain_quantity', '>', 0)
                     ->where('order_id', $fg_export->order_id)
                     ->get();
@@ -4382,7 +4431,8 @@ class ApiController extends AdminController
                         $data[$lsx_pallet->pallet_id]['thoi_gian_xuat'] = date('d/m/Y H:i:s', strtotime($fg_export->ngay_xuat));
                         $data[$lsx_pallet->pallet_id]['khach_hang'] = $khach_hang;
                         $data[$lsx_pallet->pallet_id]['delivery_note_id'] = $fg_export->delivery_note_id;
-                        if (!isset($data[$lsx_pallet->pallet_id]['lo_sx'])) $data[$lsx_pallet->pallet_id]['lo_sx'] = [];
+                        if (!isset($data[$lsx_pallet->pallet_id]['lo_sx']))
+                            $data[$lsx_pallet->pallet_id]['lo_sx'] = [];
                         $data[$lsx_pallet->pallet_id]['lo_sx'][] = [
                             'lo_sx' => $lsx_pallet->lo_sx,
                             'so_luong' => $lsx_pallet->remain_quantity,
@@ -4406,7 +4456,8 @@ class ApiController extends AdminController
     public function checkLoSXPallet(Request $request)
     {
         $pallet = Pallet::where('id', $request->pallet_id)->first();
-        if (!$pallet) return $this->failure('', 'Không tìm thấy pallet');
+        if (!$pallet)
+            return $this->failure('', 'Không tìm thấy pallet');
         $lsx_pallet = LSXPallet::where('pallet_id', $pallet->id)->get();
         return $this->success([]);
     }
@@ -4557,7 +4608,7 @@ class ApiController extends AdminController
             $obj->driver_name = $record->delivery_note->driver->name ?? '';
             $obj->vehicle_id = $record->delivery_note->vehicle->id ?? '';
             $obj->exporter_name = $record->delivery_note->exporter->name ?? '';
-            $data[] = (array)$obj;
+            $data[] = (array) $obj;
         }
         $centerStyle = [
             'alignment' => [
@@ -4632,7 +4683,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Kế hoạch xuất kho.xlsx');
         $href = '/exported_files/Kế hoạch xuất kho.xlsx';
         return $this->success($href);
@@ -4932,7 +4983,7 @@ class ApiController extends AdminController
             $latest_receipt_note = GoodsReceiptNote::where('id', 'like', date('ym-') . '%')->orderByraw('CHAR_LENGTH(id) DESC')->orderBy('id', 'DESC')->first();
             $id = '';
             if ($latest_receipt_note) {
-                $id = (int)str_replace(date('ym-'), '', $latest_receipt_note->id);
+                $id = (int) str_replace(date('ym-'), '', $latest_receipt_note->id);
             } else {
                 $id = 0;
             }
@@ -5003,7 +5054,7 @@ class ApiController extends AdminController
         $obj = new stdClass();
         $obj->sl_nhap = $import_logs;
         $obj->sl_xuat = $export_logs;
-        $obj->sl_pallet_tao =  $lsx_pallet_query->select('pallet_id')->distinct('pallet_id')->count();
+        $obj->sl_pallet_tao = $lsx_pallet_query->select('pallet_id')->distinct('pallet_id')->count();
         return $this->success($obj);
     }
 
@@ -5044,8 +5095,8 @@ class ApiController extends AdminController
         $machine = Machine::find($machine_id);
         $plan = ProductionPlan::with('order.buyer')->where('lo_sx', $lo_sx)->first();
         if ($machine->line_id == Line::LINE_SONG) {
-            $buyer =  (array)$plan->order->buyer->toArray();
-            $order =  $plan->order;
+            $buyer = (array) $plan->order->buyer->toArray();
+            $order = $plan->order;
             $arr_vt = ['S010501' => 'ma_cuon_f', 'S010402' => 'ma_cuon_le', 'S010401' => 'ma_cuon_se', 'S010302' => 'ma_cuon_lb', 'S010301' => 'ma_cuon_sb', 'S010202' => 'ma_cuon_lc', 'S010201' => 'ma_cuon_sc'];
             $material_id = $request->value[0];
             $ma_vat_tu = $buyer[$arr_vt[$request->vi_tri]] . $order->kho_tong;
@@ -5058,11 +5109,11 @@ class ApiController extends AdminController
             // if ($material->ma_vat_tu == $ma_vat_tu) {
             $checkmap = Mapping::where('machine_id', $machine->id)->where('lo_sx', $lo_sx)->where('position', $request->vi_tri)->first();
             if (!$checkmap) {
-                $inp['machine_id'] =  $machine->id;
-                $inp['lo_sx'] =  $lo_sx;
-                $inp['position'] =  $request->vi_tri;
-                $inp['user_id'] =  $request->user()->id;
-                $inp['info'] =  $buyer[$arr_vt[$request->vi_tri]];
+                $inp['machine_id'] = $machine->id;
+                $inp['lo_sx'] = $lo_sx;
+                $inp['position'] = $request->vi_tri;
+                $inp['user_id'] = $request->user()->id;
+                $inp['info'] = $buyer[$arr_vt[$request->vi_tri]];
                 Mapping::create($inp);
             }
             $count_map = Mapping::where('lo_sx', $lo_sx)->count();
@@ -5088,7 +5139,7 @@ class ApiController extends AdminController
         $machine = Machine::find($role->machine_id);
         if (!is_null($machine->parent_id)) {
             $plan = ProductionPlan::with('order.buyer')->where('lo_sx', $input['lo_sx'])->first();
-            $buyer =  $plan->order->buyer;
+            $buyer = $plan->order->buyer;
             $count_map = Mapping::where('lo_sx', $input['lo_sx'])->count();
             if ($buyer->so_lop == $count_map) {
                 LSXLog::where('machine_id', $machine->parent_id)->where('lo_sx', $input['lo_sx'])->update(['mapping' => 1, 'map_time' => date('Y-m-d H:i:s')]);
@@ -5136,10 +5187,10 @@ class ApiController extends AdminController
             $obj->so_lop = $order->buyer->so_lop ?? null;
             $obj->kho_tong = $order->kho_tong ?? null;
             $obj->dai_tam = $order->dai_tam ?? null;
-            $obj->so_luong = ceil($value->plan->sl_kh / ($order->so_ra ?? 1))  ?? null;
+            $obj->so_luong = ceil($value->plan->sl_kh / ($order->so_ra ?? 1)) ?? null;
             $obj->mdh = $order->mdh ?? null;
             $obj->mql = $order->mql ?? null;
-            $data[] = is_null($value->params) ? (array)$obj : array_merge((array)$obj, $value->params);
+            $data[] = is_null($value->params) ? (array) $obj : array_merge((array) $obj, $value->params);
         }
         $object = new stdClass();
         $object->columns = $columns ?? [];
@@ -5400,7 +5451,7 @@ class ApiController extends AdminController
             $prefix = 'T' . date('ymd');
             Tem::where('display', 1)->where('created_by', $request->user()->id)->update(['display' => 0]);
             $newest_tem = Tem::where('lo_sx', 'like', "$prefix%")->orderBy('id', 'DESC')->first();
-            $index = $newest_tem ? (int)str_replace($prefix, '', $newest_tem->lo_sx) : 0;
+            $index = $newest_tem ? (int) str_replace($prefix, '', $newest_tem->lo_sx) : 0;
             foreach ($allDataInSheet as $key => $row) {
                 //Lấy dứ liệu từ dòng thứ 4
                 if ($key > 3 && $row['C'] && $row['D']) {
@@ -5463,9 +5514,12 @@ class ApiController extends AdminController
         }
         if (isset($input['ma_vat_tu']) || isset($input['ma_cuon_ncc']) || isset($input['loai_giay'])) {
             $query = $query->whereHas('material', function ($q) use ($input) {
-                if (isset($input['ma_vat_tu'])) $q->where('ma_vat_tu', 'like', '%' . $input['ma_vat_tu'] . '%');
-                if (isset($input['ma_cuon_ncc'])) $q->where('ma_cuon_ncc', 'like', '%' . $input['ma_cuon_ncc'] . '%');
-                if (isset($input['loai_giay'])) $q->where('loai_giay', 'like', '%' . $input['loai_giay'] . '%');
+                if (isset($input['ma_vat_tu']))
+                    $q->where('ma_vat_tu', 'like', '%' . $input['ma_vat_tu'] . '%');
+                if (isset($input['ma_cuon_ncc']))
+                    $q->where('ma_cuon_ncc', 'like', '%' . $input['ma_cuon_ncc'] . '%');
+                if (isset($input['loai_giay']))
+                    $q->where('loai_giay', 'like', '%' . $input['loai_giay'] . '%');
             });
         }
         if (isset($input['export_shift'])) {
@@ -5517,9 +5571,12 @@ class ApiController extends AdminController
         }
         if (isset($input['ma_vat_tu']) || isset($input['ma_cuon_ncc']) || isset($input['loai_giay'])) {
             $query = $query->whereHas('material', function ($q) use ($input) {
-                if (isset($input['ma_vat_tu'])) $q->where('ma_vat_tu', 'like', '%' . $input['ma_vat_tu'] . '%');
-                if (isset($input['ma_cuon_ncc'])) $q->where('ma_cuon_ncc', 'like', '%' . $input['ma_cuon_ncc'] . '%');
-                if (isset($input['loai_giay'])) $q->where('loai_giay', 'like', '%' . $input['loai_giay'] . '%');
+                if (isset($input['ma_vat_tu']))
+                    $q->where('ma_vat_tu', 'like', '%' . $input['ma_vat_tu'] . '%');
+                if (isset($input['ma_cuon_ncc']))
+                    $q->where('ma_cuon_ncc', 'like', '%' . $input['ma_cuon_ncc'] . '%');
+                if (isset($input['loai_giay']))
+                    $q->where('loai_giay', 'like', '%' . $input['loai_giay'] . '%');
             });
         }
         if (isset($input['export_shift'])) {
@@ -5549,7 +5606,7 @@ class ApiController extends AdminController
             $obj->so_m_toi = $record->material->so_m_toi ?? "0";
             $obj->thoi_gian_xuat = $record->tg_xuat ? date('d/m/Y H:i:s', strtotime($record->tg_xuat)) : "";
             $obj->nhan_vien_xuat = $record->exporter->name ?? "";
-            $data[] = (array)$obj;
+            $data[] = (array) $obj;
         }
         $centerStyle = [
             'alignment' => [
@@ -5628,7 +5685,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Theo dõi xuất hàng kho NVL.xlsx');
         $href = '/exported_files/Theo dõi xuất hàng kho NVL.xlsx';
         return $this->success($href);
@@ -5717,7 +5774,7 @@ class ApiController extends AdminController
             $data->loai_giay[$key] = $material->loai_giay;
             $data->kho_giay[$key] = $material->kho_giay;
             $data->dinh_luong[$key] = $material->dinh_luong;
-            $data->so_kg[$key] = (int)$material->so_kg;
+            $data->so_kg[$key] = (int) $material->so_kg;
             $data->so_luong[$key] = 1;
             $data->don_vi[$key] = 'cuộn';
             $data->ma_cuon_ncc[$key] = $material->ma_cuon_ncc;
@@ -5727,7 +5784,7 @@ class ApiController extends AdminController
             if ($prev_ma_vat_tu !== $material->ma_vat_tu) {
                 $index = $key;
                 $mvt_counter = 1;
-                $mvt_tong_kg = (int)$material->so_kg;
+                $mvt_tong_kg = (int) $material->so_kg;
             }
             $data->mvt_counter[$index] = $mvt_counter;
             $data->mvt_tong_kg[$index] = $mvt_tong_kg;
@@ -6102,11 +6159,13 @@ class ApiController extends AdminController
                 $group_order = GroupPlanOrder::whereIn('plan_id', $plans->pluck('id')->toArray())->pluck('order_id')->toArray();
                 $query->whereNotNull(['dai', 'rong'])
                     ->whereIn('id', $group_order)
-                    ->withSum(['plan as sum_sl' => function ($plan_query) use ($line_id) {
-                        $plan_query->where('machine_id', '<>', 'So01')->whereHas('machine', function ($q) use ($line_id) {
-                            $q->where('line_id', $line_id);
-                        });
-                    }], 'sl_kh');
+                    ->withSum([
+                        'plan as sum_sl' => function ($plan_query) use ($line_id) {
+                            $plan_query->where('machine_id', '<>', 'So01')->whereHas('machine', function ($q) use ($line_id) {
+                                $q->where('line_id', $line_id);
+                            });
+                        }
+                    ], 'sl_kh');
                 break;
         }
         $count = $query->count();
@@ -6128,7 +6187,7 @@ class ApiController extends AdminController
         return $this->success(['data' => $data, 'total' => $count]);
     }
 
-    public function  handleOrder(Request $request)
+    public function handleOrder(Request $request)
     {
         $machine = Machine::find($request->machine_id);
         $line = $machine->line;
@@ -6148,7 +6207,7 @@ class ApiController extends AdminController
         $index = '';
         $thu_tu_uu_tien = 1;
         if ($plan) {
-            $index = (int)str_replace($prefix, '', $plan->lo_sx) + 1;
+            $index = (int) str_replace($prefix, '', $plan->lo_sx) + 1;
             $thu_tu_uu_tien = $index;
         } else {
             $index = 1;
@@ -6205,9 +6264,11 @@ class ApiController extends AdminController
                 break;
             case Line::LINE_IN:
                 $orders = Order::with('layout')->whereIn('orders.id', $input['order_id'])
-                    ->withSum(['plan as sum_sl' => function ($plan_query) {
-                        $plan_query->where('machine_id', '<>', 'So01');
-                    }], 'sl_kh')->orderBy('kho', 'DESC')->get();
+                    ->withSum([
+                        'plan as sum_sl' => function ($plan_query) {
+                            $plan_query->where('machine_id', '<>', 'So01');
+                        }
+                    ], 'sl_kh')->orderBy('kho', 'DESC')->get();
                 $start_time = strtotime($input['start_time']);
                 foreach ($orders as $key => $order) {
                     $layout = $order->layout;
@@ -6301,9 +6362,11 @@ class ApiController extends AdminController
             default:
                 $prev_order = null;
                 $orders = Order::with('layout')->whereIn('orders.id', $input['order_id'])
-                    ->withSum(['plan as sum_sl' => function ($plan_query) {
-                        $plan_query->where('machine_id', '<>', 'So01');
-                    }], 'sl_kh')->orderBy('kho', 'DESC')->get();
+                    ->withSum([
+                        'plan as sum_sl' => function ($plan_query) {
+                            $plan_query->where('machine_id', '<>', 'So01');
+                        }
+                    ], 'sl_kh')->orderBy('kho', 'DESC')->get();
                 $start_time = strtotime($input['start_time']);
                 foreach ($orders as $key => $order) {
                     $layout = $order->layout;
@@ -6706,7 +6769,7 @@ class ApiController extends AdminController
                     $plan = ProductionPlan::create($plan_input);
                     LSXLog::updateOrCreate(['machine_id' => $plan_input['machine_id'], 'lo_sx' => $plan_input['lo_sx']], ['machine_id' => $plan_input['machine_id'], 'lo_sx' => $plan_input['lo_sx'], 'thu_tu_uu_tien' => $plan_input['thu_tu_uu_tien']]);
                     $machine = Machine::find($plan_input['machine_id']);
-                    if (isset($plan_input['order_ids']) && count($plan_input['order_ids'])  > 0) {
+                    if (isset($plan_input['order_ids']) && count($plan_input['order_ids']) > 0) {
                         $group_orders = [];
                         foreach ($plan_input['order_ids'] as $order_id) {
                             $group_orders[] = ['plan_id' => $plan->id, 'order_id' => $order_id, 'line_id' => $machine->line_id];
@@ -6925,7 +6988,8 @@ class ApiController extends AdminController
                 $group_plan_order = GroupPlanOrder::where('plan_id', $plan->id);
                 $orders = Order::whereIn('orders.id', $group_plan_order->pluck('order_id')->toArray())->get();
                 $order = $plan->order;
-                if (!$order) continue;
+                if (!$order)
+                    continue;
                 $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1)->where('phan_loai_2', $order->phan_loai_2)->first();
                 $buyer = $order->buyer;
                 $obj = $plan;
@@ -7005,7 +7069,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Kế hoạch sản xuất MES ' . date('d-m-Y', strtotime($request->start_date)) . '.xlsx');
         $href = '/exported_files/Kế hoạch sản xuất MES ' . date('d-m-Y', strtotime($request->start_date)) . '.xlsx';
         return $this->success($href);
@@ -7211,7 +7275,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Preview KHSX.xlsx');
         $href = '/exported_files/Preview KHSX.xlsx';
         return $this->success($href);
@@ -7494,7 +7558,7 @@ class ApiController extends AdminController
             header('Cache-Control: max-age=0');
             header("Content-Transfer-Encoding: binary");
             header('Expires: 0');
-            $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save('exported_files/Kế hoạch xả lót - thùng.xlsx');
             $href = '/exported_files/Kế hoạch xả lót - thùng.xlsx';
             return $this->success($href);
@@ -7904,7 +7968,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Kế hoạch xả lót - thùng.xlsx');
         $href = '/exported_files/Kế hoạch xả lót - thùng.xlsx';
         return $this->success($href);
@@ -7925,16 +7989,18 @@ class ApiController extends AdminController
     {
         $input = $request->all();
         $machine = Machine::with('line')->find($input['machine_id']);
-        if (!$machine) return $this->failure('', 'Không tìm thấy máy');
+        if (!$machine)
+            return $this->failure('', 'Không tìm thấy máy');
         try {
             DB::beginTransaction();
             $prefix = 'T' . date('ymd');
             Tem::where('display', 1)->where('created_by', $request->user()->id)->update(['display' => 0]);
             $newest_tem = Tem::where('lo_sx', 'like', "$prefix%")->orderBy('id', 'DESC')->first();
             // $orders = Order::whereIn('id', $input['order_ids'])->get();
-            $index = $newest_tem ? (int)str_replace($prefix, '', $newest_tem->lo_sx) : 0;
+            $index = $newest_tem ? (int) str_replace($prefix, '', $newest_tem->lo_sx) : 0;
             foreach (($request->orders ?? []) as $key => $order) {
-                if (!$order) continue;
+                if (!$order)
+                    continue;
                 if (!isset($order['sl_dinh_muc']) || $order['sl_dinh_muc'] <= 0) {
                     continue;
                 }
@@ -8011,7 +8077,7 @@ class ApiController extends AdminController
             $obj->sl_ngoai_quan = $info_cong_doan->sl_ngoai_quan;
             $obj->phan_dinh = $info_cong_doan->phan_dinh === 1 ? "OK" : ($info_cong_doan->phan_dinh === 2 ? "NG" : "pass");
             $obj->lo_sx = $info_cong_doan->lo_sx;
-            $data[] = (array)$obj;
+            $data[] = (array) $obj;
         }
         $centerStyle = [
             'alignment' => [
@@ -8097,7 +8163,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Chi tiết QC.xlsx');
         $href = '/exported_files/Chi tiết QC.xlsx';
         return $this->success($href);
@@ -8239,7 +8305,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Chi tiết IQC.xlsx');
         $href = '/exported_files/Chi tiết IQC.xlsx';
         return $this->success($href);
@@ -8386,10 +8452,12 @@ class ApiController extends AdminController
                     $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row + 1])->getStyle([$start_col, $start_row, $start_col, $start_row + 1])->applyFromArray($headerStyle);
                 } else {
                     if (count($cell) > 0) {
-                        $style = array_merge($headerStyle, array('fill' => [
-                            'fillType' => Fill::FILL_SOLID,
-                            'startColor' => array('argb' => 'EBF1DE')
-                        ]));
+                        $style = array_merge($headerStyle, array(
+                            'fill' => [
+                                'fillType' => Fill::FILL_SOLID,
+                                'startColor' => array('argb' => 'EBF1DE')
+                            ]
+                        ));
                         $sheet->setCellValue([$start_col, $start_row], $key)->mergeCells([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->getStyle([$start_col, $start_row, $start_col + count($cell) - 1, $start_row])->applyFromArray($style);
                         foreach ($cell as $val) {
                             $sheet->setCellValue([$start_col, $start_row + 1], $val)->getStyle([$start_col, $start_row + 1])->applyFromArray($style);
@@ -8419,7 +8487,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Chi tiết QC.xlsx');
         $href = '/exported_files/Chi tiết QC.xlsx';
         return $this->success($href);
@@ -8483,9 +8551,11 @@ class ApiController extends AdminController
 
     public function getUIItemMenu(Request $request)
     {
-        $lines = Line::where('display', 1)->with(['children' => function ($query) {
-            $query->whereNull('parent_id')->select('machines.*', 'id as key', 'id as title');
-        }])->select('lines.*', 'id as key', 'name as title')->get();
+        $lines = Line::where('display', 1)->with([
+            'children' => function ($query) {
+                $query->whereNull('parent_id')->select('machines.*', 'id as key', 'id as title');
+            }
+        ])->select('lines.*', 'id as key', 'name as title')->get();
         return $this->success($lines);
     }
 
@@ -8509,13 +8579,20 @@ class ApiController extends AdminController
         })->orderByraw('CHAR_LENGTH(material_id) DESC')->orderBy('material_id');
         if (isset($input['loai_giay']) || isset($input['kho_giay']) || isset($input['dinh_luong']) || isset($input['ma_cuon_ncc']) || isset($input['ma_vat_tu']) || isset($input['so_kg']) || isset($input['so_cuon'])) {
             $query->whereHas('material', function ($q) use ($input) {
-                if (isset($input['loai_giay'])) $q->where('loai_giay', 'like', "%" . $input['loai_giay'] . "%");
-                if (isset($input['kho_giay'])) $q->where('kho_giay', 'like', "%" . $input['kho_giay'] . "%");
-                if (isset($input['dinh_luong'])) $q->where('dinh_luong', 'like', "%" . $input['dinh_luong'] . "%");
-                if (isset($input['ma_cuon_ncc'])) $q->where('ma_cuon_ncc', 'like', "%" . $input['ma_cuon_ncc'] . "%");
-                if (isset($input['ma_vat_tu'])) $q->where('ma_vat_tu', 'like', "%" . $input['ma_vat_tu'] . "%");
-                if (isset($input['so_kg'])) $q->where('so_kg', $input['so_kg']);
-                if (isset($input['so_cuon'])) $q->whereColumn('so_kg', '=', 'so_kg_dau');
+                if (isset($input['loai_giay']))
+                    $q->where('loai_giay', 'like', "%" . $input['loai_giay'] . "%");
+                if (isset($input['kho_giay']))
+                    $q->where('kho_giay', 'like', "%" . $input['kho_giay'] . "%");
+                if (isset($input['dinh_luong']))
+                    $q->where('dinh_luong', 'like', "%" . $input['dinh_luong'] . "%");
+                if (isset($input['ma_cuon_ncc']))
+                    $q->where('ma_cuon_ncc', 'like', "%" . $input['ma_cuon_ncc'] . "%");
+                if (isset($input['ma_vat_tu']))
+                    $q->where('ma_vat_tu', 'like', "%" . $input['ma_vat_tu'] . "%");
+                if (isset($input['so_kg']))
+                    $q->where('so_kg', $input['so_kg']);
+                if (isset($input['so_cuon']))
+                    $q->whereColumn('so_kg', '=', 'so_kg_dau');
             });
         }
         if (isset($input['material_id'])) {
@@ -8589,7 +8666,7 @@ class ApiController extends AdminController
             $record->so_kg_xuat = $record->so_kg_nhap - $record->so_kg_cuoi;
             $record->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
             $record->so_cuon = $record->so_kg_dau != $record->so_kg_cuoi ? "0" : "1";
-            $record->khu_vuc = str_contains($record->locator_id, 'C') ? ('Khu' . (int)str_replace('C', '', $record->locator_id)) : "";
+            $record->khu_vuc = str_contains($record->locator_id, 'C') ? ('Khu' . (int) str_replace('C', '', $record->locator_id)) : "";
             $record->locator_id = $record->locator_id;
         }
         return $this->success(['data' => $records, 'totalPage' => $totalPage]);
@@ -8599,13 +8676,20 @@ class ApiController extends AdminController
     {
         $input = $request->all();
         $query = Material::orderByraw('CHAR_LENGTH(id) DESC')->orderBy('id');
-        if (isset($input['loai_giay'])) $query->where('loai_giay', 'like', "%" . $input['loai_giay'] . "%");
-        if (isset($input['kho_giay'])) $query->where('kho_giay', 'like', "%" . $input['kho_giay'] . "%");
-        if (isset($input['dinh_luong'])) $query->where('dinh_luong', 'like', "%" . $input['dinh_luong'] . "%");
-        if (isset($input['ma_cuon_ncc'])) $query->where('ma_cuon_ncc', 'like', "%" . $input['ma_cuon_ncc'] . "%");
-        if (isset($input['ma_vat_tu'])) $query->where('ma_vat_tu', 'like', "%" . $input['ma_vat_tu'] . "%");
-        if (isset($input['so_kg'])) $query->where('so_kg', $input['so_kg']);
-        if (isset($input['so_cuon'])) $query->whereColumn('so_kg', '=', 'so_kg_dau');
+        if (isset($input['loai_giay']))
+            $query->where('loai_giay', 'like', "%" . $input['loai_giay'] . "%");
+        if (isset($input['kho_giay']))
+            $query->where('kho_giay', 'like', "%" . $input['kho_giay'] . "%");
+        if (isset($input['dinh_luong']))
+            $query->where('dinh_luong', 'like', "%" . $input['dinh_luong'] . "%");
+        if (isset($input['ma_cuon_ncc']))
+            $query->where('ma_cuon_ncc', 'like', "%" . $input['ma_cuon_ncc'] . "%");
+        if (isset($input['ma_vat_tu']))
+            $query->where('ma_vat_tu', 'like', "%" . $input['ma_vat_tu'] . "%");
+        if (isset($input['so_kg']))
+            $query->where('so_kg', $input['so_kg']);
+        if (isset($input['so_cuon']))
+            $query->whereColumn('so_kg', '=', 'so_kg_dau');
         if (isset($input['material_id'])) {
             $query->where('id', 'like', "%" . $input['material_id'] . "%");
         }
@@ -8624,12 +8708,12 @@ class ApiController extends AdminController
         $lastKgXuatSub = WarehouseMLTLog::select('warehouse_mlt_logs.so_kg_xuat')->whereColumn('warehouse_mlt_logs.material_id', 'material.id')->orderBy('warehouse_mlt_logs.tg_nhap', 'desc')->limit(1);
 
         $query->addSelect([
-                'first_tg_nhap'   => $firstNhapSub,
-                'last_kg_nhap'   => $lastKgNhapSub,
-                'last_tg_xuat'    => $lastXuatSub,
-                'last_kg_xuat'    => $lastKgXuatSub,
-                'newest_kg_xuat' => $newestKgXuatSub
-            ]);
+            'first_tg_nhap' => $firstNhapSub,
+            'last_kg_nhap' => $lastKgNhapSub,
+            'last_tg_xuat' => $lastXuatSub,
+            'last_kg_xuat' => $lastKgXuatSub,
+            'newest_kg_xuat' => $newestKgXuatSub
+        ]);
         if (isset($input['tg_nhap'])) {
             $query->whereFirstImportDate(date('Y-m-d', strtotime($input['tg_nhap'])));
         }
@@ -8638,12 +8722,12 @@ class ApiController extends AdminController
         }
         if (isset($input['locator_id'])) {
             $query->whereHas('locator', function ($q) use ($input) {
-                $q->where('locator_mlt_id',  'like', "%" . $input['locator_id'] . "%");
+                $q->where('locator_mlt_id', 'like', "%" . $input['locator_id'] . "%");
             });
         }
         if (isset($input['khu_vuc'])) {
             $query->whereHas('locator', function ($q) use ($input) {
-                $q->where('locator_mlt_id',  'like', "%" . $input['khu_vuc'] . ".___%");
+                $q->where('locator_mlt_id', 'like', "%" . $input['khu_vuc'] . ".___%");
             });
         }
         return $query->with('supplier', 'locator', 'warehouse_mlt_import');
@@ -8679,13 +8763,14 @@ class ApiController extends AdminController
             $record->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
             $record->so_cuon = $record->so_kg_dau != $record->so_kg_cuoi ? "0" : "1";
             $vi_tri = $record->locator->locator_mlt_id ?? '';
-            $record->khu_vuc = str_contains($vi_tri, 'C') ? ('Khu ' . (int)str_replace('C', '', $vi_tri)) : "";
+            $record->khu_vuc = str_contains($vi_tri, 'C') ? ('Khu ' . (int) str_replace('C', '', $vi_tri)) : "";
             $record->locator_id = $vi_tri;
         }
         return $this->success(['data' => $records, 'totalPage' => $totalPage]);
     }
 
-    public function warehouseMLTDetailLog(Request $request){
+    public function warehouseMLTDetailLog(Request $request)
+    {
         $input = $request->all();
         $data = WarehouseMLTLog::where('material_id', $input['material_id'])->orderBy('tg_nhap')->with('exporter', 'importer')->get();
         return $this->success($data);
@@ -8723,9 +8808,9 @@ class ApiController extends AdminController
             $obj->tg_xuat = $tg_xuat ? date('d/m/Y', strtotime($tg_xuat)) : '';
             $obj->so_cuon = $obj->so_kg_dau != $obj->so_kg_cuoi ? "0" : "1";
             $vi_tri = $record->locator->locator_mlt_id ?? '';
-            $obj->khu_vuc = str_contains($vi_tri, 'C') ? ('Khu ' . (int)str_replace('C', '', $vi_tri)) : "";
+            $obj->khu_vuc = str_contains($vi_tri, 'C') ? ('Khu ' . (int) str_replace('C', '', $vi_tri)) : "";
             $obj->locator_id = $vi_tri;
-            $data[] = (array)$obj;
+            $data[] = (array) $obj;
         }
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -8813,7 +8898,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Quản lý kho NVL.xlsx');
         $href = '/exported_files/Quản lý kho NVL.xlsx';
         return $this->success($href);
@@ -8844,7 +8929,7 @@ class ApiController extends AdminController
                     $order_query->where('short_name', $input['khach_hang']);
                 }
                 if (isset($input['mdh'])) {
-                    $order_query->where('mdh', 'like',  "%" . $input['mdh'] . "%");
+                    $order_query->where('mdh', 'like', "%" . $input['mdh'] . "%");
                 }
                 if (isset($input['mql'])) {
                     $order_query->where('mql', $input['mql']);
@@ -8866,7 +8951,7 @@ class ApiController extends AdminController
         if (isset($input['sl_ton_min']) || isset($input['sl_ton_max']) || isset($input['so_ngay_ton_min']) || isset($input['so_ngay_ton_max'])) {
             // $query->doesntHave('exportRecord');
             $query->whereHas('lsx_pallet', function ($q) use ($input) {
-                $q->where('remain_quantity' , '>', 0);
+                $q->where('remain_quantity', '>', 0);
                 if (isset($input['sl_ton_min'])) {
                     $q->where('remain_quantity', '>=', $input['sl_ton_min']);
                 }
@@ -8890,7 +8975,7 @@ class ApiController extends AdminController
         $records = $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize)->with(['user', 'exportRecord.user'])->get();
         foreach ($records as $key => $record) {
             $export = $record->exportRecord;
-            $record->khu_vuc = $record->locator_id ? "Khu " . ((int)substr($record->locator_id, 1, 2) ?? "") : "";
+            $record->khu_vuc = $record->locator_id ? "Khu " . ((int) substr($record->locator_id, 1, 2) ?? "") : "";
             $record->vi_tri = $record->locator_id;
             $record->pallet_id = $record->pallet_id;
             $record->lo_sx = $record->lo_sx;
@@ -8931,7 +9016,7 @@ class ApiController extends AdminController
             $export = $record->exportRecord;
             $obj = new stdClass;
             $obj->stt = $key + 1;
-            $obj->khu_vuc = $record->locator_id ? "Khu " . ((int)substr($record->locator_id, 1, 2) ?? "") : "";
+            $obj->khu_vuc = $record->locator_id ? "Khu " . ((int) substr($record->locator_id, 1, 2) ?? "") : "";
             $obj->khach_hang = $record->order->short_name ?? "";
             $obj->mdh = $record->order->mdh ?? "";
             $obj->mql = $record->order->mql ?? "";
@@ -8954,7 +9039,7 @@ class ApiController extends AdminController
             $obj->vi_tri = $record->locator_id;
             $obj->pallet_id = $record->pallet_id;
             $obj->lo_sx = $record->lo_sx;
-            $data[] = (array)$obj;
+            $data[] = (array) $obj;
         }
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -9053,7 +9138,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Quản lý kho TP.xlsx');
         $href = '/exported_files/Quản lý kho TP.xlsx';
         return $this->success($href);
@@ -9070,9 +9155,12 @@ class ApiController extends AdminController
         }
         if (isset($input['customer_id']) || isset($input['mdh']) || isset($input['mql'])) {
             $query->whereHas('lo_sx_pallet', function ($q) use ($input) {
-                if (isset($input['customer_id'])) $q->where('customer_id', 'like', "%" . $input['customer_id'] . "%");
-                if (isset($input['mdh'])) $q->where('mdh', 'like', $input['mdh']);
-                if (isset($input['mql'])) $q->where('mql', $input['mql']);
+                if (isset($input['customer_id']))
+                    $q->where('customer_id', 'like', "%" . $input['customer_id'] . "%");
+                if (isset($input['mdh']))
+                    $q->where('mdh', 'like', $input['mdh']);
+                if (isset($input['mql']))
+                    $q->where('mql', $input['mql']);
             });
         }
         $totalPage = $query->count();
@@ -9208,7 +9296,7 @@ class ApiController extends AdminController
         $data = [];
         foreach ($records as $record) {
             $record->so_luong_xuat = $record->so_luong;
-            $record->sl_ton = (int)$record->lsxpallets->sum('remain_quantity');
+            $record->sl_ton = (int) $record->lsxpallets->sum('remain_quantity');
             if ($record->order) {
                 $data[] = array_merge($record->order->toArray(), $record->toArray());
             } else {
@@ -9243,7 +9331,8 @@ class ApiController extends AdminController
         foreach ($records as $index => $record) {
             $order = $record->order ?? null;
             $data_index = ($order->mdh ?? "") . ($order->mql ?? "");
-            if (!isset($so_luong[$data_index])) $so_luong[$data_index] = 0;
+            if (!isset($so_luong[$data_index]))
+                $so_luong[$data_index] = 0;
             $so_luong[$data_index] += $record->so_luong;
             $record->so_luong = $so_luong[$data_index];
             $group_records[$data_index] = $record;
@@ -9343,7 +9432,7 @@ class ApiController extends AdminController
             $clonedWorksheet->setCellValue([$total_col_key, $total_row_key], $sum_sl);
         }
         $spreadsheet->removeSheetByIndex(0);
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Phiếu giao hàng.xlsx');
         $href = '/exported_files/Phiếu giao hàng.xlsx';
         return $this->success($href);
@@ -9400,9 +9489,11 @@ class ApiController extends AdminController
         $input = $request->all();
         try {
             DB::beginTransaction();
-            $note = GoodsReceiptNote::where('id', $input['id'])->withCount(['warehouse_mlt_import' => function ($q) {
-                $q->whereNotNull('material_id');
-            }])->having('warehouse_mlt_import_count', '<=', 0)->first();
+            $note = GoodsReceiptNote::where('id', $input['id'])->withCount([
+                'warehouse_mlt_import' => function ($q) {
+                    $q->whereNotNull('material_id');
+                }
+            ])->having('warehouse_mlt_import_count', '<=', 0)->first();
             if ($note) {
                 $note->warehouse_mlt_import()->delete();
                 $note->delete();
@@ -9570,7 +9661,7 @@ class ApiController extends AdminController
         header('Cache-Control: max-age=0');
         header("Content-Transfer-Encoding: binary");
         header('Expires: 0');
-        $writer =  new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('exported_files/Danh sách buyer.xlsx');
         $href = '/exported_files/Danh sách buyer.xlsx';
         return $this->success($href);

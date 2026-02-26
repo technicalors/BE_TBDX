@@ -9525,7 +9525,7 @@ class ApiController extends AdminController
 
     public function exportBuyers(Request $request)
     {
-        $query = Buyer::orderBy('created_at', 'DESC');
+        $query = Buyer::with('customershort')->orderBy('created_at', 'DESC');
         if ($request->customer_id) {
             $query = $query->where('customer_id', 'like', '%' . $request->customer_id . '%');
         }
@@ -9546,6 +9546,7 @@ class ApiController extends AdminController
             return [
                 $index + 1,
                 $record->id,
+                $record->customershort ? $record->customershort->short_name : '',
                 $record->customer_id,
                 $record->buyer_vt,
                 $record->phan_loai_1,
@@ -9599,6 +9600,7 @@ class ApiController extends AdminController
             'STT',
             'Mã buyer',
             'Mã khách hàng',
+            'Tên khách hàng',
             'Buyer viết tắt',
             'Phân loại 1',
             'Số lớp',
@@ -9616,18 +9618,19 @@ class ApiController extends AdminController
             'A' => 'stt',
             'B' => 'buyer_id',
             'C' => 'customer_id',
-            'D' => 'buyer_vt',
-            'E' => 'phan_loai_1',
-            'F' => 'so_lop',
-            'G' => 'ma_cuon_f',
-            'H' => 'ma_cuon_se',
-            'I' => 'ma_cuon_le',
-            'J' => 'ma_cuon_sb',
-            'K' => 'ma_cuon_lb',
-            'L' => 'ma_cuon_sc',
-            'M' => 'ma_cuon_lc',
-            'N' => 'ket_cau_giay',
-            'O' => 'ghi_chu',
+            'D' => 'customer_name',
+            'E' => 'buyer_vt',
+            'F' => 'phan_loai_1',
+            'G' => 'so_lop',
+            'H' => 'ma_cuon_f',
+            'I' => 'ma_cuon_se',
+            'J' => 'ma_cuon_le',
+            'K' => 'ma_cuon_sb',
+            'L' => 'ma_cuon_lb',
+            'M' => 'ma_cuon_sc',
+            'N' => 'ma_cuon_lc',
+            'O' => 'ket_cau_giay',
+            'P' => 'ghi_chu',
         ];
         foreach ($header as $key => $cell) {
             $sheet->setCellValue([$start_col, $start_row], $cell)->mergeCells([$start_col, $start_row, $start_col, $start_row])->getStyle([$start_col, $start_row, $start_col, $start_row])->applyFromArray($headerStyle);

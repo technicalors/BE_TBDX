@@ -9546,8 +9546,8 @@ class ApiController extends AdminController
             return [
                 $index + 1,
                 $record->id,
-                $record->customershort ? $record->customershort->short_name : '',
                 $record->customer_id,
+                $record->customershort ? $record->customershort->short_name : '',
                 $record->buyer_vt,
                 $record->phan_loai_1,
                 $record->so_lop,

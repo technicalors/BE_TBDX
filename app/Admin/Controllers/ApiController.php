@@ -5351,8 +5351,9 @@ class ApiController extends AdminController
             DB::commit();
             return $this->success([], 'Upload thành công');
         } catch (Exception $e) {
+            \Log::error($e->getMessage());
             DB::rollBack();
-            return $this->failure([], 'File import có vấn đề vui lòng kiểm tra lại');
+            return $this->failure([], $e->getMessage());
         }
     }
 

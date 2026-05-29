@@ -6096,6 +6096,20 @@ class ApiController extends AdminController
     public function getOrderList(Request $request)
     {
         $query = Order::orderBy('mdh', 'ASC')->orderBy('mql', 'ASC');
+        $applyLikeFilter = function ($field, $value) use ($query) {
+            if (is_array($value)) {
+                $query->where(function ($custom_query) use ($field, $value) {
+                    foreach ($value as $item) {
+                        if ($item === null || $item === '') {
+                            continue;
+                        }
+                        $custom_query->orWhere($field, 'like', '%' . $item . '%');
+                    }
+                });
+            } else {
+                $query->where($field, 'like', '%' . $value . '%');
+            }
+        };
         if (isset($request->short_name)) {
             $customer_short = CustomerShort::where('short_name', $request->short_name)->first();
             $query->where('customer_id', $customer_short->customer_id);
@@ -6112,22 +6126,34 @@ class ApiController extends AdminController
             }
         }
         if (isset($request->dot) && !empty($request->dot)) {
-            $query->where('dot', 'like', '%' . $request->dot . '%');
+            $applyLikeFilter('dot', $request->dot);
         }
         if (isset($request->po) && !empty($request->po)) {
-            $query->where('po', 'like', '%' . $request->po . '%');
+            $applyLikeFilter('po', $request->po);
         }
         if (isset($request->kich_thuoc) && !empty($request->kich_thuoc)) {
-            $query->where(function ($custom_query) use ($request) {
-                $custom_query->where('kich_thuoc', 'like', '%' . $request->kich_thuoc . '%')
-                    ->orWhere('kich_thuoc_chuan', 'like', '%' . $request->kich_thuoc . '%');
-            });
+            if (is_array($request->kich_thuoc)) {
+                $query->where(function ($custom_query) use ($request) {
+                    foreach ($request->kich_thuoc as $size) {
+                        if ($size === null || $size === '') {
+                            continue;
+                        }
+                        $custom_query->orWhere('kich_thuoc', 'like', '%' . $size . '%')
+                            ->orWhere('kich_thuoc_chuan', 'like', '%' . $size . '%');
+                    }
+                });
+            } else {
+                $query->where(function ($custom_query) use ($request) {
+                    $custom_query->where('kich_thuoc', 'like', '%' . $request->kich_thuoc . '%')
+                        ->orWhere('kich_thuoc_chuan', 'like', '%' . $request->kich_thuoc . '%');
+                });
+            }
         }
         if (isset($request->layout_type) && !empty($request->layout_type)) {
-            $query->where('layout_type', 'like', '%' . $request->layout_type . '%');
+            $applyLikeFilter('layout_type', $request->layout_type);
         }
         if (isset($request->layout_id) && !empty($request->layout_id)) {
-            $query->where('layout_id', 'like', '%' . $request->layout_id . '%');
+            $applyLikeFilter('layout_id', $request->layout_id);
         }
         $machine = Machine::find($request->machine_id);
         if (!$machine) {

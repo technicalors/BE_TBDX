@@ -6160,9 +6160,6 @@ class ApiController extends AdminController
             return $this->failure([], 'Mã máy không tồn tại');
         }
         $line_id = $machine->line_id;
-        $orders = [];
-        // Lấy danh sách order_id đã có trong GroupPlanOrder để loại trừ
-        // $excludedOrderIds = GroupPlanOrder::pluck('order_id')->toArray();
 
         switch ($line_id) {
             case Line::LINE_SONG:
@@ -6180,26 +6177,48 @@ class ApiController extends AdminController
 
                 break;
             default:
-                $plans = ProductionPlan::whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
-                    ->where('machine_id', 'So01')
-                    ->get();
-                $group_order = GroupPlanOrder::whereIn('plan_id', $plans->pluck('id')->toArray())->pluck('order_id')->toArray();
                 $query->whereNotNull(['dai', 'rong'])
-                    ->whereIn('id', $group_order)
-                    ->withSum([
-                        'plan as sum_sl' => function ($plan_query) use ($line_id) {
-                            $plan_query->where('machine_id', '<>', 'So01')->whereHas('machine', function ($q) use ($line_id) {
-                                $q->where('line_id', $line_id);
-                            });
-                        }
-                    ], 'sl_kh');
+                    ->whereIn('id', function ($group_plan_query) use ($request) {
+                        $group_plan_query->from('group_plan_order as gpo')
+                            ->select('gpo.order_id')
+                            ->join('production_plans as pp', 'pp.id', '=', 'gpo.plan_id')
+                            ->whereDate('pp.ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
+                            ->whereDate('pp.ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)))
+                            ->where('pp.machine_id', 'So01');
+                    });
                 break;
         }
-        $count = $query->count();
+
+        // Count on base filtered query before pagination.
+        $count = (clone $query)->count();
+
+        // Only fetch ids for the requested page to avoid hydrating a large result set.
+        $page_query = clone $query;
         if (isset($request->page) && isset($request->pageSize)) {
-            $query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
+            $page_query->offset(($request->page - 1) * $request->pageSize)->limit($request->pageSize);
         }
-        $orders = $query->with('buyer')->get();
+
+        $order_ids = $page_query->pluck('id')->toArray();
+        if (empty($order_ids)) {
+            return $this->success(['data' => [], 'total' => $count]);
+        }
+
+        $orders_query = Order::whereIn('id', $order_ids)
+            ->orderBy('mdh', 'ASC')
+            ->orderBy('mql', 'ASC')
+            ->with('buyer');
+
+        if (!in_array($line_id, [Line::LINE_SONG, Line::LINE_XA_LOT])) {
+            $orders_query->withSum([
+                'plan as sum_sl' => function ($plan_query) use ($line_id) {
+                    $plan_query->where('machine_id', '<>', 'So01')->whereHas('machine', function ($q) use ($line_id) {
+                        $q->where('line_id', $line_id);
+                    });
+                }
+            ], 'sl_kh');
+        }
+
+        $orders = $orders_query->get();
         $data = [];
         foreach ($orders as $key => $order) {
             $order->khach_hang = $order->short_name ?? '';

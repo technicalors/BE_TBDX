@@ -4261,7 +4261,12 @@ class ApiController extends AdminController
         $data = [];
         try {
             DB::beginTransaction();
-            $latest_pallet = Pallet::where('id', 'like', 'PL' . date('ymd') . '%')->orderBy('id', 'DESC')->first();
+            if (!isset($input['inp_arr']) || !is_array($input['inp_arr']) || count($input['inp_arr']) <= 0) {
+                DB::rollBack();
+                return $this->failure('', 'Không có lô để tạo pallet');
+            }
+
+            $latest_pallet = Pallet::where('id', 'like', 'PL' . date('ymd') . '%')->lockForUpdate()->orderBy('id', 'DESC')->first();
             if ($latest_pallet) {
                 $pallet_id = (int) str_replace('PL' . date('ymd'), '', $latest_pallet->id);
             } else {
@@ -4273,10 +4278,22 @@ class ApiController extends AdminController
             $machine_dan = Machine::where('line_id', '32')->pluck('id')->toArray();
             $machine_xa_lot = Machine::where('line_id', '33')->pluck('id')->toArray();
             foreach ($input['inp_arr'] as $key => $value) {
-                $info = InfoCongDoan::with('plan.order')->where('lo_sx', $value['lo_sx'])->orderBy('created_at', 'DESC')->first();
+                $info = InfoCongDoan::with('plan.order', 'tem')->where('lo_sx', $value['lo_sx'])->orderBy('created_at', 'DESC')->lockForUpdate()->first();
+                if (!$info) {
+                    DB::rollBack();
+                    return $this->failure('', 'Không tìm thấy lô ' . ($value['lo_sx'] ?? ''));
+                }
                 if ($info->step !== 0) {
+                    DB::rollBack();
                     return $this->failure('', 'Lô ' . $info->lo_sx . ' chưa sẵn sàng để nhập kho');
                 }
+
+                $existing_lsx_pallet = LSXPallet::where('lo_sx', $value['lo_sx'])->lockForUpdate()->first();
+                if ($existing_lsx_pallet) {
+                    DB::rollBack();
+                    return $this->failure('', 'Lô ' . $value['lo_sx'] . ' đã nằm trong pallet ' . $existing_lsx_pallet->pallet_id);
+                }
+
                 $inp['customer_id'] = $info->tem->khach_hang;
                 $inp['mql'] = $info->tem->mql;
                 $inp['mdh'] = $info->tem->mdh;

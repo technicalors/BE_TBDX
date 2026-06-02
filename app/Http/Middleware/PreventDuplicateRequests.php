@@ -14,18 +14,23 @@ class PreventDuplicateRequests
     public function handle(Request $request, Closure $next)
     {
         $key = $this->getRequestCacheKey($request);
+        $ttl = 10;
 
-        // Use atomic add to avoid race conditions when concurrent duplicate requests arrive.
-        if (!Cache::add($key, true, now()->addSeconds(10))) {
+        if (!Cache::add($key, true, $ttl)) {
             return $this->failure([], 'Bản ghi trùng lặp');
         }
 
-        return $next($request);
+        try {
+            return $next($request);
+        } finally {
+            Cache::forget($key);
+        }
     }
 
     protected function getRequestCacheKey(Request $request)
     {
         $payload = $request->all();
+        $payload['_files'] = $this->normalizeUploadedFiles($request->allFiles());
         $this->ksortRecursive($payload);
 
         $base = [
@@ -35,7 +40,31 @@ class PreventDuplicateRequests
             'payload' => $payload,
         ];
 
-        return 'dedupe:' . sha1(json_encode($base));
+        $hashValue = json_encode($base, JSON_UNESCAPED_UNICODE);
+        if ($hashValue === false) {
+            $hashValue = serialize($base);
+        }
+
+        return 'dedupe:' . sha1($hashValue);
+    }
+
+    protected function normalizeUploadedFiles(array $files)
+    {
+        $normalized = [];
+
+        foreach ($files as $key => $file) {
+            if (is_array($file)) {
+                $normalized[$key] = $this->normalizeUploadedFiles($file);
+            } elseif ($file) {
+                $normalized[$key] = [
+                    'name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                    'mime' => $file->getClientMimeType(),
+                ];
+            }
+        }
+
+        return $normalized;
     }
 
     protected function ksortRecursive(array &$array)

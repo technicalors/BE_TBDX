@@ -54,6 +54,9 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     {
+        if ($exception instanceof AuthenticationException) {
+            return $this->failure([], 'token invalid', 401);
+        }
         if($exception instanceof RouteNotFoundException){
             return $this->failure([],'token invalid',401);
         }

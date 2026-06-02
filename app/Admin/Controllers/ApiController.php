@@ -449,54 +449,61 @@ class ApiController extends AdminController
         if (!$info) {
             return $this->failure('', 'Không tìm thấy lô');
         }
-        $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat;
-        if ($info->machine_id == 'So01') {
-            $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat * $info->so_ra;
-            $info->update([
-                'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
-                'status' => 2,
-                'nhan_vien_sx' => $request->user()->id ?? null,
-                'thoi_gian_bat_dau' => $info->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
-                'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
-            ]);
-            $info->infoCongDoanPriority()->delete();
-            $this->reorderInfoCongDoan();
-            $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
-            if ($tracking) {
-                $tracking->update([
-                    'lo_sx' => null,
-                    'so_ra' => 0,
-                    'thu_tu_uu_tien' => 0,
-                    'sl_kh' => 0,
-                ]);
-            }
-        } else {
+        try {
+            DB::beginTransaction();
             $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat;
-            $info->update([
-                'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
-                'status' => 2,
-                'nhan_vien_sx' => $request->user()->id ?? null,
-                'thoi_gian_bat_dau' => $info->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
-                'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
-            ]);
-            $tracking = Tracking::where('machine_id', $info->machine_id)->first();
-            if ($tracking) {
-                $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])
-                    ->where('lo_sx', '!=', $info->lo_sx)
-                    ->where('machine_id', $tracking->machine_id)
-                    ->orderBy('updated_at', 'DESC')
-                    ->orderBy('order_id')
-                    ->first();
-                $tracking->update([
-                    'lo_sx' => $next_batch->lo_sx ?? null,
-                    'so_ra' => $next_batch->so_ra ?? 0,
-                    'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien ?? 0,
-                    'sl_kh' => $next_batch->dinh_muc ?? 0,
+            if ($info->machine_id == 'So01') {
+                $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat * $info->so_ra;
+                $info->update([
+                    'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
+                    'status' => 2,
+                    'nhan_vien_sx' => $request->user()->id ?? null,
+                    'thoi_gian_bat_dau' => $info->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
+                    'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
                 ]);
-                if ($next_batch) {
-                    $next_batch->update(['status' => 1]);
+                $info->infoCongDoanPriority()->delete();
+                $this->reorderInfoCongDoan();
+                $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
+                if ($tracking) {
+                    $tracking->update([
+                        'lo_sx' => null,
+                        'so_ra' => 0,
+                        'thu_tu_uu_tien' => 0,
+                        'sl_kh' => 0,
+                    ]);
+                }
+            } else {
+                $sl_dau_ra_hang_loat = $request->sl_dau_ra_hang_loat;
+                $info->update([
+                    'sl_dau_ra_hang_loat' => $sl_dau_ra_hang_loat,
+                    'status' => 2,
+                    'nhan_vien_sx' => $request->user()->id ?? null,
+                    'thoi_gian_bat_dau' => $info->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
+                    'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
+                ]);
+                $tracking = Tracking::where('machine_id', $info->machine_id)->first();
+                if ($tracking) {
+                    $next_batch = InfoCongDoan::where('ngay_sx', date('Y-m-d'))->whereIn('status', [0, 1])
+                        ->where('lo_sx', '!=', $info->lo_sx)
+                        ->where('machine_id', $tracking->machine_id)
+                        ->orderBy('updated_at', 'DESC')
+                        ->orderBy('order_id')
+                        ->first();
+                    $tracking->update([
+                        'lo_sx' => $next_batch->lo_sx ?? null,
+                        'so_ra' => $next_batch->so_ra ?? 0,
+                        'thu_tu_uu_tien' => $next_batch->thu_tu_uu_tien ?? 0,
+                        'sl_kh' => $next_batch->dinh_muc ?? 0,
+                    ]);
+                    if ($next_batch) {
+                        $next_batch->update(['status' => 1]);
+                    }
                 }
             }
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Log::debug($th);
+            return $this->failure($th->getMessage(), $th->getMessage());
         }
 
         return $this->success('', 'Đã cập nhật');
@@ -973,8 +980,7 @@ class ApiController extends AdminController
     public function websocketMachineStatus(Request $request)
     {
         if (!isset($request['device_id']))
-            return $this->failure('Không có mã máy');
-        ;
+            return $this->failure('Không có mã máy');;
         $machine = Machine::with('line')->where('device_id', $request['device_id'])->first();
         $tracking = Tracking::where('machine_id', $machine->id)->first();
         $res = MachineLog::UpdateStatus(['machine_id' => $machine->id, 'status' => (int) $request['Machine_Status'], 'timestamp' => date('Y-m-d H:i:s'), 'lo_sx' => $tracking->lo_sx ?? null]);
@@ -1832,8 +1838,8 @@ class ApiController extends AdminController
                 $min_query = str_replace("±", '-', $query);
                 $max_query = str_replace("±", '+', $query);
                 try {
-                    $min = eval ('return ' . $min_query . ';');
-                    $max = eval ('return ' . $max_query . ';');
+                    $min = eval('return ' . $min_query . ';');
+                    $max = eval('return ' . $max_query . ';');
                 } catch (\Throwable $th) {
                     return [];
                 }
@@ -1897,8 +1903,8 @@ class ApiController extends AdminController
             $min_query = str_replace("±", '-', $query);
             $max_query = str_replace("±", '+', $query);
             try {
-                $min = eval ('return ' . $min_query . ';');
-                $max = eval ('return ' . $max_query . ';');
+                $min = eval('return ' . $min_query . ';');
+                $max = eval('return ' . $max_query . ';');
             } catch (\Throwable $th) {
                 return [];
             }
@@ -2527,7 +2533,7 @@ class ApiController extends AdminController
         ];
         $params = MachineParameter::where('machine_id', $request->machine_id)->where('is_if', 1)->get();
         foreach ($params as $param) {
-            array_push($column, ['title' => $param->name, 'dataIndex' => $param->parameter_id, 'key' => $param->parameter_id, 'align' => 'center'], );
+            array_push($column, ['title' => $param->name, 'dataIndex' => $param->parameter_id, 'key' => $param->parameter_id, 'align' => 'center'],);
         }
         $data = [];
         foreach ($list as $value) {
@@ -2784,7 +2790,10 @@ class ApiController extends AdminController
 
     public function productionPlan(Request $request)
     {
-        $query = ProductionPlan::with('order', 'machine.line', 'orders', 'creator:id,name')->orderBy('thu_tu_uu_tien')->orderBy('updated_at', 'DESC');
+        // Local dumps can be large; raise memory budget for this aggregation endpoint.
+        ini_set('memory_limit', '512M');
+
+        $query = ProductionPlan::with('order.buyer', 'machine.line', 'orders', 'creator:id,name')->orderBy('thu_tu_uu_tien')->orderBy('updated_at', 'DESC');
         if (isset($request->end_date) && isset($request->start_date)) {
             $query->whereDate('ngay_sx', '>=', date('Y-m-d', strtotime($request->start_date)))
                 ->whereDate('ngay_sx', '<=', date('Y-m-d', strtotime($request->end_date)));
@@ -2814,22 +2823,102 @@ class ApiController extends AdminController
                 $query->where('order_id', 'like', "%$request->mdh%");
             }
         }
+
+        // Avoid memory exhaustion on large datasets by honoring paging parameters from UI.
+        if (isset($request->page) && isset($request->pageSize)) {
+            $page = max(1, (int) $request->page);
+            $page_size = max(1, min(200, (int) $request->pageSize));
+            $query->offset(($page - 1) * $page_size)->limit($page_size);
+        }
+
         $list = $query->get();
+        $plan_ids = $list->pluck('id')->filter()->unique()->values()->toArray();
+
+        $actual_quantity_map = [];
+        if (!empty($plan_ids)) {
+            $actual_quantity_map = InfoCongDoan::query()
+                ->select('plan_id', DB::raw('SUM(COALESCE(sl_dau_ra_hang_loat, 0)) as sl_thuc_te'))
+                ->whereIn('plan_id', $plan_ids)
+                ->groupBy('plan_id')
+                ->pluck('sl_thuc_te', 'plan_id')
+                ->toArray();
+        }
+
+        $lsx_machine_keys = [];
+        foreach ($list as $plan) {
+            if (!$plan->lo_sx || !$plan->machine_id) {
+                continue;
+            }
+            $lsx_machine_keys[$plan->lo_sx . '|' . $plan->machine_id] = [$plan->lo_sx, $plan->machine_id];
+        }
+
+        $actual_quantity_fallback_map = [];
+        if (!empty($lsx_machine_keys)) {
+            $actual_quantity_fallback_rows = InfoCongDoan::query()
+                ->select('lo_sx', 'machine_id', DB::raw('SUM(COALESCE(sl_dau_ra_hang_loat, 0)) as sl_thuc_te'))
+                ->whereNull('plan_id')
+                ->where(function ($fallback_query) use ($lsx_machine_keys) {
+                    foreach ($lsx_machine_keys as $lsx_machine_key) {
+                        $fallback_query->orWhere(function ($pair_query) use ($lsx_machine_key) {
+                            $pair_query->where('lo_sx', $lsx_machine_key[0])->where('machine_id', $lsx_machine_key[1]);
+                        });
+                    }
+                })
+                ->groupBy('lo_sx', 'machine_id')
+                ->get();
+
+            foreach ($actual_quantity_fallback_rows as $fallback_row) {
+                $actual_quantity_fallback_map[$fallback_row->lo_sx . '|' . $fallback_row->machine_id] = (float) ($fallback_row->sl_thuc_te ?? 0);
+            }
+        }
+
+        $formula_keys = [];
+        foreach ($list as $plan) {
+            $order = $plan->order;
+            if (!$order || !$order->phan_loai_1 || !$order->phan_loai_2) {
+                continue;
+            }
+            $formula_keys[$order->phan_loai_1 . '|' . $order->phan_loai_2] = [$order->phan_loai_1, $order->phan_loai_2];
+        }
+
+        $formula_map = [];
+        if (!empty($formula_keys)) {
+            $formulas = DB::table('formulas')
+                ->where(function ($formula_query) use ($formula_keys) {
+                    foreach ($formula_keys as $formula_key) {
+                        $formula_query->orWhere(function ($pair_query) use ($formula_key) {
+                            $pair_query->where('phan_loai_1', $formula_key[0])->where('phan_loai_2', $formula_key[1]);
+                        });
+                    }
+                })
+                ->get();
+
+            foreach ($formulas as $formula) {
+                $formula_map[$formula->phan_loai_1 . '|' . $formula->phan_loai_2] = $formula;
+            }
+        }
+
         $data = [];
         foreach ($list as $key => $value) {
             $order = $value->order;
             $obj = new stdClass();
-            // if (!$order) continue;
-            $formula = DB::table('formulas')->where('phan_loai_1', $order->phan_loai_1 ?? null)->where('phan_loai_2', $order->phan_loai_2 ?? null)->first();
+            $formula = null;
+            if ($order && $order->phan_loai_1 && $order->phan_loai_2) {
+                $formula = $formula_map[$order->phan_loai_1 . '|' . $order->phan_loai_2] ?? null;
+            }
+
             $value->khach_hang = $order->short_name ?? "";
-            $value->ket_cau_giay = $value->order->buyer->ket_cau_giay ?? "";
-            $value->so_lop = $value->order->buyer->so_lop ?? "";
-            $value->ghi_chu = $value->order->note_3 ?? "";
-            $value->dot = $value->order->dot ?? "";
+            $value->ket_cau_giay = $order->buyer->ket_cau_giay ?? "";
+            $value->so_lop = $order->buyer->so_lop ?? "";
+            $value->ghi_chu = $order->note_3 ?? "";
+            $value->dot = $order->dot ?? "";
             $value->line_id = $value->machine->line->id ?? "";
             $value->san_luong_kh = $value->sl_kh ?? "";
             $value->so_luong = $value->sl_kh;
             $value->so_pallet = $value->ordering ?? "";
+            $actual_by_plan_id = (float) ($actual_quantity_map[$value->id] ?? 0);
+            $actual_by_lsx_machine = (float) ($actual_quantity_fallback_map[$value->lo_sx . '|' . $value->machine_id] ?? 0);
+            $value->sl_thuc_te = $actual_by_plan_id > 0 ? $actual_by_plan_id : $actual_by_lsx_machine;
             $obj->lo_sx = $value->lo_sx;
             $obj->so_luong = $value->sl_kh;
             $obj->mql = count($value->orders) > 0 ? implode(',', $value->orders->pluck('mql')->toArray()) : ($order->mql ?? '');
@@ -3477,9 +3566,7 @@ class ApiController extends AdminController
         return $this->success(['data' => $data, 'totalPage' => $totalPage, 'columns' => $columns]);
     }
 
-    public function getInfoFromPlan($info)
-    {
-    }
+    public function getInfoFromPlan($info) {}
 
     public function getInfoFromTem($info)
     {

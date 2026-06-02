@@ -465,8 +465,7 @@ class ApiController extends AdminController
                     'thoi_gian_bat_dau' => $info->thoi_gian_bat_dau ?? date('Y-m-d H:i:s'),
                     'thoi_gian_ket_thuc' => date('Y-m-d H:i:s'),
                 ]);
-                $info->infoCongDoanPriority()->delete();
-                $this->reorderInfoCongDoan();
+                InfoCongDoanPriority::where('info_cong_doan_id', $info->id)->delete();
                 $tracking = Tracking::where('machine_id', $info->machine_id)->where('lo_sx', $info->lo_sx)->first();
                 if ($tracking) {
                     $tracking->update([

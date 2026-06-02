@@ -445,6 +445,8 @@ class ApiController extends AdminController
 
     public function updateQuantityInfoCongDoan(Request $request)
     {
+        ini_set('memory_limit', '512M');
+
         $info = InfoCongDoan::find($request->id);
         if (!$info) {
             return $this->failure('', 'Không tìm thấy lô');
@@ -488,6 +490,7 @@ class ApiController extends AdminController
                         ->where('machine_id', $tracking->machine_id)
                         ->orderBy('updated_at', 'DESC')
                         ->orderBy('order_id')
+                        ->select(['id', 'lo_sx', 'so_ra', 'thu_tu_uu_tien', 'dinh_muc'])
                         ->first();
                     $tracking->update([
                         'lo_sx' => $next_batch->lo_sx ?? null,
@@ -503,7 +506,7 @@ class ApiController extends AdminController
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
-            Log::debug($th);
+            Log::error('updateQuantityInfoCongDoan error: ' . $th->getMessage());
             return $this->failure($th->getMessage(), $th->getMessage());
         }
 

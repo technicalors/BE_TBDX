@@ -283,13 +283,15 @@ class ApiController extends AdminController
 
     public function reorderInfoCongDoan()
     {
-        $infos_priority = InfoCongDoanPriority::orderBy('priority')->get();
-        foreach ($infos_priority as $key => $info_priority) {
-            $info_priority->update([
-                'priority' => $key + 1,
-            ]);
+        try {
+            $priorities = InfoCongDoanPriority::orderBy('priority')->pluck('id')->values();
+            
+            foreach ($priorities as $index => $id) {
+                InfoCongDoanPriority::where('id', $id)->update(['priority' => $index + 1]);
+            }
+        } catch (\Exception $e) {
+            Log::error('reorderInfoCongDoan error: ' . $e->getMessage());
         }
-        // return $infos_priority->pluck('info_cong_doan_id')->toArray();
     }
 
     public function reorderPriority(Request $request)

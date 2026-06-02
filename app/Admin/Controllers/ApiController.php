@@ -500,6 +500,7 @@ class ApiController extends AdminController
                     }
                 }
             }
+            DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
             Log::debug($th);

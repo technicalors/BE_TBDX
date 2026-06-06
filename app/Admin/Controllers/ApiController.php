@@ -2829,6 +2829,8 @@ class ApiController extends AdminController
             }
         }
 
+        $totalPage = (clone $query)->count();
+
         // Avoid memory exhaustion on large datasets by honoring paging parameters from UI.
         if (isset($request->page) && isset($request->pageSize)) {
             $page = max(1, (int) $request->page);
@@ -2933,7 +2935,10 @@ class ApiController extends AdminController
             $data[$key]['so_dao'] = $data[$key]['so_ra'] ? ceil($data[$key]['sl_kh'] * ($formula->he_so ?? 1) / $data[$key]['so_ra']) : $data[$key]['so_dao'];
             $data[$key]['id'] = $value->id;
         }
-        return $this->success($data);
+        return $this->success([
+            'data' => array_values($data),
+            'totalPage' => $totalPage,
+        ]);
     }
 
     public function produceOverall(Request $request)

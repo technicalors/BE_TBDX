@@ -6269,6 +6269,62 @@ class ApiController extends AdminController
         if (isset($request->layout_id) && !empty($request->layout_id)) {
             $applyLikeFilter('layout_id', $request->layout_id);
         }
+        if (isset($request->dai) && $request->dai !== '') {
+            $query->where('dai', 'like', '%' . $request->dai . '%');
+        }
+        if (isset($request->rong) && $request->rong !== '') {
+            $query->where('rong', 'like', '%' . $request->rong . '%');
+        }
+        if (isset($request->cao) && $request->cao !== '') {
+            $query->where('cao', 'like', '%' . $request->cao . '%');
+        }
+        if (isset($request->kho_from) && $request->kho_from !== '') {
+            $query->where('kho', '>=', $request->kho_from);
+        }
+        if (isset($request->kho_to) && $request->kho_to !== '') {
+            $query->where('kho', '<=', $request->kho_to);
+        }
+        if (isset($request->so_lop) && $request->so_lop !== '') {
+            $query->whereHas('buyer', function ($buyer_query) use ($request) {
+                $buyer_query->where('so_lop', 'like', '%' . $request->so_lop . '%');
+            });
+        }
+        if (isset($request->ket_cau_giay) && $request->ket_cau_giay !== '') {
+            $query->whereHas('buyer', function ($buyer_query) use ($request) {
+                $buyer_query->where('ket_cau_giay', 'like', '%' . $request->ket_cau_giay . '%');
+            });
+        }
+        if (isset($request->phan_loai_1) && $request->phan_loai_1 !== '') {
+            $applyLikeFilter('phan_loai_1', $request->phan_loai_1);
+        }
+        if (isset($request->may_in) && $request->may_in !== '') {
+            if ($request->may_in === 'M') {
+                $query->whereHas('layout', function ($layout_query) {
+                    $layout_query->where('machine_id', 'like', 'Pr%');
+                });
+            } elseif ($request->may_in === 'P8') {
+                $query->where(function ($phan_loai_query) {
+                    $phan_loai_query->where('phan_loai_1', 'like', 'thung%')
+                        ->orWhere('phan_loai_1', 'inner');
+                })->where(function ($layout_type_query) {
+                    $layout_type_query->whereNull('layout_type')
+                        ->orWhere('layout_type', '');
+                })->where(function ($layout_id_query) {
+                    $layout_id_query->whereNull('layout_id')
+                        ->orWhere('layout_id', '');
+                })->where(function ($machine_query) {
+                    $machine_query->doesntHave('layout')
+                        ->orWhereHas('layout', function ($layout_query) {
+                            $layout_query->where(function ($machine_id_query) {
+                                $machine_id_query->whereNull('machine_id')
+                                    ->orWhere('machine_id', 'not like', 'Pr%');
+                            });
+                        });
+                });
+            } else {
+                $query->where('layout_type', $request->may_in);
+            }
+        }
         $machine = Machine::find($request->machine_id);
         if (!$machine) {
             return $this->failure([], 'Mã máy không tồn tại');
@@ -6337,6 +6393,7 @@ class ApiController extends AdminController
         foreach ($orders as $key => $order) {
             $order->khach_hang = $order->short_name ?? '';
             $order->ket_cau_giay = $order->buyer->ket_cau_giay ?? '';
+            $order->so_lop = $order->buyer->so_lop ?? '';
             if ($order->sl - ($order->sum_sl ?? 0) <= 0) {
                 continue;
             } else {

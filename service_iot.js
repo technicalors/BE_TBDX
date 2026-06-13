@@ -8,7 +8,7 @@ const pLimit = require('p-limit');
 const TELEMETRY_URL = "http://113.161.189.44:3030/api/plugins/telemetry/DEVICE";
 const AUTH_URL      = "http://113.161.189.44:3030/api/auth/login";
 // const LOCAL_URL      = "http://127.0.0.1:8001";
-const BASE_URL      = "http://backtbdx.ouransoft.vn"
+const BASE_URL      = "https://backtbdx.ouransoft.vn"
 const POST_URL                  = `${BASE_URL}/api/websocket`;
 const POST_MACHINE_STATUS_URL   = `${BASE_URL}/api/websocket-machine-status`;
 const POST_MACHINE_PARAMS_URL   = `${BASE_URL}/api/websocket-machine-params`;
@@ -226,8 +226,7 @@ async function runDevices(token) {
 async function initialize() {
     while (true) {
         try {
-            // Mỗi vòng lặp ta auth 1 lần (hoặc có thể cache token)
-            // const token = await authenticate();
+            const token = await authenticate();
 
             // Gọi xử lý tất cả devices (đã limit concurrency)
             await runDevices(token);
